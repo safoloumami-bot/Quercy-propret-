@@ -22,10 +22,11 @@ import { Textarea } from "@quercy/ui/components/textarea";
 import { toast } from "@quercy/ui/components/toaster";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckIcon, CopyIcon } from "lucide-react";
+import Link from "next/link";
 import * as React from "react";
 
 import { FormField } from "@/components/form-field";
-import { errorMessage, useTRPC } from "@/lib/trpc";
+import { errorMessage, isPlanLimitError, useTRPC } from "@/lib/trpc";
 
 /** Découpe une saisie libre (virgules, espaces, retours à la ligne) en adresses. */
 export function parseEmails(raw: string): { valid: string[]; invalid: string[] } {
@@ -157,7 +158,19 @@ export function InviteDialog({
                 ligne.
               </DialogDescription>
             </DialogHeader>
-            {invite.error ? <Callout variant="danger">{errorMessage(invite.error)}</Callout> : null}
+            {invite.error ? (
+              <Callout variant="danger">
+                <p>{errorMessage(invite.error)}</p>
+                {isPlanLimitError(invite.error) ? (
+                  <Link
+                    href="/reglages/facturation"
+                    className="font-medium text-primary underline underline-offset-4"
+                  >
+                    Voir les offres
+                  </Link>
+                ) : null}
+              </Callout>
+            ) : null}
             <FormField
               id="invite-emails"
               label="Adresses email"

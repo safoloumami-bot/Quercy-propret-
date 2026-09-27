@@ -69,3 +69,8 @@ export function errorMessage(error: unknown): string {
   }
   return "Une erreur inattendue est survenue. Réessayez.";
 }
+
+/** Vrai si l'erreur vient d'une limite de l'offre (l'interface propose alors de changer d'offre). */
+export function isPlanLimitError(error: unknown): boolean {
+  return Boolean((error as { data?: { planLimit?: boolean } } | null)?.data?.planLimit);
+}

@@ -6,7 +6,10 @@ import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { READ_ONLY_MESSAGES } from "@quercy/core";
+
 import { auth } from "../auth";
+import { PlanLimitError } from "../billing/state";
 import { resolveWorkspace } from "../workspace";
 
 export async function createContext(opts: { headers: Headers }) {
@@ -23,6 +26,7 @@ const t = initTRPC.context<Context>().create({
       data: {
         ...shape.data,
         zodError: error.cause instanceof ZodError ? error.cause.flatten() : null,
+        planLimit: error.cause instanceof PlanLimitError,
       },
     };
   },
@@ -65,13 +69,36 @@ export const authedProcedure = publicProcedure.use(({ ctx, next }) => {
  * Procédure liée à l'espace actif. Le contexte fournit `db`, un client Prisma restreint à
  * cet espace : aucune requête métier ne peut lire ou modifier les données d'un autre espace.
  */
-export const orgProcedure = authedProcedure.use(async ({ ctx, next }) => {
+/**
+ * Mutations encore permises en lecture seule : celles qui permettent d'en sortir
+ * (payer, réduire le nombre de membres ou de modules) ou de partir.
+ */
+const READ_ONLY_ALLOWED = new Set([
+  "billing.checkout",
+  "billing.changePlan",
+  "billing.portal",
+  "billing.setCancelAtPeriodEnd",
+  "members.remove",
+  "invitations.revoke",
+  "workspace.updateModules",
+  "workspace.leave",
+]);
+
+export const orgProcedure = authedProcedure.use(async ({ ctx, next, type, path }) => {
   const workspace = await resolveWorkspace(
     ctx.user.id,
     (ctx.session.session as { activeOrganizationId?: string | null }).activeOrganizationId,
   );
   if (!workspace) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Vous n'appartenez à aucun espace." });
+  }
+  const readOnly = workspace.billing.readOnly;
+  if (type === "mutation" && readOnly && !READ_ONLY_ALLOWED.has(path)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: READ_ONLY_MESSAGES[readOnly],
+      cause: new PlanLimitError(READ_ONLY_MESSAGES[readOnly]),
+    });
   }
   return next({
     ctx: {
@@ -98,7 +125,12 @@ export function authorize(
 
 /** Enregistre une entrée du journal d'audit dans l'espace courant. */
 export async function recordAudit(
-  ctx: { db: TenantClient; user: { id: string }; headers: Headers },
+  ctx: {
+    db: TenantClient;
+    user: { id: string };
+    headers: Headers;
+    session?: { session: object };
+  },
   entry: {
     action: string;
     entityType: string;
@@ -111,6 +143,9 @@ export async function recordAudit(
     data: {
       organizationId: "", // remplacé par l'extension d'isolation
       actorId: ctx.user.id,
+      impersonatorId:
+        (ctx.session?.session as { impersonatedBy?: string | null } | undefined)?.impersonatedBy ??
+        null,
       action: entry.action,
       entityType: entry.entityType,
       entityId: entry.entityId ?? null,

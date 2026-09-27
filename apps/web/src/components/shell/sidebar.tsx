@@ -50,12 +50,14 @@ export function Sidebar({
   user,
   roleName,
   permissions,
+  platformAdmin,
 }: {
   current: WorkspaceSummary;
   workspaces: WorkspaceSummary[];
   user: { name: string; email: string; image: string | null };
   roleName: string;
   permissions: PermissionMatrix;
+  platformAdmin: boolean;
 }) {
   const pathname = usePathname();
   const active = activeNavItem(pathname);
@@ -185,7 +187,12 @@ export function Sidebar({
       </div>
 
       <div className="border-t border-sidebar-border p-2">
-        <UserMenu user={user} roleName={roleName} collapsed={collapsed} />
+        <UserMenu
+          user={user}
+          roleName={roleName}
+          collapsed={collapsed}
+          platformAdmin={platformAdmin}
+        />
       </div>
     </aside>
   );

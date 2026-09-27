@@ -22,13 +22,11 @@ function greeting(hour: number): string {
 }
 
 export default async function HomePage() {
-  const { user, organization, role } = await requireWorkspaceContext();
+  const { user, organization, role, billing } = await requireWorkspaceContext();
   const memberCount = await prisma.membership.count({
     where: { organizationId: organization.id, deletedAt: null },
   });
-  const trialDays = organization.trialEndsAt
-    ? Math.max(0, Math.ceil((organization.trialEndsAt.getTime() - Date.now()) / 86_400_000))
-    : null;
+  const trialDays = billing.trialDaysLeft;
   const { locale, timezone } = organization.preferences;
   const now = new Date();
   const hour = Number(
@@ -81,7 +79,7 @@ export default async function HomePage() {
               {[
                 {
                   label: "Offre",
-                  value: `${PLAN_LABELS[organization.plan] ?? organization.plan}${
+                  value: `${PLAN_LABELS[billing.effectivePlan] ?? billing.effectivePlan}${
                     trialDays !== null ? ` — essai, ${trialDays} j restants` : ""
                   }`,
                 },

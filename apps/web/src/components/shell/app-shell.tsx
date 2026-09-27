@@ -24,6 +24,10 @@ export interface AppShellProps {
   user: { name: string; email: string; image: string | null };
   roleName: string;
   permissions: PermissionMatrix;
+  /** Bandeau affiché au-dessus du contenu (état de l'abonnement, session d'assistance…). */
+  banner?: React.ReactNode;
+  /** Propriétaire du SaaS : accès à l'administration de la plateforme. */
+  platformAdmin?: boolean;
   children: React.ReactNode;
 }
 
@@ -35,6 +39,8 @@ export function AppShell({
   user,
   roleName,
   permissions,
+  banner,
+  platformAdmin = false,
   children,
 }: AppShellProps) {
   return (
@@ -53,9 +59,11 @@ export function AppShell({
           user={user}
           roleName={roleName}
           permissions={permissions}
+          platformAdmin={platformAdmin}
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <Topbar />
+          {banner}
           <main id="contenu" tabIndex={-1} className="flex-1 overflow-y-auto outline-none">
             {children}
           </main>

@@ -8,7 +8,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 
-import { errorMessage, useTRPC } from "@/lib/trpc";
+import { toastError } from "@/components/toast-error";
+import { useTRPC } from "@/lib/trpc";
 
 import { SettingsSection } from "../section";
 
@@ -41,7 +42,7 @@ export function ModulesSection({ enabled, canEdit }: { enabled: ModuleKey[]; can
             },
           });
         },
-        onError: (e) => toast.error(errorMessage(e)),
+        onError: toastError,
       },
     );
   }

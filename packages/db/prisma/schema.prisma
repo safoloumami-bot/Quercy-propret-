@@ -23,7 +23,11 @@ model User {
   /// Préférences personnelles (thème, langue, densité…) — voir userPreferencesSchema.
   preferences      Json      @default("{}")
   twoFactorEnabled Boolean   @default(false)
-  isSuperAdmin     Boolean   @default(false)
+  /// Rôle plateforme (plugin admin de Better Auth) : « admin » = super-admin du SaaS.
+  role             String?
+  banned           Boolean?  @default(false)
+  banReason        String?
+  banExpires       DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
@@ -49,6 +53,8 @@ model Session {
   userAgent            String?
   /// Espace actif de la session.
   activeOrganizationId String?
+  /// Rempli quand un super-admin se connecte « en tant que » cet utilisateur.
+  impersonatedBy       String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -117,6 +123,21 @@ enum Plan {
   ENTERPRISE
 }
 
+enum SubscriptionStatus {
+  NONE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  UNPAID
+  CANCELED
+  INCOMPLETE
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
 model Organization {
   id           String    @id @default(cuid())
   name         String
@@ -126,6 +147,19 @@ model Organization {
   size         String?
   plan         Plan      @default(FREE)
   trialEndsAt  DateTime?
+
+  // Abonnement (source de vérité : Stripe, synchronisé par webhooks)
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  subscriptionStatus   SubscriptionStatus @default(NONE)
+  billingInterval      BillingInterval?
+  seats                Int                @default(0)
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  pastDueSince         DateTime?
+  subscribedAt         DateTime?
+  canceledAt           DateTime?
+
   /// Clés des modules activés (voir MODULE_KEYS dans @quercy/core).
   modules      String[]  @default([])
   /// Langue, devise, fuseau, format de date, couleur d'accent.
@@ -323,4 +357,30 @@ model SavedView {
 
   @@index([organizationId, entityType])
   @@map("saved_view")
+}
+
+// ─────────────────────────── Facturation ───────────────────────────
+
+enum StripeEventStatus {
+  PENDING
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+/// Journal des webhooks Stripe : idempotence (id unique) et rejeu des échecs.
+model StripeEvent {
+  id             String            @id
+  type           String
+  organizationId String?
+  payload        Json
+  status         StripeEventStatus @default(PENDING)
+  attempts       Int               @default(0)
+  error          String?
+  createdAt      DateTime          @default(now())
+  processedAt    DateTime?
+
+  @@index([status, createdAt])
+  @@index([organizationId])
+  @@map("stripe_event")
 }

@@ -1,10 +1,13 @@
 import {
   MODULE_KEYS,
+  PLANS,
+  TRIAL_DAYS,
   SYSTEM_ROLE_LABELS,
   createOrganizationSchema,
   diffChanges,
   hexColorSchema,
   moduleKeySchema,
+  moduleLimitError,
   slugify,
   updateOrganizationSchema,
 } from "@quercy/core";
@@ -12,11 +15,11 @@ import { SYSTEM_ROLE_SEEDS, prisma } from "@quercy/db";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { syncSeats } from "../../billing/seats";
+import { PlanLimitError } from "../../billing/state";
 import { createInvitations } from "../../invitations";
 import { parsePreferences } from "../../workspace";
 import { authedProcedure, authorize, createTRPCRouter, orgProcedure, recordAudit } from "../init";
-
-const TRIAL_DAYS = 14;
 
 async function uniqueSlug(name: string): Promise<string> {
   const base = slugify(name);
@@ -210,6 +213,15 @@ export const workspaceRouter = createTRPCRouter({
         "Seuls les administrateurs peuvent activer ou désactiver des modules.",
       );
       const ordered = MODULE_KEYS.filter((k) => input.modules.includes(k));
+      const { effectivePlan, limits } = ctx.workspace.billing;
+      const limitMessage = moduleLimitError(limits, ordered.length, PLANS[effectivePlan].name);
+      if (limitMessage) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: limitMessage,
+          cause: new PlanLimitError(limitMessage),
+        });
+      }
       const before = ctx.workspace.organization.modules;
       await prisma.organization.update({
         where: { id: ctx.organizationId },
@@ -247,6 +259,7 @@ export const workspaceRouter = createTRPCRouter({
       entityType: "membership",
       entityId: ctx.workspace.membership.id,
     });
+    await syncSeats(ctx.organizationId);
     await prisma.session.update({
       where: { token: ctx.session.session.token },
       data: { activeOrganizationId: null },

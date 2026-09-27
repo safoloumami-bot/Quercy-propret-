@@ -4,10 +4,12 @@ Logiciel de gestion tout-en-un et modulaire pour les PME, TPE et indépendants :
 commun et des modules que chaque entreprise active selon ses besoins. Il sera disponible dans
 le navigateur (optimisé pour ordinateur) et en application Windows/macOS (Tauri).
 
-> **État actuel : phases 1 (fondations) et 2 (comptes et multi-entreprises) terminées.**
+> **État actuel : phases 1 (fondations), 2 (comptes et multi-entreprises) et 3 (abonnements) terminées.**
 > Authentification complète (mot de passe, lien magique, Google, Microsoft, double
 > authentification), espaces multiples, invitations, rôles et permissions personnalisables,
-> équipes, assistant d'accueil, journal d'audit, export RGPD et isolation des données testée.
+> équipes, assistant d'accueil, journal d'audit, export RGPD et isolation des données testée ;
+> offres Stripe (Gratuit, Pro, Business, Entreprise), limites par offre, facturation,
+> impayés et espace super-admin.
 > Le détail de chaque phase est dans [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Prérequis
@@ -32,13 +34,14 @@ pnpm dev                    # http://localhost:3000
 Le seed crée l'espace « Quercy Propreté » et un compte par rôle, tous avec le mot de passe
 **`Quercy-demo-2026`** :
 
-| Email                       | Rôle              |
-| --------------------------- | ----------------- |
-| `demo@quercy.app`           | Propriétaire      |
-| `julien.marty@quercy.app`   | Manager           |
-| `sophie.lacombe@quercy.app` | Membre            |
-| `nadia.benali@quercy.app`   | Comptable externe |
-| `lucas.roux@quercy.app`     | Lecteur           |
+| Email                       | Rôle                                    |
+| --------------------------- | --------------------------------------- |
+| `demo@quercy.app`           | Propriétaire                            |
+| `julien.marty@quercy.app`   | Manager                                 |
+| `sophie.lacombe@quercy.app` | Membre                                  |
+| `nadia.benali@quercy.app`   | Comptable externe                       |
+| `lucas.roux@quercy.app`     | Lecteur                                 |
+| `admin@quercy.app`          | Super-admin de la plateforme (`/admin`) |
 
 ### Emails en développement
 
@@ -46,6 +49,20 @@ Sans `RESEND_API_KEY`, aucun email ne part : le contenu et les liens sont écrit
 journal du serveur. Avec `ENABLE_DEV_MAILBOX="true"`, les 100 derniers sont aussi lisibles en JSON sur
 `/api/dev/mailbox?to=adresse` (liens magiques, invitations, réinitialisations). Cette route
 répond 404 dès que Resend est configuré.
+
+### Paiement (Stripe)
+
+1. Clé de test dans `.env` (`STRIPE_SECRET_KEY=sk_test_…`), puis `pnpm stripe:setup` : crée les
+   produits et les quatre prix (Pro/Business × mensuel/annuel) et affiche les variables
+   `STRIPE_PRICE_*` à ajouter.
+2. Webhooks en local : `stripe listen --forward-to localhost:3000/api/stripe/webhook`, puis
+   `STRIPE_WEBHOOK_SECRET=whsec_…`.
+3. En production, déclarez `<APP_URL>/api/stripe/webhook` avec les événements
+   `checkout.session.completed`, `customer.subscription.created|updated|deleted`, `invoice.paid`,
+   `invoice.payment_failed`, et activez le portail client dans le tableau de bord Stripe.
+
+Sans clés Stripe, la page Facturation reste consultable (offre, utilisation, comparatif) et
+indique aux propriétaires que le paiement n'est pas configuré.
 
 ### Connexion Google et Microsoft
 
@@ -87,7 +104,10 @@ docs/             Architecture et décisions
 - `/reglages/profil`, `/reglages/securite` (mot de passe, 2FA, appareils, suppression du compte),
   `/reglages/apparence`
 - `/reglages/espace` (entreprise, modules, export RGPD), `/reglages/membres`, `/reglages/equipes`,
-  `/reglages/roles`, `/reglages/audit`
+  `/reglages/roles`, `/reglages/facturation`, `/reglages/audit`
+- `/admin` — super-admin : MRR, churn, essais, espaces clients, connexion « en tant que »,
+  webhooks Stripe à rejouer
+- `/api/stripe/webhook` — webhooks Stripe (signés, idempotents)
 - `/design-system` — jetons et composants
 - `/api/health` — état de la base et de Redis (200 ou 503)
 

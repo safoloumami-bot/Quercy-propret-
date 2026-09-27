@@ -113,6 +113,9 @@ importers:
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
+      stripe:
+        specifier: ^22.6.2
+        version: 22.6.2(@types/node@22.20.4)
       superjson:
         specifier: ^2.2.6
         version: 2.2.6
@@ -153,6 +156,9 @@ importers:
       tailwindcss:
         specifier: ^4.1.0
         version: 4.3.3
+      tsx:
+        specifier: ^4.20.0
+        version: 4.23.15
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
@@ -3703,6 +3709,15 @@ packages:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
 
+  stripe@22.6.2:
+    resolution: {integrity: sha512-PwRE2scocvXqDKPiskMa5vRJEAEkq46W69XyUYmAwrNSLr675lQnfqLwnsndAWizwgihOWw/irLmoFRo3ez7ew==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/node': '>=18'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+
   styled-jsx@5.1.6:
     resolution: {integrity: sha512-qSVyDTeMotdvQYoHWLNGwRFJHC+i+ZvdBRYosOFgC+Wg1vx4frN2/RG/NA7SYqqvKNLf39P2LSRA2pu6n0XYZA==}
     engines: {node: '>= 12.0.0'}
@@ -7006,6 +7021,10 @@ snapshots:
       ansi-regex: 6.4.0
 
   strip-json-comments@3.1.1: {}
+
+  stripe@22.6.2(@types/node@22.20.4):
+    optionalDependencies:
+      '@types/node': 22.20.4
 
   styled-jsx@5.1.6(@babel/core@7.29.7)(react@19.3.0):
     dependencies:

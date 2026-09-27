@@ -1,4 +1,5 @@
 export * from "./audit";
+export * from "./billing";
 export * from "./color";
 export * from "./modules";
 export * from "./permissions";

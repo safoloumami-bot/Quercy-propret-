@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { syncSeats } from "../../billing/seats";
 import { authorize, createTRPCRouter, orgProcedure, recordAudit } from "../init";
 
 type Ctx = Parameters<Parameters<typeof orgProcedure.query>[0]>[0]["ctx"];
@@ -131,6 +132,7 @@ export const membersRouter = createTRPCRouter({
         entityId: membership.id,
         metadata: { member: membership.user.email, role: membership.role.name },
       });
+      await syncSeats(ctx.organizationId);
       return { ok: true };
     }),
 });

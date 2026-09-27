@@ -72,3 +72,32 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
     préproduction).
 24. **`pnpm test` inclut les tests d'intégration** sur PostgreSQL (la base fait partie de
     l'installation de développement, et la CI la fournit).
+
+## 2026-09-27 — Phase 3
+
+25. **Prix** : Pro 15 € et Business 29 € HT par utilisateur et par mois (−20 % en annuel :
+    12 € et 23,20 €). Les limites sont centralisées dans `PLANS`, une seule source pour le
+    serveur, l'interface et le super-admin.
+26. **Fin d'essai sans paiement** : l'espace passe à l'offre Gratuite. S'il dépasse ses
+    limites (plus d'un membre ou de deux modules), il passe en **lecture seule** au lieu de
+    supprimer quoi que ce soit : les données restent consultables, et payer, retirer des
+    membres ou réduire les modules le débloque.
+27. **Impayés** : 7 jours de grâce après un échec de paiement, avec un bandeau et un email aux
+    propriétaires. Ensuite, lecture seule jusqu'à régularisation. Les relances automatiques de
+    carte sont laissées à Stripe (Smart Retries).
+28. **Seul le Propriétaire gère l'abonnement** (droit `billing.admin`) ; l'Administrateur le
+    consulte.
+29. **Sièges = membres actifs**, resynchronisés à chaque arrivée ou départ, au mieux : un
+    échec est journalisé sans bloquer l'action, et le webhook suivant réaligne l'état.
+30. **Stockage et crédits IA** : leurs limites figurent dans les offres, mais leurs jauges
+    n'apparaîtront qu'avec les fonctions correspondantes (fichiers, phase 4 ; IA, phase 7),
+    pour ne pas afficher de mesure factice.
+31. **L'API Stripe n'est pas joignable depuis l'environnement de développement de cette
+    phase** : Checkout, portail, changement d'offre et `pnpm stripe:setup` sont écrits avec le
+    SDK officiel (API `2026-08-26.dahlia`) mais n'ont pas été exécutés contre Stripe. Les
+    webhooks sont testés hors ligne avec de vraies signatures (`generateTestHeaderString`).
+    **À valider avec une clé de test avant la mise en production.**
+32. **Rôle plateforme via le plugin `admin` de Better Auth** (`user.role`), en remplacement du
+    champ `isSuperAdmin`. Sessions d'assistance limitées à une heure.
+33. **Migration générée par `prisma migrate diff`** : `migrate dev` refuse l'environnement non
+    interactif lorsqu'une colonne est supprimée.

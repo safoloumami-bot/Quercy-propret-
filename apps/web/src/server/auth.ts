@@ -4,7 +4,7 @@ import { hashPassword, prisma, verifyPassword } from "@quercy/db";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
-import { magicLink, twoFactor } from "better-auth/plugins";
+import { admin, magicLink, twoFactor } from "better-auth/plugins";
 import { headers } from "next/headers";
 import { cache } from "react";
 
@@ -68,6 +68,33 @@ function createAuth() {
         : {}),
     },
     account: { accountLinking: { enabled: true, trustedProviders: ["google", "microsoft"] } },
+    databaseHooks: {
+      session: {
+        create: {
+          // Toute session d'assistance (« se connecter en tant que ») est tracée dans le journal
+          // d'audit de chaque espace de la personne concernée.
+          after: async (session) => {
+            const impersonatedBy = (session as { impersonatedBy?: string | null }).impersonatedBy;
+            if (!impersonatedBy) return;
+            const memberships = await prisma.membership.findMany({
+              where: { userId: session.userId, deletedAt: null },
+              select: { organizationId: true },
+            });
+            await prisma.auditLog.createMany({
+              data: memberships.map((m) => ({
+                organizationId: m.organizationId,
+                actorId: impersonatedBy,
+                impersonatorId: impersonatedBy,
+                action: "support.impersonation.start",
+                entityType: "user",
+                entityId: session.userId,
+                ipAddress: session.ipAddress ?? null,
+              })),
+            });
+          },
+        },
+      },
+    },
     rateLimit: {
       enabled: e.NODE_ENV === "production" && e.AUTH_RATE_LIMIT === "on",
       window: 60,
@@ -75,6 +102,8 @@ function createAuth() {
     },
     plugins: [
       twoFactor({ issuer: "Quercy" }),
+      // Super-admin de la plateforme (user.role = "admin") : sessions d'assistance d'une heure.
+      admin({ impersonationSessionDuration: 60 * 60 }),
       magicLink({
         expiresIn: 60 * 10,
         sendMagicLink: async ({ email, url }) => {

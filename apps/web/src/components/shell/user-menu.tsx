@@ -22,6 +22,7 @@ import {
   MonitorIcon,
   MoonIcon,
   ShieldCheckIcon,
+  ShieldUserIcon,
   SunIcon,
   SunMoonIcon,
   UserIcon,
@@ -36,10 +37,12 @@ export function UserMenu({
   user,
   roleName,
   collapsed,
+  platformAdmin,
 }: {
   user: { name: string; email: string; image: string | null };
   roleName: string;
   collapsed: boolean;
+  platformAdmin: boolean;
 }) {
   const { theme, setTheme } = useThemePreference();
   const { setHelpOpen } = useShell();
@@ -112,6 +115,14 @@ export function UserMenu({
           Raccourcis clavier
           <DropdownMenuShortcut>?</DropdownMenuShortcut>
         </DropdownMenuItem>
+        {platformAdmin ? (
+          <DropdownMenuItem asChild>
+            <Link href="/admin">
+              <ShieldUserIcon />
+              Administration de la plateforme
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void signOut()}>
           <LogOutIcon />

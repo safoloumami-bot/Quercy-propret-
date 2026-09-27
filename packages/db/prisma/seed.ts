@@ -15,6 +15,82 @@ const PEOPLE: { email: string; name: string; role: SystemRoleKey; team?: string 
   { email: "lucas.roux@quercy.app", name: "Lucas Roux", role: "viewer", team: "Terrain" },
 ];
 
+const DAY = 86_400_000;
+
+/** L'espace de démonstration est abonné à Business (annuel) : aucune restriction d'offre. */
+const DEMO_SUBSCRIPTION = {
+  plan: "BUSINESS" as const,
+  subscriptionStatus: "ACTIVE" as const,
+  billingInterval: "YEAR" as const,
+  seats: PEOPLE.length,
+  currentPeriodEnd: new Date(Date.now() + 240 * DAY),
+  subscribedAt: new Date(Date.now() - 125 * DAY),
+  trialEndsAt: null,
+};
+
+/** Autres espaces clients, pour que l'administration de la plateforme soit parlante. */
+const CLIENTS = [
+  {
+    slug: "atelier-garonne",
+    name: "Atelier Garonne",
+    owner: "Inès Garonne",
+    industry: "construction",
+    data: { plan: "PRO", subscriptionStatus: "ACTIVE", billingInterval: "MONTH", seats: 4 },
+    modules: ["crm", "sales", "projects"],
+    ageDays: 210,
+  },
+  {
+    slug: "cabinet-lot-associes",
+    name: "Cabinet Lot & Associés",
+    owner: "Thomas Lot",
+    industry: "agency",
+    data: { plan: "BUSINESS", subscriptionStatus: "ACTIVE", billingInterval: "YEAR", seats: 7 },
+    modules: [...MODULE_KEYS],
+    ageDays: 340,
+  },
+  {
+    slug: "studio-cahors",
+    name: "Studio Cahors",
+    owner: "Emma Vidal",
+    industry: "agency",
+    data: {
+      plan: "PRO",
+      subscriptionStatus: "PAST_DUE",
+      billingInterval: "MONTH",
+      seats: 2,
+      pastDueSince: new Date(Date.now() - 2 * DAY),
+    },
+    modules: ["crm", "sales"],
+    ageDays: 95,
+  },
+  {
+    slug: "boulangerie-marty",
+    name: "Boulangerie Marty",
+    owner: "Paul Marty",
+    industry: "retail",
+    data: {
+      plan: "BUSINESS",
+      subscriptionStatus: "NONE",
+      trialEndsAt: new Date(Date.now() + 3 * DAY),
+    },
+    modules: ["crm", "sales", "inventory"],
+    ageDays: 11,
+  },
+  {
+    slug: "menuiserie-bastide",
+    name: "Menuiserie Bastide",
+    owner: "Julie Bastide",
+    industry: "construction",
+    data: {
+      plan: "FREE",
+      subscriptionStatus: "CANCELED",
+      canceledAt: new Date(Date.now() - 12 * DAY),
+    },
+    modules: ["crm"],
+    ageDays: 160,
+  },
+] as const;
+
 /**
  * Données de démonstration — socle : un espace, ses rôles, cinq comptes (un par rôle
  * principal) et deux équipes. Idempotent : peut être relancé sans doublon.
@@ -23,14 +99,19 @@ const PEOPLE: { email: string; name: string; role: SystemRoleKey; team?: string 
 async function main() {
   const org = await prisma.organization.upsert({
     where: { slug: "quercy-proprete" },
-    update: { logoUrl: "/brand/quercy-mark.png", industry: "cleaning", size: "11-50" },
+    update: {
+      logoUrl: "/brand/quercy-mark.png",
+      industry: "cleaning",
+      size: "11-50",
+      ...DEMO_SUBSCRIPTION,
+    },
     create: {
       name: "Quercy Propreté",
       slug: "quercy-proprete",
       logoUrl: "/brand/quercy-mark.png",
       industry: "cleaning",
       size: "11-50",
-      plan: "BUSINESS",
+      ...DEMO_SUBSCRIPTION,
       modules: [...MODULE_KEYS],
       preferences: {
         locale: "fr",
@@ -102,7 +183,75 @@ async function main() {
     });
   }
 
+  // Super-admin de la plateforme (équipe Quercy), sans espace client.
+  const admin = await prisma.user.upsert({
+    where: { email: "admin@quercy.app" },
+    update: { role: "admin" },
+    create: {
+      email: "admin@quercy.app",
+      name: "Équipe Quercy",
+      emailVerified: true,
+      role: "admin",
+    },
+  });
+  if (
+    !(await prisma.account.findFirst({ where: { userId: admin.id, providerId: "credential" } }))
+  ) {
+    await prisma.account.create({
+      data: {
+        userId: admin.id,
+        accountId: admin.id,
+        providerId: "credential",
+        password: passwordHash,
+      },
+    });
+  }
+
+  for (const client of CLIENTS) {
+    const createdAt = new Date(Date.now() - client.ageDays * DAY);
+    const clientOrg = await prisma.organization.upsert({
+      where: { slug: client.slug },
+      update: { ...client.data },
+      create: {
+        slug: client.slug,
+        name: client.name,
+        industry: client.industry,
+        size: "2-10",
+        modules: [...client.modules],
+        onboardedAt: createdAt,
+        createdAt,
+        ...(client.data.subscriptionStatus === "ACTIVE" ||
+        client.data.subscriptionStatus === "PAST_DUE"
+          ? { subscribedAt: createdAt, currentPeriodEnd: new Date(Date.now() + 20 * DAY) }
+          : {}),
+        ...client.data,
+      },
+    });
+    for (const role of SYSTEM_ROLE_SEEDS) {
+      await prisma.role.upsert({
+        where: { organizationId_name: { organizationId: clientOrg.id, name: role.name } },
+        update: {},
+        create: { organizationId: clientOrg.id, ...role },
+      });
+    }
+    const ownerRole = await prisma.role.findFirstOrThrow({
+      where: { organizationId: clientOrg.id, systemKey: "owner" },
+    });
+    const email = `${client.slug}@clients.quercy.app`;
+    const clientOwner = await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: { email, name: client.owner, emailVerified: true },
+    });
+    await prisma.membership.upsert({
+      where: { organizationId_userId: { organizationId: clientOrg.id, userId: clientOwner.id } },
+      update: {},
+      create: { organizationId: clientOrg.id, userId: clientOwner.id, roleId: ownerRole.id },
+    });
+  }
+
   console.info(`Espace de démonstration prêt : ${org.name}`);
+  console.info(`Super-admin : admin@quercy.app — mot de passe : ${DEMO_PASSWORD}`);
   console.info(
     `Comptes : ${PEOPLE.map((p) => p.email).join(", ")} — mot de passe : ${DEMO_PASSWORD}`,
   );

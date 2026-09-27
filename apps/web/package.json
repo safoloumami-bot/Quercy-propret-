@@ -7,10 +7,11 @@
     "dev": "dotenv -e ../../.env -- next dev --turbopack",
     "build": "dotenv -e ../../.env -- next build",
     "start": "dotenv -e ../../.env -- next start",
-    "lint": "eslint src e2e",
+    "lint": "eslint src e2e scripts",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "stripe:setup": "dotenv -e ../../.env -- tsx scripts/stripe-setup.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -37,6 +38,7 @@
     "react-hook-form": "^7.89.0",
     "resend": "^6.30.0",
     "server-only": "^0.0.1",
+    "stripe": "^22.6.2",
     "superjson": "^2.2.6",
     "zod": "^4.1.0"
   },
@@ -52,6 +54,7 @@
     "dotenv-cli": "^10.0.0",
     "eslint-plugin-react-hooks": "^7.0.0",
     "tailwindcss": "^4.1.0",
+    "tsx": "^4.20.0",
     "typescript": "~5.9.3",
     "vitest": "^4.0.0"
   }

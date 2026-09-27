@@ -1,6 +1,7 @@
 import { type Action, type PermissionMatrix, type Resource, can } from "@quercy/core";
 import {
   Building2Icon,
+  CreditCardIcon,
   HomeIcon,
   KeyRoundIcon,
   type LucideIcon,
@@ -123,6 +124,14 @@ export const SETTINGS_SECTIONS: NavSection[] = [
         icon: KeyRoundIcon,
         keywords: ["droits", "accès"],
         permission: ["settings", "admin"],
+      },
+      {
+        id: "billing",
+        href: "/reglages/facturation",
+        label: "Facturation",
+        icon: CreditCardIcon,
+        keywords: ["abonnement", "offre", "paiement", "factures", "stripe", "plan"],
+        permission: ["billing", "view"],
       },
       {
         id: "audit",

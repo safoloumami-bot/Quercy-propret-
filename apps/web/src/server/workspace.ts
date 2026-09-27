@@ -9,6 +9,8 @@ import {
 } from "@quercy/core";
 import { prisma } from "@quercy/db";
 
+import { loadBillingState } from "./billing/state";
+
 export interface ResolvedWorkspace {
   organization: {
     id: string;
@@ -25,6 +27,7 @@ export interface ResolvedWorkspace {
   membership: { id: string; roleId: string };
   role: { id: string; name: string; systemKey: string | null; permissions: PermissionMatrix };
   teamIds: string[];
+  billing: Awaited<ReturnType<typeof loadBillingState>>;
   workspaces: { id: string; name: string; logoUrl: string | null }[];
 }
 
@@ -63,6 +66,7 @@ export async function resolveWorkspace(
     select: { teamId: true },
   });
   const permissions = permissionMatrixSchema.safeParse(current.role.permissions);
+  const billing = await loadBillingState(org);
 
   return {
     organization: {
@@ -85,6 +89,7 @@ export async function resolveWorkspace(
       permissions: permissions.success ? permissions.data : {},
     },
     teamIds: teams.map((t) => t.teamId),
+    billing,
     workspaces: memberships.map((m) => ({
       id: m.organization.id,
       name: m.organization.name,

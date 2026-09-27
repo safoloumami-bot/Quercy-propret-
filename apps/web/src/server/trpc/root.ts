@@ -1,5 +1,7 @@
 import { createCallerFactory, createTRPCRouter } from "./init";
+import { adminRouter } from "./routers/admin";
 import { auditRouter } from "./routers/audit";
+import { billingRouter } from "./routers/billing";
 import { invitationsRouter } from "./routers/invitations";
 import { membersRouter } from "./routers/members";
 import { profileRouter } from "./routers/profile";
@@ -15,6 +17,8 @@ export const appRouter = createTRPCRouter({
   teams: teamsRouter,
   audit: auditRouter,
   profile: profileRouter,
+  billing: billingRouter,
+  admin: adminRouter,
 });
 
 export type AppRouter = typeof appRouter;

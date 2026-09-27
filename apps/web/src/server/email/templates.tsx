@@ -73,3 +73,28 @@ export function InvitationEmail({
     </EmailLayout>
   );
 }
+
+export function PaymentFailedEmail({
+  url,
+  organizationName,
+  graceDays,
+}: {
+  url: string;
+  organizationName: string;
+  graceDays: number;
+}) {
+  return (
+    <EmailLayout
+      preview={`Le paiement de l'abonnement ${organizationName} a échoué`}
+      title="Votre paiement n'est pas passé"
+      action={{ label: "Mettre à jour le moyen de paiement", href: url }}
+      footer="Stripe retentera automatiquement le prélèvement. Vous recevez cet email en tant que propriétaire de l'espace."
+    >
+      <Text>
+        Le dernier paiement de l&apos;abonnement de <strong>{organizationName}</strong> a été
+        refusé. Votre équipe garde un accès complet pendant {graceDays} jours ; au-delà,
+        l&apos;espace passera en lecture seule jusqu&apos;à régularisation.
+      </Text>
+    </EmailLayout>
+  );
+}

@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.3.0] — 2026-09-27 — Phase 3 : abonnements
+
+### Ajouté
+
+- Offres Gratuit, Pro, Business et Entreprise : prix par utilisateur, remise annuelle de 20 %,
+  essai Business de 14 jours sans carte, limites de membres et de modules appliquées côté
+  serveur, avec un message clair et un lien « Voir les offres ».
+- État de facturation : fin d'essai, délai de grâce de 7 jours après un paiement refusé,
+  lecture seule si besoin (seules les actions de régularisation restent possibles). Un
+  bandeau l'explique en haut de chaque écran.
+- Stripe : Checkout, changement d'offre au prorata, portail client (moyen de paiement et
+  coordonnées), annulation et reprise, synchronisation des sièges, factures téléchargeables.
+- Webhooks Stripe signés, idempotents et rejouables (table `stripe_event`), email de relance
+  aux propriétaires en cas d'impayé.
+- Page Facturation : offre actuelle, jauges d'utilisation, comparatif mensuel/annuel,
+  factures.
+- Super-admin (`/admin`) : MRR et ARR, espaces payants, essais, churn sur 30 jours, liste des
+  espaces, webhooks en échec à rejouer, et connexion « en tant que » avec bandeau, durée
+  limitée et trace dans le journal d'audit.
+- `pnpm stripe:setup` : création idempotente des produits et prix Stripe.
+- Seed : compte super-admin et cinq espaces clients aux situations variées.
+- Tests : 11 tests d'intégration de facturation et 4 parcours E2E.
+
 ## [0.2.0] — 2026-09-27 — Phase 2 : comptes et multi-entreprises
 
 ### Ajouté

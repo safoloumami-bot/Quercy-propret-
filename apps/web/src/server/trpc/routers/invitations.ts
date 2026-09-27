@@ -1,8 +1,10 @@
-import { inviteSchema } from "@quercy/core";
+import { PLANS, inviteSchema, memberLimitError } from "@quercy/core";
 import { prisma } from "@quercy/db";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { syncSeats } from "../../billing/seats";
+import { PlanLimitError, loadBillingState } from "../../billing/state";
 import { createInvitations, hashInvitationToken } from "../../invitations";
 import {
   authedProcedure,
@@ -55,6 +57,22 @@ export const invitationsRouter = createTRPCRouter({
         code: "BAD_REQUEST",
         message:
           "Le rôle Propriétaire ne s'attribue pas par invitation : invitez la personne, puis transmettez-lui le rôle.",
+      });
+    }
+    const { effectivePlan, limits, memberCount } = ctx.workspace.billing;
+    const pending = await ctx.db.invitation.count({
+      where: { status: "PENDING", expiresAt: { gt: new Date() }, email: { notIn: input.emails } },
+    });
+    const limitMessage = memberLimitError(
+      limits,
+      memberCount + pending + new Set(input.emails).size,
+      PLANS[effectivePlan].name,
+    );
+    if (limitMessage) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: limitMessage,
+        cause: new PlanLimitError(limitMessage),
       });
     }
     return createInvitations({
@@ -143,6 +161,22 @@ export const invitationsRouter = createTRPCRouter({
         });
       }
       const { invitation } = result;
+      const target = await prisma.organization.findUniqueOrThrow({
+        where: { id: invitation.organizationId },
+      });
+      const targetState = await loadBillingState(target);
+      if (
+        memberLimitError(
+          targetState.limits,
+          targetState.memberCount + 1,
+          PLANS[targetState.effectivePlan].name,
+        )
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `${invitation.organization.name} a atteint la limite de son offre. Demandez à la personne qui vous a invité de passer à l'offre supérieure.`,
+        });
+      }
       if (invitation.email.toLowerCase() !== ctx.user.email.toLowerCase()) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -179,6 +213,7 @@ export const invitationsRouter = createTRPCRouter({
         where: { token: ctx.session.session.token },
         data: { activeOrganizationId: organizationId },
       });
+      await syncSeats(organizationId);
       return { organizationName: invitation.organization.name };
     }),
 });

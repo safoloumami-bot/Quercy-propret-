@@ -58,6 +58,34 @@ tRPC v11 (`apps/web/src/server/trpc`) : `/api/trpc`, typage de bout en bout, sup
   membre) et les squelettes de chargement.
 - Côté serveur, `api()` crée un appelant direct pour les composants serveur.
 
+## Abonnements
+
+- **Offres** (`packages/core/src/billing.ts`) : prix par utilisateur, remise annuelle de 20 %,
+  limites (membres, modules, stockage, crédits IA, automatisations).
+- **`billingState()`**, fonction pure, calcule à tout instant l'offre effective et l'état de
+  l'espace. Un essai terminé sans abonnement repasse en Gratuit. Au-delà des limites, l'espace
+  passe en lecture seule. Un paiement refusé ouvre 7 jours de grâce, puis la lecture seule ;
+  un impayé met l'espace en lecture seule immédiatement.
+- **Côté serveur**, `orgProcedure` refuse toute mutation d'un espace en lecture seule, sauf
+  celles qui permettent d'en sortir (payer, retirer un membre, réduire les modules, partir).
+  Les invitations et l'activation de modules vérifient les limites de l'offre. L'erreur porte
+  `data.planLimit`, et l'interface propose alors « Voir les offres ».
+- **Stripe** (`apps/web/src/server/billing`) : Checkout pour la première souscription,
+  changement d'offre au prorata, portail client, annulation en fin de période. Les sièges
+  suivent automatiquement le nombre de membres.
+- **Webhooks** : signature vérifiée, puis chaque événement est enregistré dans `stripe_event`,
+  dont l'identifiant sert de clé d'idempotence, avant d'être traité. Un échec reste en base
+  (`FAILED`) et se rejoue depuis `/admin`. Stripe reste la source de vérité ; le traitement
+  recopie l'état de l'abonnement.
+
+## Super-admin
+
+Plugin `admin` de Better Auth (`user.role = "admin"`). L'espace `/admin` et le routeur
+`admin.*` refusent l'accès pendant une session d'assistance. La connexion « en tant que » crée
+une session marquée `impersonatedBy` : un hook l'inscrit dans le journal d'audit de chaque
+espace de la personne, et chaque action faite pendant la session y est enregistrée avec
+`impersonatorId`.
+
 Les invitations stockent un **hash SHA-256 du jeton** ; le jeton lui-même n'existe que dans le
 lien envoyé.
 

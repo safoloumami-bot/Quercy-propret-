@@ -47,6 +47,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "team.create": "a créé une équipe",
   "team.update": "a modifié une équipe",
   "team.delete": "a supprimé une équipe",
+  "billing.plan.update": "a changé d'offre",
+  "billing.cancel": "a résilié l'abonnement (fin de période)",
+  "billing.resume": "a annulé la résiliation de l'abonnement",
+  "support.impersonation.start": "a ouvert une session d'assistance (connexion « en tant que »)",
 };
 
 export function auditActionLabel(action: string): string {
