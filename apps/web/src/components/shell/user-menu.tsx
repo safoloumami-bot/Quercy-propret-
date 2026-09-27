@@ -16,10 +16,21 @@ import {
   DropdownMenuTrigger,
 } from "@quercy/ui/components/dropdown-menu";
 import { cn } from "@quercy/ui/lib/utils";
-import { KeyboardIcon, MonitorIcon, MoonIcon, SunIcon, SunMoonIcon } from "lucide-react";
-import { useTheme } from "next-themes";
+import {
+  KeyboardIcon,
+  LogOutIcon,
+  MonitorIcon,
+  MoonIcon,
+  ShieldCheckIcon,
+  SunIcon,
+  SunMoonIcon,
+  UserIcon,
+} from "lucide-react";
+import Link from "next/link";
+import { useThemePreference } from "@/components/theme-preference";
 
 import { useShell } from "./shell-context";
+import { signOut } from "./sign-out";
 
 export function UserMenu({
   user,
@@ -30,7 +41,7 @@ export function UserMenu({
   roleName: string;
   collapsed: boolean;
 }) {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme } = useThemePreference();
   const { setHelpOpen } = useShell();
 
   return (
@@ -59,13 +70,28 @@ export function UserMenu({
           <span className="block truncate">{user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/reglages/profil">
+            <UserIcon />
+            Mon profil
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/reglages/securite">
+            <ShieldCheckIcon />
+            Sécurité
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <SunMoonIcon />
             Thème
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup value={theme ?? "system"} onValueChange={setTheme}>
+            <DropdownMenuRadioGroup
+              value={theme ?? "system"}
+              onValueChange={(v) => setTheme(v as "light" | "dark" | "system")}
+            >
               <DropdownMenuRadioItem value="light">
                 <SunIcon />
                 Clair
@@ -85,6 +111,11 @@ export function UserMenu({
           <KeyboardIcon />
           Raccourcis clavier
           <DropdownMenuShortcut>?</DropdownMenuShortcut>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => void signOut()}>
+          <LogOutIcon />
+          Se déconnecter
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

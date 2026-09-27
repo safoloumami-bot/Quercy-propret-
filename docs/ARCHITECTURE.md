@@ -21,8 +21,45 @@ et utilisable côté serveur comme côté client.
 - Toute table métier porte `organizationId`, `createdAt`, `updatedAt`, `deletedAt`
   (suppression douce, corbeille de 30 jours).
 - `AuditLog` trace qui a fait quoi, quand, avec les valeurs avant et après.
-- L'espace actif est mémorisé dans un cookie `httpOnly`. Au changement, le serveur vérifie
-  que l'utilisateur en est bien membre.
+- L'espace actif est mémorisé **dans la session** (`session.activeOrganizationId`). À chaque
+  requête, `resolveWorkspace()` vérifie que l'utilisateur en est toujours membre ; sinon il
+  retombe sur son premier espace.
+- **Isolation garantie par la base** : `forTenant(organizationId)` (`packages/db/src/tenant.ts`)
+  est une extension Prisma. Elle ajoute `organizationId` à toute lecture, mise à jour ou
+  suppression sur les modèles métier, et le force à la création. Un identifiant d'un autre
+  espace est donc introuvable, même si le code appelant se trompe. Les éléments en corbeille
+  (`deletedAt`) sont masqués par défaut.
+- Les tests `apps/web/src/server/__tests__/isolation.test.ts` le prouvent sur une vraie base :
+  deux espaces, et aucune procédure appelée depuis A ne lit ni ne modifie B.
+
+## Authentification
+
+Better Auth (`apps/web/src/server/auth.ts`), avec l'adaptateur Prisma :
+
+- mot de passe haché en **Argon2id** (`@node-rs/argon2`, paramètres OWASP) ;
+- lien magique, Google et Microsoft (activés seulement si configurés) ;
+- double authentification TOTP avec codes de secours, et appareil de confiance 30 jours ;
+- sessions en base, listables et révocables ; limitation de débit en production.
+
+Le middleware (`src/middleware.ts`) ne fait qu'un filtre rapide sur la présence du cookie. La
+session est ensuite réellement vérifiée à chaque rendu serveur (`requireWorkspaceContext`) et à
+chaque appel d'API.
+
+## API
+
+tRPC v11 (`apps/web/src/server/trpc`) : `/api/trpc`, typage de bout en bout, superjson.
+
+- `publicProcedure` → `authedProcedure` (session obligatoire) → `orgProcedure`, qui résout
+  l'espace actif, le rôle, les équipes et fournit `ctx.db = forTenant(...)`.
+- `authorize(ctx, ressource, action)` : contrôle de permission côté serveur, avec un message
+  clair.
+- `recordAudit(ctx, …)` : entrée du journal d'audit (acteur, IP, changements avant/après).
+- Côté client, `useTRPC()` et TanStack Query fournissent les mises à jour optimistes (rôle d'un
+  membre) et les squelettes de chargement.
+- Côté serveur, `api()` crée un appelant direct pour les composants serveur.
+
+Les invitations stockent un **hash SHA-256 du jeton** ; le jeton lui-même n'existe que dans le
+lien envoyé.
 
 ## Permissions
 

@@ -9,37 +9,44 @@ import {
   CommandList,
   CommandShortcut,
 } from "@quercy/ui/components/command";
-import { toast } from "@quercy/ui/components/toaster";
 import {
   ArrowRightLeftIcon,
   KeyboardIcon,
+  LogOutIcon,
   MonitorIcon,
   MoonIcon,
   PanelLeftIcon,
+  PlusIcon,
   SunIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import * as React from "react";
 
-import { switchWorkspace } from "@/app/(app)/actions";
-import { NAV_ITEMS } from "@/lib/navigation";
+import type { PermissionMatrix } from "@quercy/core";
+import { useThemePreference } from "@/components/theme-preference";
+import { NAV_ITEMS, isAllowed } from "@/lib/navigation";
 import type { WorkspaceSummary } from "@/lib/workspace";
 
 import { KeyCombo } from "./key-combo";
 import { useShell } from "./shell-context";
+import { signOut } from "./sign-out";
+import { useSwitchWorkspace } from "./use-switch-workspace";
 
 export function CommandPalette({
   currentWorkspaceId,
   workspaces,
+  permissions,
 }: {
   currentWorkspaceId: string;
   workspaces: WorkspaceSummary[];
+  permissions: PermissionMatrix;
 }) {
   const router = useRouter();
-  const { setTheme } = useTheme();
+  const { setTheme } = useThemePreference();
   const { paletteOpen, setPaletteOpen, setHelpOpen, toggleSidebar, sidebarCollapsed } = useShell();
   const otherWorkspaces = workspaces.filter((w) => w.id !== currentWorkspaceId);
+  const switchWorkspace = useSwitchWorkspace();
+  const items = NAV_ITEMS.filter((item) => isAllowed(item, permissions));
 
   const run = React.useCallback(
     (fn: () => void) => {
@@ -60,7 +67,7 @@ export function CommandPalette({
       <CommandList>
         <CommandEmpty>Aucun résultat.</CommandEmpty>
         <CommandGroup heading="Aller à">
-          {NAV_ITEMS.map((item) => (
+          {items.map((item) => (
             <CommandItem
               key={item.id}
               value={`${item.label} ${item.keywords?.join(" ") ?? ""}`}
@@ -82,13 +89,7 @@ export function CommandPalette({
               <CommandItem
                 key={workspace.id}
                 value={`espace ${workspace.name}`}
-                onSelect={() =>
-                  run(async () => {
-                    const result = await switchWorkspace(workspace.id);
-                    if (result.ok) toast.success(`Vous êtes dans l'espace ${workspace.name}.`);
-                    else toast.error(result.error);
-                  })
-                }
+                onSelect={() => run(() => switchWorkspace.mutate({ organizationId: workspace.id }))}
               >
                 <ArrowRightLeftIcon />
                 {workspace.name}
@@ -130,6 +131,20 @@ export function CommandPalette({
             <CommandShortcut>
               <KeyCombo keys={["?"]} />
             </CommandShortcut>
+          </CommandItem>
+          <CommandItem
+            value="créer un nouvel espace entreprise"
+            onSelect={() => run(() => router.push("/bienvenue"))}
+          >
+            <PlusIcon />
+            Créer un espace
+          </CommandItem>
+          <CommandItem
+            value="se déconnecter déconnexion"
+            onSelect={() => run(() => void signOut())}
+          >
+            <LogOutIcon />
+            Se déconnecter
           </CommandItem>
         </CommandGroup>
       </CommandList>

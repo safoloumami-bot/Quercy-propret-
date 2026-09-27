@@ -17,13 +17,24 @@ export default defineConfig({
     timezoneId: "Europe/Paris",
   },
   projects: [
+    { name: "setup", testMatch: /auth\.setup\.ts/ },
     {
       name: "desktop-1280",
-      use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 800 } },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 800 },
+        storageState: "e2e/.auth/owner.json",
+      },
+      dependencies: ["setup"],
     },
     {
       name: "desktop-2560",
-      use: { ...devices["Desktop Chrome"], viewport: { width: 2560, height: 1440 } },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 2560, height: 1440 },
+        storageState: "e2e/.auth/owner.json",
+      },
+      dependencies: ["setup"],
       testMatch: /layout\.spec\.ts/,
     },
   ],
@@ -32,5 +43,8 @@ export default defineConfig({
     url: `${baseURL}/api/health`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // Les parcours E2E enchaînent plus de connexions que la limite anti-abus n'en autorise.
+    env: { BETTER_AUTH_URL: baseURL, AUTH_RATE_LIMIT: "off" },
   },
+  timeout: 60_000,
 });

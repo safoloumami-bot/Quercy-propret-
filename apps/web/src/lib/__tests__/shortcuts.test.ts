@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { activeNavItem, breadcrumbFor } from "../navigation";
+import { SYSTEM_ROLES } from "@quercy/core";
+
+import {
+  SETTINGS_SECTIONS,
+  activeNavItem,
+  breadcrumbFor,
+  filterSections,
+  isSettingsPath,
+} from "../navigation";
 import { GO_SEQUENCE_TIMEOUT_MS, resolveShortcut } from "../shortcuts";
 
 const idle = { pendingGoAt: null };
@@ -24,17 +32,18 @@ describe("resolveShortcut", () => {
     expect(resolveShortcut(key("?", { typing: true }), idle, 0).action).toBeNull();
   });
 
-  it("gère la séquence G puis R", () => {
+  it("gère la séquence G puis M", () => {
     const first = resolveShortcut(key("g"), idle, 1000);
     expect(first.action).toBeNull();
-    const second = resolveShortcut(key("r"), first.state, 1500);
-    expect(second.action).toEqual({ type: "navigate", href: "/reglages/apparence" });
+    expect(resolveShortcut(key("m"), first.state, 1500).action).toEqual({
+      type: "navigate",
+      href: "/reglages/membres",
+    });
   });
 
   it("abandonne la séquence après le délai", () => {
     const first = resolveShortcut(key("g"), idle, 0);
-    const late = resolveShortcut(key("h"), first.state, GO_SEQUENCE_TIMEOUT_MS + 1);
-    expect(late.action).toBeNull();
+    expect(resolveShortcut(key("h"), first.state, GO_SEQUENCE_TIMEOUT_MS + 1).action).toBeNull();
   });
 
   it("? ouvre l'aide et Ctrl+B replie la barre latérale", () => {
@@ -44,16 +53,43 @@ describe("resolveShortcut", () => {
 });
 
 describe("navigation", () => {
-  it("trouve l'élément actif par préfixe", () => {
+  it("trouve l'écran actif par préfixe", () => {
     expect(activeNavItem("/")?.id).toBe("home");
     expect(activeNavItem("/reglages/apparence")?.id).toBe("appearance");
     expect(activeNavItem("/inconnu")).toBeUndefined();
+    expect(isSettingsPath("/reglages/membres")).toBe(true);
+    expect(isSettingsPath("/")).toBe(false);
   });
 
-  it("construit le fil d'Ariane avec la section", () => {
+  it("construit le fil d'Ariane des réglages", () => {
     expect(breadcrumbFor("/reglages/apparence")).toEqual([
-      { label: "Réglages" },
+      { label: "Réglages", href: "/reglages/profil" },
       { label: "Apparence", href: "/reglages/apparence" },
     ]);
+  });
+
+  it("masque les écrans non autorisés", () => {
+    const ids = (role: keyof typeof SYSTEM_ROLES) =>
+      filterSections(SETTINGS_SECTIONS, SYSTEM_ROLES[role]).flatMap((s) =>
+        s.items.map((i) => i.id),
+      );
+    expect(ids("owner")).toContain("roles");
+    expect(ids("owner")).toContain("audit");
+    expect(ids("viewer")).not.toContain("roles");
+    expect(ids("viewer")).not.toContain("audit");
+    expect(ids("viewer")).toContain("members");
+    expect(ids("accountant")).not.toContain("members");
+    expect(ids("accountant")).toContain("audit");
+  });
+});
+
+describe("safeNext", async () => {
+  const { safeNext } = await import("../safe-redirect");
+  it("accepte les chemins internes et refuse le reste", () => {
+    expect(safeNext("/reglages/membres?x=1")).toBe("/reglages/membres?x=1");
+    expect(safeNext("https://evil.example")).toBe("/");
+    expect(safeNext("//evil.example")).toBe("/");
+    expect(safeNext("/\\evil.example")).toBe("/");
+    expect(safeNext(null, "/bienvenue")).toBe("/bienvenue");
   });
 });

@@ -6,10 +6,12 @@ import { Button, buttonVariants } from "@quercy/ui/components/button";
 import { Input } from "@quercy/ui/components/input";
 import { Label } from "@quercy/ui/components/label";
 import { toast } from "@quercy/ui/components/toaster";
+import { useMutation } from "@tanstack/react-query";
 import { CheckIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 
-import { updateAccentColor } from "@/app/(app)/actions";
+import { errorMessage, useTRPC } from "@/lib/trpc";
 
 const PRESETS = [
   { name: "Vert Quercy", hex: DEFAULT_ACCENT },
@@ -56,7 +58,10 @@ export function AccentSettings({
   const [saved, setSaved] = React.useState(initialColor.toUpperCase());
   const [draft, setDraft] = React.useState(initialColor.toUpperCase());
   const [text, setText] = React.useState(initialColor.toUpperCase());
-  const [pending, startTransition] = React.useTransition();
+  const trpc = useTRPC();
+  const router = useRouter();
+  const update = useMutation(trpc.workspace.updateAccent.mutationOptions());
+  const pending = update.isPending;
 
   const valid = hexColorSchema.safeParse(text).success;
   const dirty = draft !== saved;
@@ -67,18 +72,20 @@ export function AccentSettings({
   }
 
   function save(color: string, previous: string) {
-    startTransition(async () => {
-      const result = await updateAccentColor(color);
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      setSaved(color);
-      choose(color);
-      toast.success("Couleur d'accent enregistrée.", {
-        action: { label: "Annuler", onClick: () => save(previous, color) },
-      });
-    });
+    update.mutate(
+      { color },
+      {
+        onSuccess: () => {
+          setSaved(color);
+          choose(color);
+          router.refresh();
+          toast.success("Couleur d'accent enregistrée.", {
+            action: { label: "Annuler", onClick: () => save(previous, color) },
+          });
+        },
+        onError: (error) => toast.error(errorMessage(error)),
+      },
+    );
   }
 
   return (

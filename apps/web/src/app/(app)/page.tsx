@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@quercy/ui/components/card";
 import { MODULES, activeModules } from "@quercy/core";
+import { prisma } from "@quercy/db";
 import type { Metadata } from "next";
 
 import { StartActions } from "@/components/home/start-actions";
@@ -22,6 +23,12 @@ function greeting(hour: number): string {
 
 export default async function HomePage() {
   const { user, organization, role } = await requireWorkspaceContext();
+  const memberCount = await prisma.membership.count({
+    where: { organizationId: organization.id, deletedAt: null },
+  });
+  const trialDays = organization.trialEndsAt
+    ? Math.max(0, Math.ceil((organization.trialEndsAt.getTime() - Date.now()) / 86_400_000))
+    : null;
   const { locale, timezone } = organization.preferences;
   const now = new Date();
   const hour = Number(
@@ -72,8 +79,13 @@ export default async function HomePage() {
           <CardContent className="space-y-4">
             <dl className="divide-y divide-border rounded-md border border-border text-sm">
               {[
-                { label: "Offre", value: PLAN_LABELS[organization.plan] ?? organization.plan },
-                { label: "Membres", value: String(organization.memberCount) },
+                {
+                  label: "Offre",
+                  value: `${PLAN_LABELS[organization.plan] ?? organization.plan}${
+                    trialDays !== null ? ` — essai, ${trialDays} j restants` : ""
+                  }`,
+                },
+                { label: "Membres", value: String(memberCount) },
                 { label: "Votre rôle", value: role.name },
               ].map((row) => (
                 <div key={row.label} className="flex items-center justify-between px-3 py-2">

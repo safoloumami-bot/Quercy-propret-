@@ -6,9 +6,16 @@ import { cn } from "@quercy/ui/lib/utils";
 import { PanelLeftCloseIcon, PanelLeftOpenIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { PermissionMatrix } from "@quercy/core";
 import type * as React from "react";
 
-import { NAV_SECTIONS, activeNavItem } from "@/lib/navigation";
+import {
+  SETTINGS_ENTRY,
+  SIDEBAR_SECTIONS,
+  activeNavItem,
+  filterSections,
+  isSettingsPath,
+} from "@/lib/navigation";
 import type { WorkspaceSummary } from "@/lib/workspace";
 
 import { KeyCombo } from "./key-combo";
@@ -42,11 +49,13 @@ export function Sidebar({
   workspaces,
   user,
   roleName,
+  permissions,
 }: {
   current: WorkspaceSummary;
   workspaces: WorkspaceSummary[];
   user: { name: string; email: string; image: string | null };
   roleName: string;
+  permissions: PermissionMatrix;
 }) {
   const pathname = usePathname();
   const active = activeNavItem(pathname);
@@ -113,7 +122,7 @@ export function Sidebar({
       </div>
 
       <nav aria-label="Navigation principale" className="flex-1 overflow-y-auto px-2">
-        {NAV_SECTIONS.map((section) => (
+        {filterSections(SIDEBAR_SECTIONS, permissions).map((section) => (
           <div key={section.id} className="mb-4">
             {section.label && !collapsed ? (
               <p className="mb-1 px-2 text-xs font-medium text-muted-foreground">{section.label}</p>
@@ -152,6 +161,28 @@ export function Sidebar({
           </div>
         ))}
       </nav>
+
+      <div className="px-2 pb-2">
+        <SidebarTooltip enabled={collapsed} label={SETTINGS_ENTRY.label}>
+          <Link
+            href={SETTINGS_ENTRY.href}
+            aria-current={isSettingsPath(pathname) ? "page" : undefined}
+            className={cn(
+              itemClass,
+              collapsed && "justify-center px-0",
+              isSettingsPath(pathname) &&
+                "bg-sidebar-accent text-sidebar-accent-foreground [&_svg]:text-primary",
+            )}
+          >
+            <SETTINGS_ENTRY.icon />
+            {collapsed ? (
+              <span className="sr-only">{SETTINGS_ENTRY.label}</span>
+            ) : (
+              <span className="truncate">{SETTINGS_ENTRY.label}</span>
+            )}
+          </Link>
+        </SidebarTooltip>
+      </div>
 
       <div className="border-t border-sidebar-border p-2">
         <UserMenu user={user} roleName={roleName} collapsed={collapsed} />

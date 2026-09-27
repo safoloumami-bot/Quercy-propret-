@@ -30,6 +30,7 @@ model User {
 
   sessions     Session[]
   accounts     Account[]
+  twoFactors   TwoFactor[]
   memberships  Membership[]
   teamMembers  TeamMember[]
   invitations  Invitation[] @relation("InvitedBy")
@@ -76,6 +77,23 @@ model Account {
 
   @@index([userId])
   @@map("account")
+}
+
+/// Secret TOTP et codes de secours (plugin two-factor de Better Auth).
+model TwoFactor {
+  id                      String    @id @default(cuid())
+  userId                  String
+  secret                  String
+  backupCodes             String
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([secret])
+  @@map("two_factor")
 }
 
 model Verification {

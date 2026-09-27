@@ -4,9 +4,10 @@ Logiciel de gestion tout-en-un et modulaire pour les PME, TPE et indépendants :
 commun et des modules que chaque entreprise active selon ses besoins. Il sera disponible dans
 le navigateur (optimisé pour ordinateur) et en application Windows/macOS (Tauri).
 
-> **État actuel : phase 1 (fondations) terminée.** Monorepo, design system, cadre de
-> l'application (barre latérale, barre supérieure, palette `Ctrl+K`, raccourcis), thèmes clair
-> et sombre, couleur d'accent par espace, schéma de base et page de santé.
+> **État actuel : phases 1 (fondations) et 2 (comptes et multi-entreprises) terminées.**
+> Authentification complète (mot de passe, lien magique, Google, Microsoft, double
+> authentification), espaces multiples, invitations, rôles et permissions personnalisables,
+> équipes, assistant d'accueil, journal d'audit, export RGPD et isolation des données testée.
 > Le détail de chaque phase est dans [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Prérequis
@@ -25,6 +26,33 @@ pnpm db:migrate             # applique les migrations Prisma
 pnpm seed                   # crée l'espace de démonstration « Quercy Propreté »
 pnpm dev                    # http://localhost:3000
 ```
+
+### Comptes de démonstration
+
+Le seed crée l'espace « Quercy Propreté » et un compte par rôle, tous avec le mot de passe
+**`Quercy-demo-2026`** :
+
+| Email                       | Rôle              |
+| --------------------------- | ----------------- |
+| `demo@quercy.app`           | Propriétaire      |
+| `julien.marty@quercy.app`   | Manager           |
+| `sophie.lacombe@quercy.app` | Membre            |
+| `nadia.benali@quercy.app`   | Comptable externe |
+| `lucas.roux@quercy.app`     | Lecteur           |
+
+### Emails en développement
+
+Sans `RESEND_API_KEY`, aucun email ne part : le contenu et les liens sont écrits dans le
+journal du serveur. Avec `ENABLE_DEV_MAILBOX="true"`, les 100 derniers sont aussi lisibles en JSON sur
+`/api/dev/mailbox?to=adresse` (liens magiques, invitations, réinitialisations). Cette route
+répond 404 dès que Resend est configuré.
+
+### Connexion Google et Microsoft
+
+Renseignez `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` et `MICROSOFT_CLIENT_ID` /
+`MICROSOFT_CLIENT_SECRET` (et `MICROSOFT_TENANT_ID`). Déclarez chez chaque fournisseur l'URL de
+retour `<APP_URL>/api/auth/callback/google` ou `/api/auth/callback/microsoft`. Les boutons
+n'apparaissent que pour les fournisseurs configurés.
 
 ## Commandes
 
@@ -52,20 +80,28 @@ docs/             Architecture et décisions
 
 ## Écrans disponibles
 
-- `/` — accueil : premiers pas, résumé de l'espace
-- `/reglages/apparence` — thème personnel et couleur d'accent de l'espace
+- `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser`, `/connexion/deux-facteurs`
+- `/bienvenue` — assistant d'accueil : entreprise, modules, couleur, invitations
+- `/invitation/<jeton>` — acceptation d'une invitation
+- `/` — accueil
+- `/reglages/profil`, `/reglages/securite` (mot de passe, 2FA, appareils, suppression du compte),
+  `/reglages/apparence`
+- `/reglages/espace` (entreprise, modules, export RGPD), `/reglages/membres`, `/reglages/equipes`,
+  `/reglages/roles`, `/reglages/audit`
 - `/design-system` — jetons et composants
 - `/api/health` — état de la base et de Redis (200 ou 503)
 
 Raccourcis : `Ctrl+K` palette, `/` recherche, `?` aide, `Ctrl+B` barre latérale,
-`G` puis `H` / `R` / `D` pour naviguer.
+`G` puis `H` (accueil), `R` (réglages), `M` (membres), `D` (design system).
 
 ## Déploiement
 
 La CI (GitHub Actions, `.github/workflows/ci.yml`) vérifie le formatage, le lint, les types,
 les tests unitaires, le build et les parcours E2E sur PostgreSQL et Redis réels.
 En production : `pnpm db:deploy` puis `pnpm build` et `pnpm --filter @quercy/web start`, avec
-les variables de `.env.example`. Les cibles Vercel et Railway/Fly, et les installeurs desktop,
+les variables de `.env.example` — en particulier un `BETTER_AUTH_SECRET` généré
+(`openssl rand -base64 32`), `RESEND_API_KEY`, `ENABLE_DEV_MAILBOX="false"` et
+`AUTH_RATE_LIMIT="on"`. Les cibles Vercel et Railway/Fly, et les installeurs desktop,
 sont documentés dans les phases correspondantes.
 
 Voir aussi [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) et [`docs/DECISIONS.md`](docs/DECISIONS.md).

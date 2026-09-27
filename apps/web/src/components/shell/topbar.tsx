@@ -5,9 +5,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@quercy/ui/components/t
 import { ChevronRightIcon, KeyboardIcon, MoonIcon, SearchIcon, SunIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
 import * as React from "react";
 
+import { useThemePreference } from "@/components/theme-preference";
 import { breadcrumbFor } from "@/lib/navigation";
 
 import { KeyCombo } from "./key-combo";
@@ -17,7 +17,7 @@ export function Topbar() {
   const pathname = usePathname();
   const crumbs = breadcrumbFor(pathname);
   const { setPaletteOpen, setHelpOpen } = useShell();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useThemePreference();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
   const isDark = mounted && resolvedTheme === "dark";

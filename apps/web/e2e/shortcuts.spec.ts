@@ -14,7 +14,7 @@ test.describe("clavier", () => {
     await expect(palette).toBeHidden();
   });
 
-  test("? affiche l'aide et « G puis R » ouvre l'apparence", async ({ page }) => {
+  test("? affiche l'aide et « G puis M » ouvre les membres", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -22,9 +22,9 @@ test.describe("clavier", () => {
     await expect(page.getByRole("dialog", { name: "Raccourcis clavier" })).toBeVisible();
     await page.keyboard.press("Escape");
     await page.keyboard.press("g");
-    await page.keyboard.press("r");
-    await expect(page).toHaveURL(/\/reglages\/apparence$/);
-    await expect(page.getByRole("heading", { level: 1, name: "Apparence" })).toBeVisible();
+    await page.keyboard.press("m");
+    await expect(page).toHaveURL(/\/reglages\/membres$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Membres" })).toBeVisible();
   });
 
   test("Ctrl+B replie la barre latérale et l'état survit au rechargement", async ({ page }) => {

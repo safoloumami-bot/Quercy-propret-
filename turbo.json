@@ -1,7 +1,23 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "ui": "stream",
-  "globalEnv": ["NODE_ENV", "DATABASE_URL", "REDIS_URL", "NEXT_PUBLIC_APP_URL"],
+  "globalEnv": [
+    "NODE_ENV",
+    "DATABASE_URL",
+    "REDIS_URL",
+    "NEXT_PUBLIC_APP_URL",
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_URL",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "MICROSOFT_CLIENT_ID",
+    "MICROSOFT_CLIENT_SECRET",
+    "MICROSOFT_TENANT_ID",
+    "RESEND_API_KEY",
+    "EMAIL_FROM",
+    "ENABLE_DEV_MAILBOX",
+    "AUTH_RATE_LIMIT"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build", "^generate"],

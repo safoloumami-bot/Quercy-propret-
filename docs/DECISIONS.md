@@ -15,10 +15,7 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
    obligatoire. La migration vers 7 sera étudiée à part.
 5. **Tables d'identité au format Better Auth** (`user`, `session`, `account`, `verification`)
    dès la phase 1, pour brancher l'authentification en phase 2 sans migration destructive.
-6. **Utilisateur courant avant la phase 2.** Sans authentification, `getWorkspaceContext()`
-   prend le premier utilisateur qui possède un espace. La forme du contexte est définitive :
-   la phase 2 remplacera seulement la source (la session). Si aucun espace n'existe, un écran
-   d'installation guide vers `pnpm db:migrate && pnpm seed`.
+6. **Utilisateur courant avant la phase 2** (remplacé en phase 2 par la vraie session).
 7. **Police Geist** (paquet npm `geist`, fichiers locaux) plutôt qu'Inter via Google Fonts :
    aucun appel réseau au build, rendu identique hors ligne et dans Tauri.
 8. **Paquets internes en TypeScript source**, sans build intermédiaire (voir ARCHITECTURE).
@@ -33,3 +30,45 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
     d'accent** est commune à l'espace, enregistrée en base et tracée dans l'audit.
 11. **Politique CSP** reportée à la phase 11 (elle demande des nonces avec Next.js). Les
     autres en-têtes de sécurité sont déjà actifs.
+
+## 2026-09-27 — Phase 2
+
+12. **Espaces, rôles et invitations maison plutôt que le plugin « organization » de Better
+    Auth** : notre matrice de permissions (module × action × portée), nos rôles personnalisés et
+    notre isolation Prisma dépassent ce que propose le plugin. Better Auth gère l'identité ;
+    l'application gère les espaces.
+13. **Espace actif stocké dans la session** (et non plus dans un cookie) : chaque appareil
+    garde son espace, et une session révoquée n'emporte rien.
+14. **Isolation par extension Prisma** (`forTenant`) en plus des contrôles dans les
+    procédures : défense en profondeur. Les modèles sans `organizationId` (TeamMember) sont
+    filtrés explicitement par l'espace de leur parent.
+15. **Jetons d'invitation hachés** : le lien d'une invitation ne peut plus être réaffiché. On
+    le copie juste après l'envoi, ou « Renvoyer » en génère un nouveau (l'ancien cesse de
+    fonctionner).
+16. **Le rôle Propriétaire ne s'attribue pas par invitation** : on invite, puis le propriétaire
+    transmet le rôle. Un espace garde toujours au moins un propriétaire.
+17. **Rôles prédéfinis en lecture seule**, dupliquables. Supprimer un rôle encore attribué est
+    refusé avec le décompte des membres et invitations concernés.
+18. **Suppression de compte = anonymisation** (nom, email, sessions, comptes, 2FA) plutôt
+    qu'effacement physique : l'historique d'audit des espaces reste cohérent, conformément à
+    l'intérêt légitime (traçabilité). Les espaces dont la personne était le seul membre partent
+    en corbeille.
+19. **Essai Business de 14 jours** posé dès la création (`trialEndsAt`). Les limites par offre
+    et l'expiration de l'essai sont appliquées en phase 3.
+20. **Reporté, donc absent de l'interface** : l'import de données et le logo de l'assistant
+    d'accueil (stockage de fichiers, phase 4) ; l'avatar et la signature email du profil ;
+    la langue anglaise (l'interface est en français, les préférences `locale` sont prêtes) ;
+    la purge automatique de la corbeille (tâche planifiée, phase 4) ; les notifications
+    (centre, email, système).
+21. **Boîte mail de développement** (`/api/dev/mailbox`) : sans Resend, les emails sont
+    consultables en JSON. Elle exige `ENABLE_DEV_MAILBOX="true"` **et** l'absence de clé
+    Resend. Les tests E2E l'utilisent pour suivre les vrais liens (invitation, lien magique,
+    réinitialisation).
+22. **Limitation de débit désactivable par `AUTH_RATE_LIMIT="off"`**, pour les seuls tests E2E
+    qui enchaînent des dizaines de connexions depuis la même IP. Elle est active par défaut en
+    production.
+23. **`BETTER_AUTH_URL`** (URL publique côté serveur) complète `NEXT_PUBLIC_APP_URL`, qui est
+    figée dans le build : un même build peut servir sous une autre adresse (tests E2E,
+    préproduction).
+24. **`pnpm test` inclut les tests d'intégration** sur PostgreSQL (la base fait partie de
+    l'installation de développement, et la CI la fournit).

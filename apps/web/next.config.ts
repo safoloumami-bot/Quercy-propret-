@@ -12,7 +12,7 @@ const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   transpilePackages: ["@quercy/ui", "@quercy/core", "@quercy/db"],
-  serverExternalPackages: ["@prisma/client", "ioredis"],
+  serverExternalPackages: ["@prisma/client", "ioredis", "@node-rs/argon2"],
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

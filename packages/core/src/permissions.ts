@@ -152,3 +152,32 @@ export function mergePermissions(...matrices: PermissionMatrix[]): PermissionMat
   }
   return result;
 }
+
+export const ACTION_LABELS: Record<Action, string> = {
+  view: "Voir",
+  create: "Créer",
+  update: "Modifier",
+  delete: "Supprimer",
+  export: "Exporter",
+  admin: "Administrer",
+};
+
+export const SCOPE_LABELS: Record<Scope, string> = {
+  own: "Les siens",
+  team: "Son équipe",
+  all: "Tous",
+};
+
+export const PLATFORM_RESOURCE_LABELS: Record<PlatformResource, string> = {
+  settings: "Réglages de l'espace",
+  members: "Membres et équipes",
+  billing: "Abonnement et facturation",
+  audit: "Journal d'audit",
+};
+
+/** Portées pertinentes pour (ressource, action) : « les siens / son équipe » n'a de sens que sur les données métier. */
+export function applicableScopes(resource: Resource, action: Action): readonly Scope[] {
+  if ((PLATFORM_RESOURCES as readonly string[]).includes(resource) || action === "admin")
+    return ["all"];
+  return SCOPES;
+}

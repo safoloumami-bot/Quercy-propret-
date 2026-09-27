@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.2.0] — 2026-09-27 — Phase 2 : comptes et multi-entreprises
+
+### Ajouté
+
+- Authentification Better Auth : email + mot de passe (Argon2id), lien magique, Google,
+  Microsoft, double authentification TOTP avec codes de secours, mot de passe oublié,
+  vérification d'email, sessions révocables, limitation de débit.
+- Écrans : connexion, inscription, 2FA, mot de passe oublié et réinitialisation, invitation.
+- Assistant d'accueil en 4 étapes (entreprise, modules présélectionnés par secteur, couleur,
+  invitations) et essai Business de 14 jours.
+- API tRPC v11 : espaces, membres, invitations, rôles, équipes, audit, profil. Contrôles de
+  permission côté serveur et journal d'audit sur chaque action sensible.
+- Isolation multi-entreprises garantie par une extension Prisma (`forTenant`), prouvée par
+  13 tests d'intégration.
+- Réglages :
+  - Mon compte : profil, sécurité (mot de passe, 2FA, appareils connectés, suppression du
+    compte), apparence synchronisée avec le profil ;
+  - Espace : général (entreprise, devise, fuseau, format de date), modules, export RGPD
+    (ZIP JSON + CSV), quitter l'espace ;
+  - membres (rôle modifiable avec mise à jour optimiste, retrait, invitations en attente) ;
+  - équipes avec responsable ;
+  - rôles personnalisés avec éditeur de matrice ;
+  - journal d'audit filtrable.
+- Sélecteur d'espace relié à la session, création d'un nouvel espace, déconnexion.
+- Composants UI : liste déroulante, tableau, encadré.
+- Emails transactionnels React Email + Resend (boîte de développement sans Resend).
+- Seed : cinq comptes de démonstration, un par rôle, et deux équipes.
+- E2E : inscription → accueil → invitation → acceptation, lien magique, réinitialisation,
+  double authentification, permissions d'un lecteur, changement de rôle tracé.
+
+### Modifié
+
+- Navigation : entrée « Réglages » et sous-navigation filtrée selon les permissions.
+- Le changement d'espace et la couleur d'accent passent par l'API tRPC (plus d'actions
+  serveur).
+
 ## [0.1.0] — 2026-09-27 — Phase 1 : fondations
 
 ### Ajouté

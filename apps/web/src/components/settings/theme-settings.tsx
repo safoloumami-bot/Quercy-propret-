@@ -2,8 +2,9 @@
 
 import { cn } from "@quercy/ui/lib/utils";
 import { CheckIcon, MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
-import { useTheme } from "next-themes";
 import * as React from "react";
+
+import { useThemePreference } from "@/components/theme-preference";
 
 const OPTIONS = [
   { value: "light", label: "Clair", icon: SunIcon },
@@ -42,10 +43,10 @@ function ThemePreview({ mode }: { mode: "light" | "dark" | "system" }) {
 }
 
 export function ThemeSettings() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme } = useThemePreference();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
-  const current = mounted ? (theme ?? "system") : null;
+  const current = mounted ? theme : null;
 
   return (
     <div role="radiogroup" aria-label="Thème" className="grid grid-cols-3 gap-3">

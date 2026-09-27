@@ -8,15 +8,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@quercy/ui/components/dropdown-menu";
-import { toast } from "@quercy/ui/components/toaster";
 import { cn } from "@quercy/ui/lib/utils";
-import { CheckIcon, ChevronsUpDownIcon, PaletteIcon } from "lucide-react";
+import { CheckIcon, ChevronsUpDownIcon, PlusIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
-import * as React from "react";
 
-import { switchWorkspace } from "@/app/(app)/actions";
 import type { WorkspaceSummary } from "@/lib/workspace";
 
+import { useSwitchWorkspace } from "./use-switch-workspace";
 import { WorkspaceAvatar } from "./workspace-avatar";
 
 export function WorkspaceSwitcher({
@@ -28,15 +26,12 @@ export function WorkspaceSwitcher({
   workspaces: WorkspaceSummary[];
   collapsed: boolean;
 }) {
-  const [pending, startTransition] = React.useTransition();
+  const switchWorkspace = useSwitchWorkspace();
+  const pending = switchWorkspace.isPending;
 
   function onSwitch(workspace: WorkspaceSummary) {
     if (workspace.id === current.id) return;
-    startTransition(async () => {
-      const result = await switchWorkspace(workspace.id);
-      if (result.ok) toast.success(`Vous êtes dans l'espace ${workspace.name}.`);
-      else toast.error(result.error);
-    });
+    switchWorkspace.mutate({ organizationId: workspace.id });
   }
 
   return (
@@ -68,9 +63,15 @@ export function WorkspaceSwitcher({
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/reglages/apparence">
-            <PaletteIcon />
-            Apparence de l&apos;espace
+          <Link href="/reglages/espace">
+            <SettingsIcon />
+            Réglages de l&apos;espace
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/bienvenue">
+            <PlusIcon />
+            Créer un espace
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

@@ -1,5 +1,6 @@
 "use client";
 
+import type { PermissionMatrix } from "@quercy/core";
 import type * as React from "react";
 
 import type { WorkspaceSummary } from "@/lib/workspace";
@@ -22,6 +23,7 @@ export interface AppShellProps {
   workspaces: WorkspaceSummary[];
   user: { name: string; email: string; image: string | null };
   roleName: string;
+  permissions: PermissionMatrix;
   children: React.ReactNode;
 }
 
@@ -32,6 +34,7 @@ export function AppShell({
   workspaces,
   user,
   roleName,
+  permissions,
   children,
 }: AppShellProps) {
   return (
@@ -44,7 +47,13 @@ export function AppShell({
         Aller au contenu
       </a>
       <div className="flex h-dvh overflow-hidden">
-        <Sidebar current={current} workspaces={workspaces} user={user} roleName={roleName} />
+        <Sidebar
+          current={current}
+          workspaces={workspaces}
+          user={user}
+          roleName={roleName}
+          permissions={permissions}
+        />
         <div className="flex min-w-0 flex-1 flex-col">
           <Topbar />
           <main id="contenu" tabIndex={-1} className="flex-1 overflow-y-auto outline-none">
@@ -52,7 +61,11 @@ export function AppShell({
           </main>
         </div>
       </div>
-      <CommandPalette currentWorkspaceId={current.id} workspaces={workspaces} />
+      <CommandPalette
+        currentWorkspaceId={current.id}
+        workspaces={workspaces}
+        permissions={permissions}
+      />
       <ShortcutsDialog />
     </ShellProvider>
   );
