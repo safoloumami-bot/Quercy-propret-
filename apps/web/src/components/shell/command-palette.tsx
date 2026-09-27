@@ -11,8 +11,6 @@ import {
 } from "@quercy/ui/components/command";
 import {
   ArrowRightLeftIcon,
-  ContactRoundIcon,
-  FactoryIcon,
   KeyboardIcon,
   LogOutIcon,
   MonitorIcon,
@@ -27,7 +25,7 @@ import * as React from "react";
 
 import type { ModuleKey, PermissionMatrix } from "@quercy/core";
 import { useThemePreference } from "@/components/theme-preference";
-import { NAV_ITEMS, isAllowed } from "@/lib/navigation";
+import { ENTITY_ICONS, NAV_ITEMS, isAllowed } from "@/lib/navigation";
 import { useTRPC } from "@/lib/trpc";
 import type { WorkspaceSummary } from "@/lib/workspace";
 
@@ -101,7 +99,7 @@ export function CommandPalette({
                 forceMount
                 onSelect={() => run(() => router.push(r.url))}
               >
-                {r.entity === "contact" ? <ContactRoundIcon /> : <FactoryIcon />}
+                {React.createElement(ENTITY_ICONS[r.entity])}
                 <span className="truncate">{r.title}</span>
                 {r.subtitle ? (
                   <span className="truncate text-xs text-muted-foreground">{r.subtitle}</span>

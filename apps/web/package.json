@@ -21,6 +21,8 @@
     "@node-rs/argon2": "^2.2.1",
     "@quercy/core": "workspace:*",
     "@quercy/db": "workspace:*",
+    "@quercy/documents": "workspace:*",
+    "@quercy/mailer": "workspace:*",
     "@quercy/storage": "workspace:*",
     "@quercy/ui": "workspace:*",
     "@react-email/components": "^1.0.12",

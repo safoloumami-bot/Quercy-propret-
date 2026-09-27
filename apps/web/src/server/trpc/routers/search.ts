@@ -1,4 +1,12 @@
-import { ENTITIES, ENTITY_KEYS, type EntityKey, can, recordTitle } from "@quercy/core";
+import {
+  ENTITIES,
+  ENTITY_KEYS,
+  type EntityKey,
+  can,
+  recordPath,
+  recordSubtitle,
+  recordTitle,
+} from "@quercy/core";
 import { z } from "zod";
 
 import { delegate, entityContext } from "../../records/context";
@@ -24,7 +32,7 @@ export const searchRouter = createTRPCRouter({
         const { scopeWhere } = await entityContext(ctx, entity, "view");
         const rows = (await delegate(ctx, entity).findMany({
           where: { AND: [scopeWhere, searchWhere(def, input.q)] },
-          take: 6,
+          take: 4,
           orderBy: { updatedAt: "desc" },
         })) as unknown as Record<string, unknown>[];
         for (const r of rows) {
@@ -32,9 +40,8 @@ export const searchRouter = createTRPCRouter({
             entity,
             id: String(r.id),
             title: recordTitle(entity, r),
-            subtitle: (entity === "contact" ? (r.jobTitle ?? r.email) : (r.city ?? r.email)) as
-              string | null,
-            url: `/${def.module}/${def.slug}/${String(r.id)}`,
+            subtitle: recordSubtitle(entity, r),
+            url: recordPath(entity, String(r.id)),
           });
         }
       }

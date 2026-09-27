@@ -7,6 +7,7 @@ const PUBLIC_PREFIXES = [
   "/mot-de-passe-oublie",
   "/reinitialiser",
   "/invitation",
+  "/document",
   "/api",
 ];
 

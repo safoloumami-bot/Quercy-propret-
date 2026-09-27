@@ -3,6 +3,8 @@ import {
   EMPTY_FILTER,
   ENTITIES,
   ENTITY_KEYS,
+  recordPath,
+  recordSubtitle,
   type EntityKey,
   type FieldDef,
   buildOrderBy,
@@ -10,6 +12,7 @@ import {
   diffChanges,
   filterGroupSchema,
   isCustomKey,
+  isGroup,
   parseRecordInput,
   recordTitle,
   filterRuleSchema,
@@ -22,6 +25,7 @@ import { z } from "zod";
 import { notify } from "../../notify";
 import { publish } from "../../realtime";
 import { type RecordsCtx, delegate, entityContext } from "../../records/context";
+import { applyBusinessRules, bulkEditable, deletableWhere } from "../../records/hooks";
 import { searchWhere } from "../../records/search";
 import { listInclude, serialize } from "../../records/serialize";
 import { createTRPCRouter, orgProcedure, recordAudit } from "../init";
@@ -35,35 +39,38 @@ const listInput = z.object({
   filter: filterGroupSchema.default(EMPTY_FILTER),
   sort: z.array(sortSpecSchema).max(5).default([]),
   search: z.string().max(120).optional(),
-  /** Condition supplémentaire combinée en ET (lignes d'un groupe). */
-  and: filterRuleSchema.optional(),
+  /** Condition supplémentaire combinée en ET (lignes d'un groupe, colonne, période). */
+  and: z.union([filterRuleSchema, filterGroupSchema]).optional(),
   /** Décalage de la page (pagination infinie). */
   cursor: z.number().int().min(0).nullish(),
   limit: z.number().int().min(1).max(200).default(100),
 });
 
-function recordUrl(entity: EntityKey, id: string) {
-  const def = ENTITIES[entity];
-  return `/${def.module}/${def.slug}/${id}`;
-}
-
-/** Vérifie que les références (responsable, entreprise) appartiennent bien à l'espace. */
-async function assertReferences(ctx: RecordsCtx, data: Record<string, unknown>) {
-  if (typeof data.ownerId === "string") {
-    const member = await ctx.db.membership.count({ where: { userId: data.ownerId } });
-    if (!member)
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Le responsable choisi n'est pas membre de l'espace.",
-      });
-  }
-  if (typeof data.companyId === "string") {
-    const company = await ctx.db.company.count({ where: { id: data.companyId } });
-    if (!company)
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Cette entreprise n'existe pas dans l'espace.",
-      });
+/** Vérifie que les références (responsable, fiches liées) appartiennent bien à l'espace. */
+async function assertReferences(
+  ctx: RecordsCtx,
+  fields: FieldDef[],
+  data: Record<string, unknown>,
+) {
+  for (const field of fields) {
+    const column = field.column ?? field.key;
+    const value = data[column];
+    if (typeof value !== "string") continue;
+    if (field.type === "user") {
+      const member = await ctx.db.membership.count({ where: { userId: value } });
+      if (!member)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `${field.label} : cette personne n'est pas membre de l'espace.`,
+        });
+    } else if (field.type === "relation" && field.relation && !field.custom) {
+      const exists = await delegate(ctx, field.relation).count({ where: { id: value } });
+      if (!exists)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `${field.label} : cette fiche n'existe pas dans l'espace.`,
+        });
+    }
   }
 }
 
@@ -94,7 +101,12 @@ export const recordsRouter = createTRPCRouter({
         scopeWhere,
         buildWhere(fields, input.filter),
         searchWhere(def, input.search),
-        input.and ? buildWhere(fields, { combinator: "and", rules: [input.and] }) : {},
+        input.and
+          ? buildWhere(
+              fields,
+              isGroup(input.and) ? input.and : { combinator: "and", rules: [input.and] },
+            )
+          : {},
       ],
     };
     const model = delegate(ctx, input.entity);
@@ -160,17 +172,22 @@ export const recordsRouter = createTRPCRouter({
           select: { id: true, name: true },
         }))
           labels.set(u.id, u.name);
-      } else if (field.type === "relation" && values.length) {
-        for (const c of await ctx.db.company.findMany({
+      } else if (field.type === "relation" && field.relation && values.length) {
+        const target = field.relation;
+        const related = (await delegate(ctx, target).findMany({
           where: { id: { in: values } },
-          select: { id: true, name: true },
-        }))
-          labels.set(c.id, c.name);
+        })) as unknown as Record<string, unknown>[];
+        for (const r of related) labels.set(String(r.id), recordTitle(target, r));
       } else {
         for (const o of field.options ?? []) labels.set(o.value, o.label);
       }
+      if (field.type === "boolean") {
+        labels.set("true", "Oui");
+        labels.set("false", "Non");
+      }
       return grouped.map((g) => {
-        const value = (g[column] ?? null) as string | null;
+        const raw = g[column];
+        const value = raw === null || raw === undefined ? null : String(raw);
         return {
           value,
           label: value === null ? "Non renseigné" : (labels.get(value) ?? value),
@@ -217,11 +234,11 @@ export const recordsRouter = createTRPCRouter({
       const { fields, scope } = await entityContext(ctx, input.entity, "create");
       const parsed = parseRecordInput(fields, input.values, "create");
       if (!parsed.success) invalid(parsed.errors);
-      const data = { ...parsed.value.data };
+      const data = applyBusinessRules(input.entity, parsed.value.data);
       // Sans responsable choisi, la personne qui crée devient responsable (indispensable pour « les siens »).
       if (data.ownerId === undefined || data.ownerId === null || scope === "own")
         data.ownerId = ctx.user.id;
-      await assertReferences(ctx, data);
+      await assertReferences(ctx, fields, data);
       const created = (await delegate(ctx, input.entity).create({
         data: {
           ...data,
@@ -258,12 +275,13 @@ export const recordsRouter = createTRPCRouter({
         });
       const parsed = parseRecordInput(fields, input.values, "update");
       if (!parsed.success) invalid(parsed.errors);
-      await assertReferences(ctx, parsed.value.data);
+      const data = applyBusinessRules(input.entity, parsed.value.data, current);
+      await assertReferences(ctx, fields, data);
 
       const beforeCustom = (current.customFields ?? {}) as Record<string, unknown>;
       const nextCustom = { ...beforeCustom, ...parsed.value.customFields };
       const changes = {
-        ...diffChanges(current, parsed.value.data),
+        ...diffChanges(current, data),
         ...Object.fromEntries(
           Object.entries(diffChanges(beforeCustom, parsed.value.customFields)).map(([k, v]) => [
             `${CUSTOM_PREFIX}${k}`,
@@ -273,7 +291,7 @@ export const recordsRouter = createTRPCRouter({
       };
       const updated = (await delegate(ctx, input.entity).update({
         where: { id: input.id },
-        data: { ...parsed.value.data, customFields: nextCustom as Prisma.InputJsonValue } as never,
+        data: { ...data, customFields: nextCustom as Prisma.InputJsonValue } as never,
         include: listInclude(input.entity) as never,
       })) as unknown as Record<string, unknown> & { id: string };
 
@@ -285,7 +303,7 @@ export const recordsRouter = createTRPCRouter({
           changes,
           metadata: { name: recordTitle(input.entity, updated) },
         });
-        const newOwner = parsed.value.data.ownerId;
+        const newOwner = data.ownerId;
         if (typeof newOwner === "string" && newOwner !== current.ownerId) {
           await notify({
             organizationId: ctx.organizationId,
@@ -293,7 +311,7 @@ export const recordsRouter = createTRPCRouter({
             actorId: ctx.user.id,
             type: "record.assigned",
             title: `${ctx.user.name} vous a confié « ${recordTitle(input.entity, updated)} »`,
-            url: recordUrl(input.entity, input.id),
+            url: recordPath(input.entity, input.id),
           });
         }
         await publish(ctx.organizationId, {
@@ -311,15 +329,17 @@ export const recordsRouter = createTRPCRouter({
     .input(z.object({ entity: entitySchema, ids: idsSchema, values: valuesSchema }))
     .mutation(async ({ ctx, input }) => {
       const { fields, scopeWhere } = await entityContext(ctx, input.entity, "update");
-      const allowed = fields.filter((f) => !isCustomKey(f.key));
+      const allowed = fields.filter(
+        (f) => !isCustomKey(f.key) && bulkEditable(input.entity, f.key),
+      );
       const parsed = parseRecordInput(allowed, input.values, "update");
       if (!parsed.success) invalid(parsed.errors);
       if (Object.keys(parsed.value.data).length === 0)
         throw new TRPCError({ code: "BAD_REQUEST", message: "Aucune modification demandée." });
-      await assertReferences(ctx, parsed.value.data);
+      await assertReferences(ctx, fields, parsed.value.data);
       const result = await delegate(ctx, input.entity).updateMany({
         where: { id: { in: input.ids }, ...scopeWhere },
-        data: parsed.value.data as never,
+        data: applyBusinessRules(input.entity, parsed.value.data) as never,
       });
       await recordAudit(ctx, {
         action: "record.bulk_update",
@@ -344,9 +364,26 @@ export const recordsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { scopeWhere } = await entityContext(ctx, input.entity, "delete");
       const result = await delegate(ctx, input.entity).updateMany({
-        where: { id: { in: input.ids }, deletedAt: null, ...scopeWhere },
+        where: {
+          id: { in: input.ids },
+          deletedAt: null,
+          ...scopeWhere,
+          ...deletableWhere(input.entity),
+        },
         data: { deletedAt: new Date() },
       });
+      // Le temps facturé sur un brouillon supprimé redevient facturable.
+      if (input.entity === "invoice" && result.count > 0)
+        await ctx.db.timeEntry.updateMany({
+          where: { invoiceId: { in: input.ids } },
+          data: { invoiceId: null },
+        });
+      if (result.count === 0 && Object.keys(deletableWhere(input.entity)).length > 0)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Seuls les brouillons peuvent être supprimés : une facture ou un avoir émis est conservé (obligation légale).",
+        });
       await recordAudit(ctx, {
         action: "record.delete",
         entityType: input.entity,
@@ -412,10 +449,15 @@ export const recordsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { fields } = await entityContext(ctx, input.entity, "create");
+      const { def, fields } = await entityContext(ctx, input.entity, "create");
+      if (def.customPage)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "L'import n'est pas disponible pour les documents commerciaux.",
+        });
       const importable: FieldDef[] = fields.filter((f) => f.editable);
 
-      // Résolution des références par libellé : responsable par email, entreprise par nom.
+      // Résolution des références par libellé : personne par email ou nom, fiche liée par titre.
       const members = await ctx.db.membership.findMany({
         select: { user: { select: { id: true, email: true, name: true } } },
       });
@@ -424,41 +466,58 @@ export const recordsRouter = createTRPCRouter({
         userByKey.set(m.user.email.toLowerCase(), m.user.id);
         userByKey.set(m.user.name.toLowerCase(), m.user.id);
       }
-      const companyNames = [
-        ...new Set(input.rows.map((r) => r.companyId?.trim().toLowerCase()).filter(Boolean)),
-      ] as string[];
-      const companies = companyNames.length
-        ? await ctx.db.company.findMany({
-            where: {
-              OR: companyNames.map((n) => ({ name: { equals: n, mode: "insensitive" as const } })),
-            },
-            select: { id: true, name: true },
-          })
-        : [];
-      const companyByName = new Map(companies.map((c) => [c.name.toLowerCase(), c.id]));
+      const relationFields = importable.filter(
+        (f) => f.type === "relation" && f.relation && !f.custom,
+      );
+      const byTitle = new Map<string, Map<string, string>>();
+      for (const field of relationFields) {
+        const target = field.relation!;
+        const wanted = new Set(
+          input.rows.map((r) => r[field.key]?.trim().toLowerCase()).filter(Boolean),
+        );
+        if (wanted.size === 0) continue;
+        const candidates = (await delegate(ctx, target).findMany({
+          take: 20_000,
+        })) as unknown as Record<string, unknown>[];
+        const map = new Map<string, string>();
+        for (const c of candidates) {
+          const title = recordTitle(target, c).toLowerCase();
+          if (wanted.has(title)) map.set(title, String(c.id));
+          const email = typeof c.email === "string" ? c.email.toLowerCase() : null;
+          if (email && wanted.has(email)) map.set(email, String(c.id));
+        }
+        byTitle.set(field.key, map);
+      }
 
       const valid: { data: Record<string, unknown>; customFields: Record<string, unknown> }[] = [];
       const errors: { row: number; messages: string[] }[] = [];
       input.rows.forEach((raw, index) => {
         const values: Record<string, unknown> = { ...raw };
         const messages: string[] = [];
-        if (raw.ownerId) {
-          const id = userByKey.get(raw.ownerId.trim().toLowerCase());
-          if (id) values.ownerId = id;
-          else messages.push(`Responsable « ${raw.ownerId} » inconnu dans l'espace.`);
-        }
-        if (raw.companyId) {
-          const id = companyByName.get(raw.companyId.trim().toLowerCase());
-          if (id) values.companyId = id;
-          else
-            messages.push(
-              `Entreprise « ${raw.companyId} » introuvable : importez d'abord les entreprises.`,
-            );
+        for (const field of importable) {
+          const cell = raw[field.key]?.trim();
+          if (!cell) continue;
+          if (field.type === "user") {
+            const id = userByKey.get(cell.toLowerCase());
+            if (id) values[field.key] = id;
+            else messages.push(`${field.label} : « ${cell} » n'est pas membre de l'espace.`);
+          } else if (field.type === "relation" && byTitle.has(field.key)) {
+            const id = byTitle.get(field.key)!.get(cell.toLowerCase());
+            if (id) values[field.key] = id;
+            else
+              messages.push(
+                `${field.label} : « ${cell} » introuvable (importez d'abord les ${ENTITIES[field.relation!].labelPlural.toLowerCase()}).`,
+              );
+          }
         }
         const parsed = parseRecordInput(importable, values, "create");
         if (!parsed.success) messages.push(...Object.values(parsed.errors));
         if (messages.length > 0 || !parsed.success) errors.push({ row: index + 1, messages });
-        else valid.push(parsed.value);
+        else
+          valid.push({
+            data: applyBusinessRules(input.entity, parsed.value.data),
+            customFields: parsed.value.customFields,
+          });
       });
 
       if (input.dryRun) return { valid: valid.length, errors, imported: 0 };
@@ -490,9 +549,14 @@ export const recordsRouter = createTRPCRouter({
       return { valid: valid.length, errors, imported };
     }),
 
-  /** Membres et entreprises proposés dans les listes de choix (responsable, entreprise). */
+  /** Membres ou fiches proposés dans les listes de choix (responsable, entreprise, projet…). */
   options: orgProcedure
-    .input(z.object({ kind: z.enum(["user", "company"]), search: z.string().max(80).optional() }))
+    .input(
+      z.object({
+        kind: z.union([z.literal("user"), entitySchema]),
+        search: z.string().max(80).optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       if (input.kind === "user") {
         const members = await ctx.db.membership.findMany({
@@ -501,16 +565,17 @@ export const recordsRouter = createTRPCRouter({
         });
         return members.map((m) => ({ value: m.user.id, label: m.user.name, hint: m.user.email }));
       }
-      const { scopeWhere } = await entityContext(ctx, "company", "view");
-      const companies = await ctx.db.company.findMany({
-        where: {
-          ...scopeWhere,
-          ...(input.search ? { name: { contains: input.search, mode: "insensitive" } } : {}),
-        },
-        select: { id: true, name: true, city: true },
-        orderBy: { name: "asc" },
+      const target = input.kind;
+      const { def, scopeWhere } = await entityContext(ctx, target, "view");
+      const rows = (await delegate(ctx, target).findMany({
+        where: { AND: [scopeWhere, searchWhere(def, input.search)] },
+        orderBy: buildOrderBy(def.fields, [], def.defaultSort) as never,
         take: 50,
-      });
-      return companies.map((c) => ({ value: c.id, label: c.name, hint: c.city ?? undefined }));
+      })) as unknown as Record<string, unknown>[];
+      return rows.map((r) => ({
+        value: String(r.id),
+        label: recordTitle(target, r),
+        hint: recordSubtitle(target, r) ?? undefined,
+      }));
     }),
 });

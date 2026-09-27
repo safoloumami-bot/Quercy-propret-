@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  ENTITIES,
   type EntityKey,
   type FieldDef,
   type FilterGroup,
   type SortSpec,
   type ViewConfig,
+  type ViewLayout,
   countRules,
 } from "@quercy/core";
 import { Button } from "@quercy/ui/components/button";
@@ -32,6 +34,10 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
+  CalendarDaysIcon,
+  ChartGanttIcon,
+  KanbanIcon,
+  Table2Icon,
   ArrowDownIcon,
   ArrowUpIcon,
   ChevronDownIcon,
@@ -50,9 +56,12 @@ import * as React from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useTRPC } from "@/lib/trpc";
 
+import { BoardView } from "./board-view";
+import { CalendarView } from "./calendar-view";
 import { exportUrl } from "./export-url";
+import { GanttView } from "./gantt-view";
 import { useUserOptions } from "./field-editor";
-import { formatEuros } from "./field-display";
+import { formatAggregate } from "./field-display";
 import { FilterBuilder } from "./filter-builder";
 import {
   type ColumnLayout,
@@ -76,8 +85,9 @@ export interface DataTableProps {
   labels: { singular: string; plural: string; feminine: boolean };
   onOpen: (row: Row) => void;
   onOpenPage: (row: Row) => void;
-  onCreate: () => void;
-  onImport: () => void;
+  onCreate: (defaults?: Record<string, unknown>) => void;
+  /** Absent : l'import n'est pas proposé (documents commerciaux). */
+  onImport?: () => void;
   onTrash: () => void;
 }
 
@@ -92,11 +102,66 @@ function useDebounced<T>(value: T, delay = 250): T {
 
 /** Règle de filtre correspondant à un groupe (pour charger ses lignes). */
 function groupRule(field: FieldDef, value: string | null) {
+  if (field.type === "boolean")
+    return {
+      field: field.key,
+      operator: value === "true" ? ("is_true" as const) : ("is_false" as const),
+    };
   if (value === null) return { field: field.key, operator: "is_empty" as const };
   if (field.type === "select" || field.type === "user" || field.type === "relation") {
     return { field: field.key, operator: "in" as const, value: [value] };
   }
   return { field: field.key, operator: "equals" as const, value };
+}
+
+const LAYOUT_OPTIONS: { value: ViewLayout; label: string; icon: React.ElementType }[] = [
+  { value: "table", label: "Tableau", icon: Table2Icon },
+  { value: "board", label: "Kanban", icon: KanbanIcon },
+  { value: "calendar", label: "Calendrier", icon: CalendarDaysIcon },
+  { value: "gantt", label: "Gantt", icon: ChartGanttIcon },
+];
+
+/** Bascule tableau / Kanban / calendrier / Gantt, selon les affichages prévus pour l'entité. */
+function LayoutSwitcher({
+  entity,
+  value,
+  onChange,
+}: {
+  entity: EntityKey;
+  value: ViewLayout;
+  onChange: (layout: ViewLayout) => void;
+}) {
+  const layouts = ENTITIES[entity].layouts ?? {};
+  const options = LAYOUT_OPTIONS.filter((o) => o.value === "table" || o.value in layouts);
+  if (options.length < 2) return null;
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Affichage"
+      className="flex rounded-md border border-border p-0.5"
+    >
+      {options.map((o) => {
+        const Icon = o.icon;
+        const active = value === o.value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "flex h-7 items-center gap-1.5 rounded-sm px-2 text-xs font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40",
+              active && "bg-accent text-foreground",
+            )}
+          >
+            <Icon className="size-3.5" aria-hidden />
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function HeaderCell({
@@ -206,7 +271,11 @@ export function DataTable({
     [visible, byKey],
   );
 
-  const groupField = config.groupBy ? (byKey.get(config.groupBy) ?? null) : null;
+  const available = ENTITIES[entity].layouts ?? {};
+  const viewLayout: ViewLayout =
+    config.layout !== "table" && config.layout in available ? config.layout : "table";
+  const groupField =
+    viewLayout === "table" && config.groupBy ? (byKey.get(config.groupBy) ?? null) : null;
   const listInput = {
     entity,
     filter: config.filter,
@@ -218,7 +287,7 @@ export function DataTable({
     ...trpc.records.list.infiniteQueryOptions(listInput, {
       getNextPageParam: (last) => last.nextCursor,
     }),
-    enabled: loaded && !groupField,
+    enabled: loaded && !groupField && viewLayout === "table",
     placeholderData: keepPreviousData,
   });
   const rows = React.useMemo(
@@ -433,6 +502,11 @@ export function DataTable({
           onReset={reset}
         />
         <div className="flex items-center gap-1.5">
+          <LayoutSwitcher
+            entity={entity}
+            value={viewLayout}
+            onChange={(layout) => update({ layout })}
+          />
           <div className="relative w-64">
             <SearchIcon
               className="pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground"
@@ -451,22 +525,30 @@ export function DataTable({
             value={config.filter}
             onChange={(filter: FilterGroup) => update({ filter })}
           />
-          <SortMenu fields={fields} sort={config.sort} onChange={(sort) => update({ sort })} />
-          <GroupMenu
-            fields={fields}
-            groupBy={config.groupBy}
-            onChange={(groupBy) => update({ groupBy })}
-          />
+          {viewLayout === "table" ? (
+            <>
+              <SortMenu fields={fields} sort={config.sort} onChange={(sort) => update({ sort })} />
+              <GroupMenu
+                fields={fields}
+                groupBy={config.groupBy}
+                onChange={(groupBy) => update({ groupBy })}
+              />
+            </>
+          ) : null}
           <div className="ml-auto flex items-center gap-1">
-            <DensityMenu
-              density={config.density}
-              onChange={(density: ViewConfig["density"]) => update({ density })}
-            />
-            <ColumnsMenu
-              fields={fields}
-              columns={config.columns}
-              onChange={(columns) => update({ columns })}
-            />
+            {viewLayout === "table" ? (
+              <>
+                <DensityMenu
+                  density={config.density}
+                  onChange={(density: ViewConfig["density"]) => update({ density })}
+                />
+                <ColumnsMenu
+                  fields={fields}
+                  columns={config.columns}
+                  onChange={(columns) => update({ columns })}
+                />
+              </>
+            ) : null}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon-sm" aria-label="Plus d'actions">
@@ -474,7 +556,7 @@ export function DataTable({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {permissions.create ? (
+                {permissions.create && onImport ? (
                   <DropdownMenuItem onSelect={onImport}>
                     <UploadIcon />
                     Importer (CSV, Excel)
@@ -508,7 +590,7 @@ export function DataTable({
               </DropdownMenuContent>
             </DropdownMenu>
             {permissions.create ? (
-              <Button size="sm" onClick={onCreate}>
+              <Button size="sm" onClick={() => onCreate()}>
                 <PlusIcon />
                 {labels.feminine ? "Nouvelle" : "Nouveau"} {labels.singular.toLowerCase()}
               </Button>
@@ -517,144 +599,186 @@ export function DataTable({
         </div>
       </div>
 
-      <div
-        ref={scrollRef}
-        role="grid"
-        aria-label={labels.plural}
-        aria-rowcount={groupField ? undefined : total + 1}
-        tabIndex={0}
-        onKeyDown={onKeyDown}
-        onFocus={() => focused < 0 && rows.length > 0 && setFocused(0)}
-        className="relative min-h-0 flex-1 overflow-auto outline-none"
-      >
-        {groupField ? (
-          <div style={{ width: totalWidth, minWidth: "100%" }}>
-            {header}
-            <GroupedBody
+      {viewLayout !== "table" ? (
+        <div className="min-h-0 flex-1">
+          {viewLayout === "board" ? (
+            <BoardView
               entity={entity}
-              field={groupField}
-              listInput={listInput}
-              layout={layout}
-              totalWidth={totalWidth}
-              rowHeight={rowHeight}
               fields={fields}
-              canEdit={permissions.update}
-              selected={selected}
-              editing={editing}
-              actions={actions}
+              filter={config.filter}
+              search={debouncedSearch || undefined}
+              canEdit={
+                permissions.update &&
+                Boolean(fields.find((f) => f.key === available.board?.field)?.editable)
+              }
+              canCreate={permissions.create}
+              onOpen={onOpen}
+              onCreate={onCreate}
             />
-          </div>
-        ) : list.isPending ? (
-          <div className="space-y-px p-0" aria-busy="true">
-            {header}
-            {Array.from({ length: 12 }, (_, i) => (
-              <div key={i} className="flex h-10 items-center gap-4 border-b border-border px-4">
-                <Skeleton className="h-3 w-4" />
-                <Skeleton className="h-3 w-48" />
-                <Skeleton className="h-3 w-32" />
-                <Skeleton className="h-3 w-40" />
-              </div>
-            ))}
-          </div>
-        ) : rows.length === 0 ? (
-          <div className="p-6">
-            {filtersActive ? (
-              <EmptyState
-                icon={<SearchIcon />}
-                title="Aucun résultat"
-                description="Aucune fiche ne correspond à la recherche ou aux filtres."
-                action={
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      setSearch("");
-                      update({ filter: { combinator: "and", rules: [] } });
-                    }}
-                  >
-                    Effacer la recherche et les filtres
-                  </Button>
-                }
+          ) : viewLayout === "calendar" ? (
+            <CalendarView
+              entity={entity}
+              fields={fields}
+              filter={config.filter}
+              search={debouncedSearch || undefined}
+              canEdit={permissions.update}
+              canCreate={permissions.create}
+              onOpen={onOpen}
+              onCreate={onCreate}
+            />
+          ) : (
+            <GanttView
+              entity={entity}
+              fields={fields}
+              filter={config.filter}
+              search={debouncedSearch || undefined}
+              canEdit={permissions.update}
+              onOpen={onOpen}
+            />
+          )}
+        </div>
+      ) : (
+        <div
+          ref={scrollRef}
+          role="grid"
+          aria-label={labels.plural}
+          aria-rowcount={groupField ? undefined : total + 1}
+          tabIndex={0}
+          onKeyDown={onKeyDown}
+          onFocus={() => focused < 0 && rows.length > 0 && setFocused(0)}
+          className="relative min-h-0 flex-1 overflow-auto outline-none"
+        >
+          {groupField ? (
+            <div style={{ width: totalWidth, minWidth: "100%" }}>
+              {header}
+              <GroupedBody
+                entity={entity}
+                field={groupField}
+                listInput={listInput}
+                layout={layout}
+                totalWidth={totalWidth}
+                rowHeight={rowHeight}
+                fields={fields}
+                canEdit={permissions.update}
+                selected={selected}
+                editing={editing}
+                actions={actions}
               />
-            ) : (
-              <EmptyState
-                icon={<PlusIcon />}
-                title={`Aucun${labels.feminine ? "e" : ""} ${labels.singular.toLowerCase()} pour l'instant`}
-                description={`Créez ${labels.feminine ? "la première" : "le premier"} ou importez votre fichier existant (CSV ou Excel).`}
-                action={
-                  permissions.create ? (
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={onCreate}>
-                        <PlusIcon />
-                        Créer
-                      </Button>
-                      <Button size="sm" variant="secondary" onClick={onImport}>
-                        <UploadIcon />
-                        Importer
-                      </Button>
-                    </div>
-                  ) : undefined
-                }
-              />
-            )}
-          </div>
-        ) : (
-          <div style={{ width: totalWidth, minWidth: "100%" }}>
-            {header}
-            <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
-              {virtualItems.map((item) => {
-                const row = rows[item.index];
-                if (!row) {
-                  return (
-                    <div
-                      key="loader"
-                      className="absolute left-0 flex items-center px-4 text-sm text-muted-foreground"
-                      style={{
-                        top: 0,
-                        transform: `translateY(${item.start}px)`,
-                        height: rowHeight,
+            </div>
+          ) : list.isPending ? (
+            <div className="space-y-px p-0" aria-busy="true">
+              {header}
+              {Array.from({ length: 12 }, (_, i) => (
+                <div key={i} className="flex h-10 items-center gap-4 border-b border-border px-4">
+                  <Skeleton className="h-3 w-4" />
+                  <Skeleton className="h-3 w-48" />
+                  <Skeleton className="h-3 w-32" />
+                  <Skeleton className="h-3 w-40" />
+                </div>
+              ))}
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="p-6">
+              {filtersActive ? (
+                <EmptyState
+                  icon={<SearchIcon />}
+                  title="Aucun résultat"
+                  description="Aucune fiche ne correspond à la recherche ou aux filtres."
+                  action={
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setSearch("");
+                        update({ filter: { combinator: "and", rules: [] } });
                       }}
                     >
-                      Chargement…
-                    </div>
-                  );
-                }
-                return (
-                  <TableRow
-                    key={row.id}
-                    index={item.index}
-                    row={row}
-                    columns={layout}
-                    height={rowHeight}
-                    selected={selected.has(row.id)}
-                    focused={focused === item.index}
-                    editingKey={editing?.id === row.id ? editing.key : null}
-                    canEdit={permissions.update}
-                    actions={actions}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: totalWidth,
-                      transform: `translateY(${item.start}px)`,
-                    }}
-                  />
-                );
-              })}
+                      Effacer la recherche et les filtres
+                    </Button>
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon={<PlusIcon />}
+                  title={`Aucun${labels.feminine ? "e" : ""} ${labels.singular.toLowerCase()} pour l'instant`}
+                  description={`Créez ${labels.feminine ? "la première" : "le premier"} ou importez votre fichier existant (CSV ou Excel).`}
+                  action={
+                    permissions.create ? (
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => onCreate()}>
+                          <PlusIcon />
+                          Créer
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={onImport}>
+                          <UploadIcon />
+                          Importer
+                        </Button>
+                      </div>
+                    ) : undefined
+                  }
+                />
+              )}
             </div>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div style={{ width: totalWidth, minWidth: "100%" }}>
+              {header}
+              <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+                {virtualItems.map((item) => {
+                  const row = rows[item.index];
+                  if (!row) {
+                    return (
+                      <div
+                        key="loader"
+                        className="absolute left-0 flex items-center px-4 text-sm text-muted-foreground"
+                        style={{
+                          top: 0,
+                          transform: `translateY(${item.start}px)`,
+                          height: rowHeight,
+                        }}
+                      >
+                        Chargement…
+                      </div>
+                    );
+                  }
+                  return (
+                    <TableRow
+                      key={row.id}
+                      index={item.index}
+                      row={row}
+                      columns={layout}
+                      height={rowHeight}
+                      selected={selected.has(row.id)}
+                      focused={focused === item.index}
+                      editingKey={editing?.id === row.id ? editing.key : null}
+                      canEdit={permissions.update}
+                      actions={actions}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: totalWidth,
+                        transform: `translateY(${item.start}px)`,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
-      <div className="flex h-9 shrink-0 items-center justify-between border-t border-border px-6 text-xs text-muted-foreground">
-        <span>
-          {groupField
-            ? "Vue regroupée"
-            : `${total.toLocaleString("fr-FR")} ${total > 1 ? noun : labels.singular.toLowerCase()}`}
-          {filtersActive ? " (filtré)" : ""}
-        </span>
-        {list.isFetching && !list.isPending ? <span>Actualisation…</span> : null}
-      </div>
+      {viewLayout === "table" ? (
+        <div className="flex h-9 shrink-0 items-center justify-between border-t border-border px-6 text-xs text-muted-foreground">
+          <span>
+            {groupField
+              ? "Vue regroupée"
+              : `${total.toLocaleString("fr-FR")} ${total > 1 ? noun : labels.singular.toLowerCase()}`}
+            {filtersActive ? " (filtré)" : ""}
+          </span>
+          {list.isFetching && !list.isPending ? <span>Actualisation…</span> : null}
+        </div>
+      ) : null}
 
       {selected.size > 0 ? (
         <div
@@ -847,10 +971,7 @@ function GroupedBody({
               {aggregateFields.map((f) => {
                 const value = (group.aggregates as Record<string, number | null>)[f.key];
                 if (value === null || value === undefined || value === 0) return null;
-                const shown =
-                  f.type === "currency"
-                    ? formatEuros(value)
-                    : value.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
+                const shown = formatAggregate(f, value);
                 return (
                   <span key={f.key} className="text-xs text-muted-foreground">
                     · {f.aggregate === "avg" ? "moy." : "Σ"} {f.label.toLowerCase()} :{" "}

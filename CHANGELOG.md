@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.5.0] — 2026-09-28 — Phase 5 : modules cœur (CRM, ventes, projets)
+
+### Ajouté
+
+- Moteur : 13 entités sur le même registre, relations vers n'importe quelle entité, fiches
+  liées en onglets (vue 360°), affichages **Kanban**, **calendrier** et **Gantt** par
+  glisser-déposer, valeurs par défaut, champs durée et montants en centimes, routes génériques
+  `/<module>/<entité>`.
+- CRM : opportunités et pipeline Kanban (sommes par étape, probabilité et clôture
+  automatiques), activités (appels, rendez-vous, tâches) en tableau ou calendrier, détection et
+  fusion des doublons.
+- Ventes : catalogue ; devis, commandes, factures, avoirs, factures récurrentes ; saisie des
+  lignes (catalogue ou libre, remise, TVA par ligne) ; émission avec numérotation continue ;
+  PDF avec **Factur-X** ; envoi par email avec pièce jointe ; lien client (PDF, acceptation du
+  devis, paiement en ligne Stripe) ; paiements et reste dû ; avoirs ; transformation devis →
+  commande → facture ; facturation automatique récurrente et relances d'impayés par le worker ;
+  paramètres de vente (mentions légales, numérotation, relances, clés Stripe chiffrées).
+- Projets : projets (Gantt, Kanban), tâches (Kanban, calendrier, Gantt), saisies de temps,
+  chronomètre dans la barre supérieure, facturation du temps d'un projet.
+- Paquets `@quercy/documents` (PDF, Factur-X, opérations de vente) et `@quercy/mailer`.
+- Données de démonstration sur 12 mois : 72 opportunités, 260 activités, 14 articles, 180
+  factures, 69 devis, commandes, avoirs, 17 modèles récurrents, 12 projets, 83 tâches, 204
+  saisies de temps.
+- Tests : calculs de ventes (TVA, numérotation, relances), PDF et XML Factur-X, services de vente
+  sur base réelle (9), API ventes/CRM/chronomètre (8), 6 parcours E2E (facture, devis accepté
+  en ligne, pipeline, doublons, chronomètre et affichages).
+
+### Corrigé
+
+- Le score d'un contact (entier) est arrondi à la saisie au lieu d'être refusé par la base.
+
 ## [0.4.0] — 2026-09-27 — Phase 4 : moteur générique (et CRM pilote)
 
 ### Ajouté

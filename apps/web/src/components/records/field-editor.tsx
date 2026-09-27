@@ -1,6 +1,6 @@
 "use client";
 
-import type { FieldDef } from "@quercy/core";
+import { ENTITIES, type EntityKey, type FieldDef, formatDuration } from "@quercy/core";
 import { Checkbox } from "@quercy/ui/components/checkbox";
 import {
   Command,
@@ -32,7 +32,15 @@ const NONE = "__none__";
 export function toEditable(field: FieldDef, value: unknown): string {
   if (value === null || value === undefined) return "";
   if (Array.isArray(value)) return value.join(", ");
-  if (field.type === "date" || field.type === "datetime") return String(value).slice(0, 10);
+  if (field.type === "date") return String(value).slice(0, 10);
+  if (field.type === "datetime") {
+    const d = new Date(value as string);
+    if (Number.isNaN(d.getTime())) return "";
+    // Heure locale au format attendu par <input type="datetime-local">.
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  }
+  if (field.cents && typeof value === "number") return String(value / 100);
+  if (field.type === "duration" && typeof value === "number") return formatDuration(value);
   return String(value);
 }
 
@@ -47,13 +55,13 @@ export function useUserOptions(enabled = true) {
 }
 
 function RelationPicker({
+  target,
   value,
-  label,
   onCommit,
   autoFocus,
 }: {
+  target: EntityKey;
   value: string | null;
-  label?: string;
   onCommit: (value: string | null) => void;
   autoFocus?: boolean;
 }) {
@@ -65,22 +73,26 @@ function RelationPicker({
     return () => clearTimeout(t);
   }, [search]);
   const options = useQuery(
-    trpc.records.options.queryOptions({ kind: "company", search: debounced || undefined }),
+    trpc.records.options.queryOptions({ kind: target, search: debounced || undefined }),
   );
+  const def = ENTITIES[target];
+  const noun = def.label.toLowerCase();
   return (
     <Command shouldFilter={false} className="rounded-md border border-border">
       <CommandInput
         value={search}
         onValueChange={setSearch}
-        placeholder={label ?? "Rechercher une entreprise…"}
+        placeholder={`Rechercher ${def.feminine ? "une" : "un"} ${noun}…`}
         autoFocus={autoFocus}
       />
       <CommandList className="max-h-56">
-        <CommandEmpty>{options.isPending ? "Recherche…" : "Aucune entreprise."}</CommandEmpty>
+        <CommandEmpty>
+          {options.isPending ? "Recherche…" : `${def.feminine ? "Aucune" : "Aucun"} ${noun}.`}
+        </CommandEmpty>
         <CommandGroup>
           {value ? (
             <CommandItem value="__clear__" onSelect={() => onCommit(null)}>
-              Retirer l&apos;entreprise
+              Retirer le lien
             </CommandItem>
           ) : null}
           {(options.data ?? []).map((o) => (
@@ -120,9 +132,9 @@ export function FieldEditor({
   const [draft, setDraft] = React.useState(toEditable(field, value));
   const users = useUserOptions(field.type === "user");
   const commitText = () => {
-    if (draft !== toEditable(field, value))
-      onCommit(field.type === "tags" || field.type === "multiselect" ? draft : draft);
-    else onCancel?.();
+    if (draft === toEditable(field, value)) onCancel?.();
+    else if (field.type === "datetime" && draft) onCommit(new Date(draft).toISOString());
+    else onCommit(draft);
   };
   const keys = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
@@ -192,6 +204,7 @@ export function FieldEditor({
     case "relation":
       return (
         <RelationPicker
+          target={field.relation ?? "company"}
           value={(value as string | null) ?? null}
           onCommit={onCommit}
           autoFocus={autoFocus}
@@ -214,11 +227,13 @@ export function FieldEditor({
         <Input
           id={id}
           type={
-            field.type === "date" || field.type === "datetime"
+            field.type === "date"
               ? "date"
-              : field.type === "email"
-                ? "email"
-                : "text"
+              : field.type === "datetime"
+                ? "datetime-local"
+                : field.type === "email"
+                  ? "email"
+                  : "text"
           }
           inputMode={["number", "currency", "percent"].includes(field.type) ? "decimal" : undefined}
           value={draft}
@@ -226,7 +241,13 @@ export function FieldEditor({
           onBlur={commitText}
           onKeyDown={keys}
           autoFocus={autoFocus}
-          placeholder={field.type === "tags" ? "étiquette1, étiquette2" : undefined}
+          placeholder={
+            field.type === "tags"
+              ? "étiquette1, étiquette2"
+              : field.type === "duration"
+                ? "1h30"
+                : undefined
+          }
           aria-label={field.label}
           className={cn("h-7", className)}
         />

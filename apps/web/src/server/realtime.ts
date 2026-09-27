@@ -6,7 +6,7 @@ import { redis } from "@/lib/redis";
 
 /** Événements temps réel diffusés aux navigateurs d'un espace (Server-Sent Events). */
 export type RealtimeEvent =
-  | { type: "record.changed"; entity: string; ids: string[]; actorId: string }
+  | { type: "record.changed"; entity: string; ids: string[]; actorId: string | null }
   | { type: "comment.changed"; entity: string; id: string; actorId: string }
   | { type: "notification"; userId: string };
 

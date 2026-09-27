@@ -4,9 +4,13 @@ Logiciel de gestion tout-en-un et modulaire pour les PME, TPE et indépendants :
 commun et des modules que chaque entreprise active selon ses besoins. Il sera disponible dans
 le navigateur (optimisé pour ordinateur) et en application Windows/macOS (Tauri).
 
-> **État actuel : phases 1 à 4 terminées** : fondations, comptes et multi-entreprises,
-> abonnements, moteur générique (tableau avancé, fiches, champs personnalisés, vues, import/export,
-> historique, commentaires, fichiers, recherche, temps réel) avec le CRM comme premier module.
+> **État actuel : phases 1 à 5 terminées** : fondations, comptes et multi-entreprises,
+> abonnements, moteur générique (tableau, Kanban, calendrier, Gantt, fiches, champs
+> personnalisés, vues, import/export, historique, commentaires, fichiers, recherche, temps réel)
+> et modules cœur : CRM (contacts, entreprises, pipeline d'opportunités, activités, doublons),
+> ventes et facturation (catalogue, devis, commandes, factures, avoirs, factures récurrentes,
+> PDF Factur-X, envoi par email, relances, paiement en ligne, acceptation des devis en ligne),
+> projets et tâches (Kanban, Gantt, calendrier, chronomètre, facturation du temps).
 > Authentification complète (mot de passe, lien magique, Google, Microsoft, double
 > authentification), espaces multiples, invitations, rôles et permissions personnalisables,
 > équipes, assistant d'accueil, journal d'audit, export RGPD et isolation des données testée ;
@@ -96,6 +100,8 @@ packages/ui       Design system : jetons CSS (Tailwind 4) et composants (Radix, 
 packages/core     Logique métier partagée : modules, rôles et permissions, préférences (Zod)
 packages/db       Prisma + PostgreSQL : schéma, migrations, seed
 packages/storage  Stockage des fichiers (disque local ou S3), partagé web/worker
+packages/documents  Documents commerciaux : PDF, Factur-X, numérotation, relances (web/worker)
+packages/mailer   Envoi d'emails (Resend ou boîte de développement), partagé web/worker
 legacy/           Application terrain Quercy Propreté v15 (référence, non compilée)
 docs/             Architecture et décisions
 ```
@@ -106,7 +112,16 @@ docs/             Architecture et décisions
 - `/bienvenue` — assistant d'accueil : entreprise, modules, couleur, invitations
 - `/invitation/<jeton>` — acceptation d'une invitation
 - `/` — accueil
-- `/crm/contacts`, `/crm/entreprises` (+ `/<id>`) — tableaux, panneau de détail, fiches
+- `/crm/contacts`, `/crm/entreprises`, `/crm/opportunites` (pipeline Kanban), `/crm/activites`
+  (calendrier), `/crm/doublons` — tableaux, panneau de détail, fiches (`/<id>`)
+- `/ventes/devis`, `/ventes/commandes`, `/ventes/factures`, `/ventes/avoirs`,
+  `/ventes/recurrentes`, `/ventes/catalogue`, `/ventes/parametres` — documents commerciaux
+  (lignes, émission numérotée, envoi, paiements, transformations), PDF sur
+  `/api/ventes/documents/<id>/pdf`
+- `/document/<jeton>` — page publique d'un document : PDF, acceptation d'un devis, paiement
+  en ligne d'une facture ; `/api/stripe/ventes/<espace>` — webhook Stripe de l'entreprise
+- `/projets/liste`, `/projets/taches`, `/projets/temps` — projets (Gantt), tâches (Kanban,
+  calendrier, Gantt), temps passé ; chronomètre dans la barre supérieure
 - `/reglages/profil`, `/reglages/securite` (mot de passe, 2FA, appareils, suppression du compte),
   `/reglages/apparence`
 - `/reglages/espace` (entreprise, modules, export RGPD), `/reglages/membres`, `/reglages/equipes`,
@@ -118,8 +133,9 @@ docs/             Architecture et décisions
 - `/api/health` — état de la base et de Redis (200 ou 503)
 
 Raccourcis : `Ctrl+K` palette, `/` recherche, `?` aide, `Ctrl+B` barre latérale,
-`G` puis `H` (accueil), `C` (contacts), `E` (entreprises), `R` (réglages), `M` (membres),
-`D` (design system) ; `C` crée une fiche sur une liste ; dans un tableau : `J`/`K`, `Entrée`,
+`G` puis `H` (accueil), `C` (contacts), `E` (entreprises), `O` (opportunités), `A`
+(activités), `V` (devis), `F` (factures), `P` (projets), `T` (tâches), `R` (réglages), `M`
+(membres), `D` (design system) ; `C` crée une fiche sur une liste ; dans un tableau : `J`/`K`, `Entrée`,
 `O`, `E`, `X`.
 
 ## Déploiement

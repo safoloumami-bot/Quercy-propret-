@@ -102,6 +102,7 @@ export const OPERATORS_BY_TYPE: Record<FieldType, Operator[]> = {
   select: CHOICE_OPS,
   user: CHOICE_OPS,
   relation: CHOICE_OPS,
+  duration: NUMBER_OPS,
   multiselect: LIST_OPS,
   tags: LIST_OPS,
 };
@@ -151,12 +152,17 @@ export const viewColumnSchema = z.object({
   pinned: z.boolean().optional(),
 });
 
+export const VIEW_LAYOUTS = ["table", "board", "calendar", "gantt"] as const;
+export type ViewLayout = (typeof VIEW_LAYOUTS)[number];
+
 export const viewConfigSchema = z.object({
   columns: z.array(viewColumnSchema).max(100),
   sort: z.array(sortSpecSchema).max(5),
   filter: filterGroupSchema,
   groupBy: z.string().max(80).nullable(),
   density: z.enum(["compact", "normal", "comfortable"]),
+  /** Affichage : tableau, Kanban, calendrier ou Gantt (selon l'entité). */
+  layout: z.enum(VIEW_LAYOUTS).default("table"),
 });
 export type ViewConfig = z.infer<typeof viewConfigSchema>;
 
@@ -181,6 +187,13 @@ function asNumber(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Filtre saisi en euros sur une colonne en centimes. */
+function toCents(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(toCents);
+  const n = asNumber(v);
+  return n === null ? v : Math.round(n * 100);
+}
+
 function asDate(v: unknown): Date | null {
   if (v instanceof Date) return v;
   if (typeof v !== "string" && typeof v !== "number") return null;
@@ -201,7 +214,7 @@ function startOfDay(d: Date) {
 /** Condition sur une colonne standard. Renvoie null si la règle est incomplète (ignorée). */
 function columnCondition(field: FieldDef, rule: FilterRule, now: Date): Where | null {
   const column = field.column ?? field.key;
-  const v = rule.value;
+  const v = field.cents ? toCents(rule.value) : rule.value;
   const textual = ["text", "longtext", "email", "phone", "url"].includes(field.type);
   const insensitive = textual ? { mode: "insensitive" as const } : {};
 
@@ -402,7 +415,7 @@ export function buildOrderBy(fields: FieldDef[], sort: SortSpec[], fallback: Sor
   );
   const clause = (field: FieldDef | undefined, key: string, direction: "asc" | "desc"): Where => {
     const column = field?.column ?? key;
-    const nullable = !(field?.required || NON_NULL.has(key));
+    const nullable = !(field?.required || field?.notNull || NON_NULL.has(key));
     return { [column]: nullable ? { sort: direction, nulls: "last" } : direction };
   };
   const order = sort

@@ -21,6 +21,7 @@ export function defaultView(fields: FieldDef[]): ViewConfig {
     filter: EMPTY_FILTER,
     groupBy: null,
     density: "normal",
+    layout: "table",
   };
 }
 

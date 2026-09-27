@@ -13,6 +13,8 @@
   "dependencies": {
     "@quercy/core": "workspace:*",
     "@quercy/db": "workspace:*",
+    "@quercy/documents": "workspace:*",
+    "@quercy/mailer": "workspace:*",
     "@quercy/storage": "workspace:*",
     "bullmq": "^5.81.5",
     "ioredis": "^5.8.2",

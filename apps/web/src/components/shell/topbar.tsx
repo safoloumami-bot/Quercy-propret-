@@ -12,6 +12,7 @@ import { breadcrumbFor } from "@/lib/navigation";
 
 import { KeyCombo } from "./key-combo";
 import { NotificationsBell } from "./notifications-bell";
+import { TimerWidget } from "./timer-widget";
 import { useShell } from "./shell-context";
 
 export function Topbar() {
@@ -68,6 +69,7 @@ export function Topbar() {
       </button>
 
       <div className="flex items-center gap-1">
+        <TimerWidget />
         <NotificationsBell />
         <Tooltip>
           <TooltipTrigger asChild>

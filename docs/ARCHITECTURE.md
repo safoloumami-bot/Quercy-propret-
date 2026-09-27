@@ -7,9 +7,13 @@ pnpm workspaces + Turborepo. Les paquets internes sont consommés **en TypeScrip
 intermédiaire, et le typage traverse tout le dépôt.
 
 ```
-@quercy/web  ──►  @quercy/ui     (composants, jetons)
-      │      ──►  @quercy/core   (règles pures : modules, permissions, préférences, couleurs)
-      └────►  @quercy/db     ──►  @quercy/core
+@quercy/web  ──►  @quercy/ui        (composants, jetons)
+      │      ──►  @quercy/core      (règles pures : permissions, registre des fiches, ventes…)
+      │      ──►  @quercy/db        ──►  @quercy/core
+      │      ──►  @quercy/storage   (fichiers, local ou S3)
+      │      ──►  @quercy/mailer    (emails : Resend ou boîte de développement)
+      └────►  @quercy/documents ──►  core, db, mailer (PDF, Factur-X, numérotation, relances)
+@quercy/worker ──►  db, storage, documents, mailer
 ```
 
 `@quercy/core` ne dépend d'aucun framework (seulement Zod). Il est testable unitairement
@@ -108,10 +112,52 @@ Tout module métier s'appuie sur le même moteur (`packages/core/src/records`,
 - **Corbeille** : suppression douce, purge définitive à 30 jours par le worker
   (`apps/worker`, BullMQ, tous les jours à 3 h 15, heure de Paris).
 
-Ajouter un module métier revient à : déclarer l'entité dans le registre, ajouter le modèle
-Prisma (avec `organizationId`, `ownerId`, `customFields`, `deletedAt`) à `TENANT_MODELS`, et
-brancher son délégué dans `records/context.ts`. Tableaux, fiches, filtres, import/export,
-historique, commentaires et fichiers sont alors disponibles.
+- **Affichages** : tableau, Kanban (colonnes = valeurs d'un champ liste, glisser-déposer ou
+  menu « Déplacer vers » au clavier, sommes par colonne), calendrier mensuel sur un champ date
+  (glisser change la date), Gantt (barres déplaçables et redimensionnables). Chaque entité
+  déclare ses affichages (`layouts`) ; le choix fait partie de la vue enregistrée.
+- **Relations génériques** : un champ `relation` vise n'importe quelle entité ; libellés,
+  listes de choix, import par libellé, contrôle d'appartenance à l'espace et onglets de
+  « fiches liées » (`related`, vue 360°) sont déduits du registre.
+- **Règles métier** (`records/hooks.ts`) : probabilité et date de clôture d'une opportunité
+  selon l'étape, date de fin d'une tâche, verrouillage d'une facture émise, suppression limitée
+  aux brouillons.
+
+Ajouter un module métier revient à : déclarer l'entité dans le registre (`entities.ts` :
+champs, titre, affichages, fiches liées), ajouter le modèle Prisma (avec `organizationId`,
+`ownerId`, `customFields`, `deletedAt`) à `TENANT_MODELS`. Tableaux, fiches, Kanban/calendrier,
+filtres, import/export, historique, commentaires, fichiers et recherche globale sont alors
+disponibles, sous `/<module>/<entité>` (route dynamique commune).
+
+## Ventes et facturation
+
+- Une table `sales_document` porte devis, commandes, factures, avoirs et modèles récurrents
+  (`kind`) ; le moteur les expose comme cinq entités distinctes (`baseWhere`). Les lignes
+  (`sales_document_line`) et les montants sont en **centimes entiers** ; la TVA est calculée
+  par taux sur la somme des bases (`computeTotals`, `@quercy/core`).
+- **Numérotation continue** par type et par année (`FA-2026-0042`), attribuée à l'émission dans
+  la même transaction que le document (`INSERT … ON CONFLICT … RETURNING` sur
+  `number_sequence`) : une émission refusée ne consomme pas de numéro. Une facture émise est
+  figée (sauf responsable, étiquettes, échéance) et ne se supprime pas : on la corrige par un
+  avoir, qui s'impute sur son reste dû.
+- `@quercy/documents` produit le **PDF** (pdf-lib, police Geist embarquée) et, pour les factures
+  et avoirs, le **XML Factur-X** (CII, profil BASIC) joint au PDF avec ses métadonnées XMP.
+  Le même paquet porte les opérations métier (émission, paiements, avoirs, transformations,
+  récurrence, facturation du temps) et l'envoi des emails avec pièce jointe.
+- **Worker** : chaque matin à 7 h, factures récurrentes échues (émises, envoyées si demandé),
+  passage « en retard », expiration des devis et relances aux paliers configurés.
+- **Paiement en ligne** : chaque entreprise enregistre ses propres clés Stripe (chiffrées en
+  AES-256-GCM) ; le lien public de la facture ouvre Stripe Checkout et le webhook de
+  l'entreprise (`/api/stripe/ventes/<espace>`) enregistre le paiement (idempotent par session).
+- **Lien public** `/document/<jeton>` (jeton aléatoire, non indexé) : consultation, PDF,
+  acceptation d'un devis (nom du signataire horodaté et tracé), paiement d'une facture.
+
+## Projets et temps
+
+Projets, tâches et saisies de temps sont des entités du moteur (Gantt, Kanban, calendrier).
+Le chronomètre (`timer.*`) crée une saisie ouverte (`startedAt` sans `minutes`), une seule par
+personne ; l'arrêter calcule la durée. « Facturer le temps » crée une facture brouillon du
+temps facturable non encore facturé d'un projet, au taux horaire du projet.
 
 ## Super-admin
 

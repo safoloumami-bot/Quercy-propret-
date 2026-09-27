@@ -1,6 +1,6 @@
 "use client";
 
-import { ENTITIES, type EntityKey, type FieldDef } from "@quercy/core";
+import { ENTITIES, type EntityKey, type FieldDef, entityPath, recordPath } from "@quercy/core";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@quercy/ui/components/sheet";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -28,17 +28,25 @@ export function EntityListPage({
   const router = useRouter();
   const [panelId, setPanelId] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
+  const [createDefaults, setCreateDefaults] = React.useState<Record<string, unknown>>({});
   const [importing, setImporting] = React.useState(false);
   const [trash, setTrash] = React.useState(false);
-  const base = `/${def.module}/${def.slug}`;
+  const base = entityPath(entity);
   const labels = { singular: def.label, plural: def.labelPlural, feminine: def.feminine };
 
-  const openPanel = React.useCallback((row: Row) => setPanelId(row.id), []);
+  // Les documents commerciaux s'ouvrent sur leur écran dédié (lignes, totaux, actions).
+  const openPanel = React.useCallback(
+    (row: Row) => (def.customPage ? router.push(recordPath(entity, row.id)) : setPanelId(row.id)),
+    [def.customPage, router, entity],
+  );
   const openPage = React.useCallback(
     (row: Row) => router.push(`${base}/${row.id}`),
     [router, base],
   );
-  const create = React.useCallback(() => setCreating(true), []);
+  const create = React.useCallback((defaults?: Record<string, unknown>) => {
+    setCreateDefaults(defaults ?? {});
+    setCreating(true);
+  }, []);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -56,7 +64,7 @@ export function EntityListPage({
           onOpen={openPanel}
           onOpenPage={openPage}
           onCreate={create}
-          onImport={() => setImporting(true)}
+          onImport={def.customPage ? undefined : () => setImporting(true)}
           onTrash={() => setTrash(true)}
         />
       </div>
@@ -86,7 +94,11 @@ export function EntityListPage({
         open={creating}
         onOpenChange={setCreating}
         labels={labels}
-        onCreated={(row) => setPanelId(row.id)}
+        defaults={createDefaults}
+        openAfterCreate={Boolean(def.customPage)}
+        onCreated={(row) =>
+          def.customPage ? router.push(recordPath(entity, row.id)) : setPanelId(row.id)
+        }
       />
       <ImportDialog
         entity={entity}

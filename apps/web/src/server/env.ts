@@ -28,6 +28,11 @@ const schema = z.object({
   SALES_EMAIL: z.string().default("commercial@quercy.app"),
   /** Limitation de débit des connexions. « off » uniquement pour les tests E2E, jamais en production. */
   AUTH_RATE_LIMIT: z.enum(["on", "off"]).default("on"),
+  /**
+   * Clé de chiffrement des secrets stockés (clés Stripe des entreprises), 32 octets en base64.
+   * Par défaut, dérivée de BETTER_AUTH_SECRET.
+   */
+  ENCRYPTION_KEY: z.string().optional(),
   ENABLE_DEV_MAILBOX: z
     .enum(["true", "false"])
     .default("false")

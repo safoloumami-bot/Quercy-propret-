@@ -1,6 +1,6 @@
 "use client";
 
-import { ENTITIES, type EntityKey, type FieldDef } from "@quercy/core";
+import { ENTITIES, type EntityKey, type FieldDef, entityPath, recordPath } from "@quercy/core";
 import { Button } from "@quercy/ui/components/button";
 import { Callout } from "@quercy/ui/components/callout";
 import { Skeleton } from "@quercy/ui/components/skeleton";
@@ -25,16 +25,17 @@ import { useRecordTabs } from "@/components/shell/record-tabs";
 import { errorMessage, useTRPC } from "@/lib/trpc";
 
 import { CommentsTab } from "./comments-tab";
+import { EntityActions } from "./entity-actions";
 import { FieldDisplay } from "./field-display";
 import { FieldEditor } from "./field-editor";
 import { FilesTab } from "./files-tab";
 import { HistoryTab } from "./history-tab";
 import { Presence } from "./presence";
-import { RelatedContacts } from "./related-contacts";
+import { RelatedList, useRelatedLists } from "./related-list";
 import type { EntityPermissions } from "./types";
 import { useRecordMutations } from "./use-record-mutations";
 
-function FieldRow({
+export function FieldRow({
   field,
   row,
   canEdit,
@@ -113,7 +114,8 @@ export function RecordView({
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">("idle");
   const { open: openTab } = useRecordTabs();
-  const url = `/${def.module}/${def.slug}/${id}`;
+  const url = recordPath(entity, id);
+  const related = useRelatedLists(entity);
   const title = record.data?.row.title;
 
   React.useEffect(() => {
@@ -181,18 +183,22 @@ export function RecordView({
   );
 
   const tabs = (
-    <Tabs defaultValue={initialTab ?? (entity === "company" ? "contacts" : "commentaires")}>
-      <TabsList>
-        {entity === "company" ? <TabsTrigger value="contacts">Contacts</TabsTrigger> : null}
+    <Tabs defaultValue={initialTab ?? (related[0] ? `lie-${related[0].entity}` : "commentaires")}>
+      <TabsList className="flex-wrap">
+        {related.map((r) => (
+          <TabsTrigger key={r.entity} value={`lie-${r.entity}`}>
+            {r.label}
+          </TabsTrigger>
+        ))}
         <TabsTrigger value="commentaires">Commentaires</TabsTrigger>
         <TabsTrigger value="fichiers">Fichiers</TabsTrigger>
         <TabsTrigger value="historique">Historique</TabsTrigger>
       </TabsList>
-      {entity === "company" ? (
-        <TabsContent value="contacts">
-          <RelatedContacts companyId={id} />
+      {related.map((r) => (
+        <TabsContent key={r.entity} value={`lie-${r.entity}`}>
+          <RelatedList related={r} id={id} />
         </TabsContent>
-      ) : null}
+      ))}
       <TabsContent value="commentaires">
         <CommentsTab entity={entity} id={id} />
       </TabsContent>
@@ -233,6 +239,7 @@ export function RecordView({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <EntityActions entity={entity} id={id} />
           <span
             className="mr-2 flex items-center gap-1 text-xs text-muted-foreground"
             aria-live="polite"
@@ -306,7 +313,7 @@ export function RecordView({
               onSuccess: () => {
                 setConfirmDelete(false);
                 if (onDeleted) onDeleted();
-                else router.push(`/${def.module}/${def.slug}`);
+                else router.push(entityPath(entity));
               },
             },
           )

@@ -130,3 +130,52 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
 42. **Quota de stockage** = Go par membre de l'offre × nombre de membres, vérifié à chaque envoi.
 43. **Marqueur `data-ready` sur `<html>`** une fois l'interface interactive. Il remplace l'attente
     « réseau inactif » des tests E2E, devenue impossible avec la connexion SSE permanente.
+
+## 2026-09-28 — Phase 5
+
+44. **Le moteur est généralisé plutôt que dupliqué** : toutes les entités (13) passent par le même
+    registre, la même API `records.*` et les mêmes écrans. Les documents commerciaux gardent un
+    écran dédié (lignes, actions) mais leur liste, leurs filtres, vues et exports sont ceux du
+    moteur.
+45. **Étapes du pipeline fixes** (Nouvelle, Qualifiée, Proposition, Négociation, Gagnée,
+    Perdue) avec probabilité par défaut modifiable par opportunité. Des pipelines configurables
+    par espace viendront si le besoin apparaît ; les étapes standard couvrent la cible TPE/PME.
+46. **Montants des documents en centimes entiers** (pas de flottants) ; les autres montants
+    (CA, budget, prix catalogue) restent en euros décimaux, suffisants pour de l'indicatif.
+    Un champ déclaré `cents` est saisi et filtré en euros, stocké en centimes.
+47. **TVA calculée par taux sur la somme des bases**, arrondie au centime, comme sur une
+    facture française ; franchise en base (293 B) gérée globalement dans les paramètres.
+48. **Numéro attribué à l'émission, pas à la création** : les brouillons n'ont pas de numéro,
+    ce qui garantit une suite continue sans trou (obligation légale). Préfixes configurables.
+49. **Facture émise immuable, jamais supprimée** : correction par avoir (total ou partiel,
+    imputé sur le reste dû). Les devis et commandes émis ne sont plus modifiables mais se
+    dupliquent.
+50. **Factur-X profil BASIC** (en-tête, lignes, TVA, totaux) embarqué dans le PDF avec les
+    métadonnées XMP Factur-X. Le PDF embarque ses polices mais n'inclut pas de profil de
+    couleur ICC : la conformité PDF/A-3 stricte (validation veraPDF) reste à outiller ; le XML,
+    lui, est lu par les plateformes de dématérialisation.
+51. **Génération PDF avec pdf-lib** (JavaScript pur, sans navigateur ni binaire natif) : fonctionne
+    à l'identique dans Next.js, le worker et les tests. La police Geist (OFL) est embarquée
+    encodée en base64 dans `fonts.generated.ts` pour éviter toute dépendance au système de
+    fichiers du déploiement.
+52. **Paiement en ligne sur le compte Stripe de chaque entreprise** (ses clés, chiffrées en
+    AES-256-GCM, clé dérivée de `BETTER_AUTH_SECRET` ou fournie par `ENCRYPTION_KEY`), plutôt
+    que Stripe Connect : aucun agrément de plateforme de paiement, l'argent ne transite jamais
+    par Quercy. Webhook propre à chaque espace, paiement idempotent par session Checkout.
+53. **Emails et logique de facturation dans des paquets partagés** (`@quercy/mailer`,
+    `@quercy/documents`) : le worker envoie factures récurrentes et relances avec le même code
+    que l'application. Les emails de documents sont en HTML simple (même charte) plutôt qu'en
+    React Email, pour rester utilisables hors de Next.js.
+54. **Relances automatiques par paliers** (J+7, J+15, J+30 par défaut, configurables), une par
+    palier et jamais deux le même jour ; désactivables par espace.
+55. **Acceptation de devis en ligne** par nom du signataire + case « Bon pour accord »,
+    horodatée et inscrite au journal d'audit. Ce n'est pas une signature électronique qualifiée
+    (eIDAS) ; elle suffit au « bon pour accord » usuel des TPE.
+56. **Doublons** détectés à la demande par similarité trigramme (pg_trgm) sur les noms, plus
+    SIREN ou email identiques ; fusion réservée aux personnes ayant accès à toutes les fiches.
+    La fiche absorbée part à la corbeille (restaurable) après transfert des fiches liées,
+    commentaires et fichiers. Les paires écartées sont mémorisées.
+57. **Chronomètre** : une saisie de temps ouverte par personne ; en démarrer un autre arrête le
+    précédent. Durée arrondie à la minute supérieure.
+58. **Valeurs par défaut dans le registre** (statut, priorité, étape, unité, TVA, date du jour)
+    appliquées à la création côté serveur et pré-remplies dans le formulaire.

@@ -23,12 +23,38 @@ export interface RecordsCtx {
   headers: Headers;
 }
 
-/** Délégué Prisma (déjà restreint à l'espace) d'une entité. */
-export function delegate(ctx: RecordsCtx, entity: EntityKey) {
-  // Les deux délégués partagent l'API utilisée ici (findMany, count, groupBy, create, update…).
-  return (entity === "company"
-    ? ctx.db.company
-    : ctx.db.contact) as unknown as typeof ctx.db.company;
+type Delegate = TenantClient["company"];
+
+/**
+ * Délégué Prisma (déjà restreint à l'espace) d'une entité. Pour les entités qui partagent une
+ * table (documents commerciaux), la restriction `baseWhere` est ajoutée à chaque requête et
+ * les valeurs `createDefaults` à chaque création.
+ */
+export function delegate(ctx: { db: TenantClient }, entity: EntityKey): Delegate {
+  const def = ENTITIES[entity];
+  // Tous les délégués partagent l'API utilisée ici (findMany, count, groupBy, create, update…).
+  const model = (ctx.db as unknown as Record<string, Delegate>)[def.model]!;
+  const base = def.baseWhere;
+  if (!base) return model;
+  const scoped = (args: Record<string, unknown> | undefined) => ({
+    ...args,
+    where: { ...(args?.where as Record<string, unknown> | undefined), ...base },
+  });
+  const withDefaults = (data: unknown) => ({ ...(data as object), ...def.createDefaults });
+  const wrapped = {
+    findMany: (a?: Record<string, unknown>) => model.findMany(scoped(a) as never),
+    findFirst: (a?: Record<string, unknown>) => model.findFirst(scoped(a) as never),
+    count: (a?: Record<string, unknown>) => model.count(scoped(a) as never),
+    groupBy: (a: Record<string, unknown>) => model.groupBy(scoped(a) as never),
+    aggregate: (a: Record<string, unknown>) => model.aggregate(scoped(a) as never),
+    updateMany: (a: Record<string, unknown>) => model.updateMany(scoped(a) as never),
+    update: (a: Record<string, unknown>) => model.update(scoped(a) as never),
+    create: (a: Record<string, unknown>) =>
+      model.create({ ...a, data: withDefaults(a.data) } as never),
+    createMany: (a: Record<string, unknown> & { data: unknown[] }) =>
+      model.createMany({ ...a, data: a.data.map(withDefaults) } as never),
+  };
+  return wrapped as unknown as Delegate;
 }
 
 /** Définition + champs (standards et personnalisés) d'une entité, après contrôle d'accès. */

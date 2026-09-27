@@ -18,6 +18,7 @@ export const FIELD_TYPES = [
   "tags",
   "user",
   "relation",
+  "duration",
 ] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 
@@ -52,14 +53,69 @@ export interface FieldDef {
   custom?: boolean;
   /** Longueur maximale (texte). */
   maxLength?: number;
+  /** Montant stocké en centimes (entier) mais saisi et affiché en euros. */
+  cents?: boolean;
+  /** Valeur appliquée à la création quand le champ n'est pas saisi (« today » : date du jour). */
+  defaultValue?: string | number | boolean;
+  /** Colonne entière (arrondi à la saisie). */
+  integer?: boolean;
+  /** Colonne jamais nulle (tri sans option `nulls`). */
+  notNull?: boolean;
+  /** Nom de la relation Prisma d'un champ `user`/`relation` (par défaut : clé sans « Id »). */
+  relationName?: string;
 }
 
-export const ENTITY_KEYS = ["company", "contact"] as const;
+export const ENTITY_KEYS = [
+  "company",
+  "contact",
+  "deal",
+  "activity",
+  "product",
+  "quote",
+  "order",
+  "invoice",
+  "creditNote",
+  "recurringInvoice",
+  "project",
+  "task",
+  "timeEntry",
+] as const;
 export type EntityKey = (typeof ENTITY_KEYS)[number];
+
+/** Délégués Prisma utilisés par le moteur. */
+export type EntityModel =
+  | "company"
+  | "contact"
+  | "deal"
+  | "activity"
+  | "product"
+  | "salesDocument"
+  | "project"
+  | "task"
+  | "timeEntry";
+
+/** Affichages possibles d'une liste, en plus du tableau. */
+export interface EntityLayouts {
+  /** Kanban : colonnes = valeurs d'un champ liste ; somme éventuelle d'un montant. */
+  board?: { field: string; sum?: string };
+  /** Calendrier mensuel sur un champ date. */
+  calendar?: { start: string; end?: string };
+  /** Diagramme de Gantt (début → fin). */
+  gantt?: { start: string; end: string };
+}
+
+/** Liste liée affichée en onglet sur une fiche (ex. contacts d'une entreprise). */
+export interface RelatedList {
+  entity: EntityKey;
+  /** Champ de l'entité liée qui pointe vers la fiche. */
+  field: string;
+  label: string;
+}
 
 export interface EntityDef {
   key: EntityKey;
   module: ModuleKey;
+  model: EntityModel;
   /** Segment d'URL sous le module : /crm/entreprises */
   slug: string;
   label: string;
@@ -67,9 +123,23 @@ export interface EntityDef {
   /** Genre grammatical, pour « Nouvelle entreprise » / « Nouveau contact ». */
   feminine: boolean;
   fields: FieldDef[];
-  /** Champs parcourus par la recherche globale. */
+  /** Champs composant le libellé d'un enregistrement. */
+  titleFields: string[];
+  /** Libellé quand les champs de titre sont vides. */
+  emptyTitle: string;
+  /** Champs affichés sous le titre (recherche, listes de choix). */
+  subtitleFields: string[];
+  /** Champs parcourus par la recherche. */
   searchFields: string[];
   defaultSort: { field: string; direction: "asc" | "desc" };
+  /** Restriction permanente (plusieurs entités partagent une table). */
+  baseWhere?: Record<string, unknown>;
+  /** Valeurs forcées à la création. */
+  createDefaults?: Record<string, unknown>;
+  layouts?: EntityLayouts;
+  related?: RelatedList[];
+  /** La fiche utilise un écran dédié (documents commerciaux). */
+  customPage?: "document";
 }
 
 /** Préfixe des clés de champs personnalisés dans les filtres, tris et colonnes. */
@@ -77,325 +147,6 @@ export const CUSTOM_PREFIX = "cf.";
 
 export function isCustomKey(key: string): boolean {
   return key.startsWith(CUSTOM_PREFIX);
-}
-
-const SYSTEM_FIELDS: FieldDef[] = [
-  {
-    key: "createdAt",
-    label: "Créé le",
-    type: "datetime",
-    sortable: true,
-    filterable: true,
-    width: 150,
-  },
-  {
-    key: "updatedAt",
-    label: "Modifié le",
-    type: "datetime",
-    sortable: true,
-    filterable: true,
-    width: 150,
-  },
-];
-
-export const COMPANY_TYPES: FieldOption[] = [
-  { value: "prospect", label: "Prospect", tone: "info" },
-  { value: "customer", label: "Client", tone: "success" },
-  { value: "partner", label: "Partenaire", tone: "primary" },
-  { value: "supplier", label: "Fournisseur", tone: "neutral" },
-  { value: "former", label: "Ancien client", tone: "warning" },
-];
-
-export const CONTACT_STATUSES: FieldOption[] = [
-  { value: "lead", label: "Piste", tone: "neutral" },
-  { value: "prospect", label: "Prospect", tone: "info" },
-  { value: "customer", label: "Client", tone: "success" },
-  { value: "inactive", label: "Inactif", tone: "warning" },
-];
-
-export const CONTACT_SOURCES: FieldOption[] = [
-  { value: "website", label: "Site web" },
-  { value: "referral", label: "Recommandation" },
-  { value: "event", label: "Salon / événement" },
-  { value: "outbound", label: "Prospection" },
-  { value: "partner", label: "Partenaire" },
-  { value: "other", label: "Autre" },
-];
-
-export const ENTITIES: Record<EntityKey, EntityDef> = {
-  company: {
-    key: "company",
-    module: "crm",
-    slug: "entreprises",
-    label: "Entreprise",
-    labelPlural: "Entreprises",
-    feminine: true,
-    searchFields: ["name", "email", "city", "siren", "website"],
-    defaultSort: { field: "name", direction: "asc" },
-    fields: [
-      {
-        key: "name",
-        label: "Nom",
-        type: "text",
-        required: true,
-        editable: true,
-        sortable: true,
-        filterable: true,
-        defaultVisible: true,
-        width: 240,
-        maxLength: 160,
-      },
-      {
-        key: "type",
-        label: "Type",
-        type: "select",
-        options: COMPANY_TYPES,
-        editable: true,
-        sortable: true,
-        filterable: true,
-        groupable: true,
-        defaultVisible: true,
-        width: 140,
-      },
-      {
-        key: "email",
-        label: "Email",
-        type: "email",
-        editable: true,
-        sortable: true,
-        filterable: true,
-        defaultVisible: true,
-        width: 220,
-        maxLength: 200,
-      },
-      {
-        key: "phone",
-        label: "Téléphone",
-        type: "phone",
-        editable: true,
-        filterable: true,
-        defaultVisible: true,
-        width: 150,
-        maxLength: 40,
-      },
-      {
-        key: "website",
-        label: "Site web",
-        type: "url",
-        editable: true,
-        filterable: true,
-        width: 200,
-        maxLength: 200,
-      },
-      {
-        key: "city",
-        label: "Ville",
-        type: "text",
-        editable: true,
-        sortable: true,
-        filterable: true,
-        groupable: true,
-        defaultVisible: true,
-        width: 150,
-        maxLength: 120,
-      },
-      {
-        key: "country",
-        label: "Pays",
-        type: "text",
-        editable: true,
-        sortable: true,
-        filterable: true,
-        groupable: true,
-        width: 120,
-        maxLength: 80,
-      },
-      {
-        key: "siren",
-        label: "SIREN",
-        type: "text",
-        editable: true,
-        filterable: true,
-        width: 120,
-        maxLength: 14,
-      },
-      {
-        key: "annualRevenue",
-        label: "CA annuel",
-        type: "currency",
-        editable: true,
-        sortable: true,
-        filterable: true,
-        aggregate: "sum",
-        width: 140,
-      },
-      {
-        key: "employees",
-        label: "Effectif",
-        type: "number",
-        editable: true,
-        sortable: true,
-        filterable: true,
-        aggregate: "sum",
-        width: 110,
-      },
-      {
-        key: "ownerId",
-        label: "Responsable",
-        type: "user",
-        editable: true,
-        sortable: true,
-        filterable: true,
-        groupable: true,
-        defaultVisible: true,
-        width: 170,
-      },
-      {
-        key: "tags",
-        label: "Étiquettes",
-        type: "tags",
-        editable: true,
-        filterable: true,
-        width: 180,
-      },
-      ...SYSTEM_FIELDS,
-    ],
-  },
-  contact: {
-    key: "contact",
-    module: "crm",
-    slug: "contacts",
-    label: "Contact",
-    labelPlural: "Contacts",
-    feminine: false,
-    searchFields: ["firstName", "lastName", "email", "phone", "jobTitle"],
-    defaultSort: { field: "lastName", direction: "asc" },
-    fields: [
-      {
-        key: "firstName",
-        label: "Prénom",
-        type: "text",
-        editable: true,
-        sortable: true,
-        filterable: true,
-        defaultVisible: true,
-        width: 140,
-        maxLength: 80,
-      },
-      {
-        key: "lastName",
-        label: "Nom",
-        type: "text",
-        required: true,
-        editable: true,
-        sortable: true,
-        filterable: true,
-        defaultVisible: true,
-        width: 160,
-        maxLength: 80,
-      },
-      {
-        key: "companyId",
-        label: "Entreprise",
-        type: "relation",
-        relation: "company",
-        editable: true,
-        sortable: true,
-        filterable: true,
-        groupable: true,
-        defaultVisible: true,
-        width: 200,
-      },
-      {
-        key: "jobTitle",
-        label: "Fonction",
-        type: "text",
-        editable: true,
-        sortable: true,
-        filterable: true,
-        defaultVisible: true,
-        width: 170,
-        maxLength: 120,
-      },
-      {
-        key: "email",
-        label: "Email",
-        type: "email",
-        editable: true,
-        sortable: true,
-        filterable: true,
-        defaultVisible: true,
-        width: 220,
-        maxLength: 200,
-      },
-      {
-        key: "phone",
-        label: "Téléphone",
-        type: "phone",
-        editable: true,
-        filterable: true,
-        width: 150,
-        maxLength: 40,
-      },
-      {
-        key: "status",
-        label: "Statut",
-        type: "select",
-        options: CONTACT_STATUSES,
-        editable: true,
-        sortable: true,
-        filterable: true,
-        groupable: true,
-        defaultVisible: true,
-        width: 130,
-      },
-      {
-        key: "score",
-        label: "Score",
-        type: "number",
-        editable: true,
-        sortable: true,
-        filterable: true,
-        aggregate: "avg",
-        defaultVisible: true,
-        width: 100,
-      },
-      {
-        key: "source",
-        label: "Origine",
-        type: "select",
-        options: CONTACT_SOURCES,
-        editable: true,
-        sortable: true,
-        filterable: true,
-        groupable: true,
-        width: 150,
-      },
-      {
-        key: "ownerId",
-        label: "Responsable",
-        type: "user",
-        editable: true,
-        sortable: true,
-        filterable: true,
-        groupable: true,
-        width: 170,
-      },
-      {
-        key: "tags",
-        label: "Étiquettes",
-        type: "tags",
-        editable: true,
-        filterable: true,
-        width: 180,
-      },
-      ...SYSTEM_FIELDS,
-    ],
-  },
-};
-
-export function entityBySlug(module: ModuleKey, slug: string): EntityDef | undefined {
-  return Object.values(ENTITIES).find((e) => e.module === module && e.slug === slug);
 }
 
 /** Définition d'un champ personnalisé stocké en base, convertie en FieldDef. */
@@ -437,17 +188,4 @@ export function customFieldToDef(record: CustomFieldRecord): FieldDef {
     relation: opts.relation,
     width: 160,
   };
-}
-
-/** Tous les champs d'une entité : standards puis personnalisés. */
-export function entityFields(entity: EntityDef, custom: CustomFieldRecord[] = []): FieldDef[] {
-  return [...entity.fields, ...custom.map(customFieldToDef)];
-}
-
-/** Libellé affichable d'un enregistrement. */
-export function recordTitle(entity: EntityKey, record: Record<string, unknown>): string {
-  if (entity === "contact") {
-    return [record.firstName, record.lastName].filter(Boolean).join(" ") || "Sans nom";
-  }
-  return String(record.name ?? "Sans nom");
 }

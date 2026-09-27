@@ -8,6 +8,7 @@ import type { WorkspaceSummary } from "@/lib/workspace";
 import { RealtimeListener } from "../realtime-listener";
 import { CommandPalette } from "./command-palette";
 import { RecordTabsBar, RecordTabsProvider } from "./record-tabs";
+import { AccessProvider } from "./access-context";
 import { ShellProvider } from "./shell-context";
 import { ShortcutsDialog } from "./shortcuts-dialog";
 import { Sidebar } from "./sidebar";
@@ -54,42 +55,44 @@ export function AppShell({
 }: AppShellProps) {
   return (
     <ShellProvider initialCollapsed={initialCollapsed}>
-      <RecordTabsProvider>
-        <GlobalShortcuts />
-        <RealtimeListener />
-        <a
-          href="#contenu"
-          className="sr-only z-50 rounded-md bg-primary px-3 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
-        >
-          Aller au contenu
-        </a>
-        <div className="flex h-dvh overflow-hidden">
-          <Sidebar
-            current={current}
+      <AccessProvider modules={modules} permissions={permissions}>
+        <RecordTabsProvider>
+          <GlobalShortcuts />
+          <RealtimeListener />
+          <a
+            href="#contenu"
+            className="sr-only z-50 rounded-md bg-primary px-3 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+          >
+            Aller au contenu
+          </a>
+          <div className="flex h-dvh overflow-hidden">
+            <Sidebar
+              current={current}
+              workspaces={workspaces}
+              user={user}
+              roleName={roleName}
+              permissions={permissions}
+              modules={modules}
+              platformAdmin={platformAdmin}
+            />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <Topbar />
+              {banner}
+              <RecordTabsBar />
+              <main id="contenu" tabIndex={-1} className="flex-1 overflow-y-auto outline-none">
+                {children}
+              </main>
+            </div>
+          </div>
+          <CommandPalette
+            currentWorkspaceId={current.id}
             workspaces={workspaces}
-            user={user}
-            roleName={roleName}
             permissions={permissions}
             modules={modules}
-            platformAdmin={platformAdmin}
           />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <Topbar />
-            {banner}
-            <RecordTabsBar />
-            <main id="contenu" tabIndex={-1} className="flex-1 overflow-y-auto outline-none">
-              {children}
-            </main>
-          </div>
-        </div>
-        <CommandPalette
-          currentWorkspaceId={current.id}
-          workspaces={workspaces}
-          permissions={permissions}
-          modules={modules}
-        />
-        <ShortcutsDialog />
-      </RecordTabsProvider>
+          <ShortcutsDialog />
+        </RecordTabsProvider>
+      </AccessProvider>
     </ShellProvider>
   );
 }

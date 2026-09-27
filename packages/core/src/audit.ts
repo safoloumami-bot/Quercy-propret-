@@ -63,6 +63,22 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "billing.cancel": "a résilié l'abonnement (fin de période)",
   "billing.resume": "a annulé la résiliation de l'abonnement",
   "support.impersonation.start": "a ouvert une session d'assistance (connexion « en tant que »)",
+  "sales.lines.update": "a modifié les lignes",
+  "sales.finalize": "a émis le document",
+  "sales.send": "a envoyé le document par email",
+  "sales.remind": "a relancé le client",
+  "sales.status": "a changé le statut du document",
+  "sales.convert": "a transformé le document",
+  "sales.credit_note": "a créé un avoir",
+  "sales.duplicate": "a dupliqué le document",
+  "sales.recurring.create": "a créé une facturation récurrente",
+  "sales.recurring.generate": "a généré une facture récurrente",
+  "sales.payment.create": "a enregistré un paiement",
+  "sales.payment.delete": "a supprimé un paiement",
+  "sales.settings.update": "a modifié les paramètres de vente",
+  "sales.quote.accepted_online": "a accepté le devis en ligne",
+  "sales.invoice_time": "a facturé le temps passé",
+  "crm.merge": "a fusionné des doublons",
 };
 
 export function auditActionLabel(action: string): string {

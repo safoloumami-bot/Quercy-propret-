@@ -3,6 +3,7 @@ import { DEFAULT_ACCENT, MODULE_KEYS, type SystemRoleKey } from "@quercy/core";
 import { prisma } from "../src/client";
 import { hashPassword } from "../src/password";
 import { SYSTEM_ROLE_SEEDS } from "../src/roles";
+import { seedBusiness } from "./seed-business";
 import { seedCrm } from "./seed-crm";
 
 /** Mot de passe commun des comptes de démonstration (documenté dans le README). */
@@ -184,13 +185,11 @@ async function main() {
     });
   }
 
-  await seedCrm(
-    prisma,
-    org.id,
-    PEOPLE.filter((p) => p.role !== "viewer" && p.role !== "accountant").map(
-      (p) => users[p.email]!,
-    ),
+  const sellers = PEOPLE.filter((p) => p.role !== "viewer" && p.role !== "accountant").map(
+    (p) => users[p.email]!,
   );
+  await seedCrm(prisma, org.id, sellers);
+  await seedBusiness(prisma, org.id, sellers);
 
   // Super-admin de la plateforme (équipe Quercy), sans espace client.
   const admin = await prisma.user.upsert({

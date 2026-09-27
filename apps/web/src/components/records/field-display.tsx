@@ -1,6 +1,12 @@
 "use client";
 
-import { type FieldDef, formatCents } from "@quercy/core";
+import {
+  type EntityKey,
+  type FieldDef,
+  formatCents,
+  formatDuration,
+  recordPath,
+} from "@quercy/core";
 import { Avatar, AvatarFallback, initials } from "@quercy/ui/components/avatar";
 import { Badge } from "@quercy/ui/components/badge";
 import { cn } from "@quercy/ui/lib/utils";
@@ -16,6 +22,13 @@ const numberFmt = new Intl.NumberFormat("fr-FR");
 /** Montant en euros (les montants CRM sont saisis en euros, pas en centimes). */
 export function formatEuros(value: number): string {
   return formatCents(Math.round(value * 100));
+}
+
+/** Sous-total d'un regroupement ou d'une colonne de Kanban. */
+export function formatAggregate(field: FieldDef, value: number): string {
+  if (field.type === "currency") return field.cents ? formatCents(value) : formatEuros(value);
+  if (field.type === "duration") return formatDuration(value);
+  return value.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
 }
 
 export function isEmptyValue(value: unknown): boolean {
@@ -70,11 +83,11 @@ export function FieldDisplay({
     }
     case "relation": {
       const label = row.labels[field.key];
-      if (!label || field.relation !== "company")
+      if (!label || !field.relation || field.custom)
         return <span className="truncate">{label ?? String(value)}</span>;
       return (
         <Link
-          href={`/crm/entreprises/${String(value)}`}
+          href={recordPath(field.relation as EntityKey, String(value))}
           className="truncate text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
           onClick={(e) => e.stopPropagation()}
         >
@@ -115,7 +128,13 @@ export function FieldDisplay({
         </a>
       );
     case "currency":
-      return <span className="tabular-nums">{formatEuros(Number(value))}</span>;
+      return (
+        <span className="tabular-nums">
+          {field.cents ? formatCents(Number(value)) : formatEuros(Number(value))}
+        </span>
+      );
+    case "duration":
+      return <span className="tabular-nums">{formatDuration(Number(value))}</span>;
     case "percent":
       return <span className="tabular-nums">{numberFmt.format(Number(value))} %</span>;
     case "number":

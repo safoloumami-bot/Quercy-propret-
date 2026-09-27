@@ -1,3 +1,5 @@
+import { runDailySales } from "@quercy/documents";
+import { closeMailer } from "@quercy/mailer";
 import { Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
 
@@ -29,12 +31,33 @@ await queue.upsertJobScheduler(
   },
 );
 
+// Ventes : factures récurrentes, retards, expiration des devis et relances, chaque matin.
+await queue.upsertJobScheduler(
+  "sales-daily",
+  { pattern: "0 7 * * *", tz: "Europe/Paris" },
+  {
+    name: "sales-daily",
+    opts: {
+      removeOnComplete: 100,
+      removeOnFail: 500,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 300_000 },
+    },
+  },
+);
+
+/** URL publique de l'application (liens des emails envoyés par le worker). */
+const appUrl =
+  process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
 const worker = new Worker(
   MAINTENANCE_QUEUE,
   async (job) => {
     switch (job.name) {
       case "purge-trash":
         return purgeTrash();
+      case "sales-daily":
+        return runDailySales(appUrl);
       default:
         throw new Error(`Tâche inconnue : ${job.name}`);
     }
@@ -65,6 +88,7 @@ async function shutdown() {
   await worker.close();
   await queue.close();
   await connection.quit();
+  await closeMailer();
   process.exit(0);
 }
 process.on("SIGTERM", () => void shutdown());

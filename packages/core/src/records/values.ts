@@ -2,6 +2,34 @@ import { z } from "zod";
 
 import { type FieldDef, isCustomKey } from "./fields";
 
+/**
+ * Durée saisie → minutes. Accepte « 90 », « 1h30 », « 1 h », « 1:30 », « 1,5h », « 45 min ».
+ * Renvoie null si la saisie est vide, NaN si elle est illisible.
+ */
+export function parseDuration(input: string | number): number | null {
+  if (typeof input === "number") return Number.isFinite(input) ? Math.round(input) : Number.NaN;
+  const v = input.trim().toLowerCase().replace(/\s+/g, "").replace(",", ".");
+  if (v === "") return null;
+  let m = /^(\d+):(\d{1,2})$/.exec(v);
+  if (m) return Number(m[1]) * 60 + Number(m[2]);
+  m = /^(\d+(?:\.\d+)?)h(?:(\d{1,2})(?:min|m)?)?$/.exec(v);
+  if (m) return Math.round(Number(m[1]) * 60) + Number(m[2] ?? 0);
+  m = /^(\d+)(?:min|m)?$/.exec(v);
+  if (m) return Number(m[1]);
+  return Number.NaN;
+}
+
+/** Minutes → « 1 h 30 », « 45 min ». */
+export function formatDuration(minutes: number | null | undefined): string {
+  if (minutes === null || minutes === undefined || !Number.isFinite(minutes)) return "";
+  const sign = minutes < 0 ? "−" : "";
+  const abs = Math.abs(Math.round(minutes));
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  if (h === 0) return `${sign}${m} min`;
+  return m === 0 ? `${sign}${h} h` : `${sign}${h} h ${String(m).padStart(2, "0")}`;
+}
+
 /** Schéma Zod d'une valeur selon son type de champ (création, édition, import). */
 export function fieldValueSchema(field: FieldDef): z.ZodType<unknown> {
   const optionalText = (max = 500) =>
@@ -43,7 +71,10 @@ export function fieldValueSchema(field: FieldDef): z.ZodType<unknown> {
       schema = z
         .union([z.number(), z.string()])
         .transform((v, ctx) => {
-          if (typeof v === "number") return v;
+          if (typeof v === "number") {
+            if (field.cents) return Math.round(v * 100);
+            return field.integer ? Math.round(v) : v;
+          }
           const cleaned = v.replace(/\s|€/g, "").replace(",", ".");
           if (cleaned === "") return null;
           const n = Number(cleaned);
@@ -51,7 +82,24 @@ export function fieldValueSchema(field: FieldDef): z.ZodType<unknown> {
             ctx.addIssue({ code: "custom", message: `${field.label} : nombre attendu.` });
             return z.NEVER;
           }
-          return n;
+          if (field.cents) return Math.round(n * 100);
+          return field.integer ? Math.round(n) : n;
+        })
+        .nullable();
+      break;
+    case "duration":
+      schema = z
+        .union([z.number(), z.string()])
+        .transform((v, ctx) => {
+          const minutes = parseDuration(v);
+          if (minutes !== null && (Number.isNaN(minutes) || minutes < 0)) {
+            ctx.addIssue({
+              code: "custom",
+              message: `${field.label} : durée invalide (ex. 1h30, 90, 1:30).`,
+            });
+            return z.NEVER;
+          }
+          return minutes;
         })
         .nullable();
       break;
@@ -149,8 +197,14 @@ export function parseRecordInput(
   for (const field of fields) {
     if (!field.editable) continue;
     const present = Object.prototype.hasOwnProperty.call(input, field.key);
-    if (!present && (mode === "update" || !field.required)) continue;
-    const parsed = fieldValueSchema(field).safeParse(present ? input[field.key] : undefined);
+    const fallback =
+      mode === "create" && !present && field.defaultValue !== undefined
+        ? field.defaultValue === "today"
+          ? new Date().toISOString().slice(0, 10)
+          : field.defaultValue
+        : undefined;
+    if (!present && fallback === undefined && (mode === "update" || !field.required)) continue;
+    const parsed = fieldValueSchema(field).safeParse(present ? input[field.key] : fallback);
     if (!parsed.success) {
       errors[field.key] = parsed.error.issues[0]?.message ?? `${field.label} invalide.`;
       continue;

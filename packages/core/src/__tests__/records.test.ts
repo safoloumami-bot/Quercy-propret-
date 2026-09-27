@@ -10,6 +10,11 @@ import {
   entityFields,
   parseRecordInput,
   recordTitle,
+  entityPath,
+  formatDuration,
+  parseDuration,
+  recordPath,
+  stageProbability,
 } from "../records";
 
 const company = ENTITIES.company.fields;
@@ -161,7 +166,7 @@ describe("parseRecordInput", () => {
     expect(result.value.data).toEqual({
       lastName: "Dupont",
       email: "marie@dupont.fr",
-      score: 72.5,
+      score: 73,
       status: "customer",
       tags: ["vip", "cahors"],
     });
@@ -199,5 +204,50 @@ describe("recordTitle", () => {
   it("compose le nom d'un contact", () => {
     expect(recordTitle("contact", { firstName: "Marie", lastName: "Dupont" })).toBe("Marie Dupont");
     expect(recordTitle("company", { name: "Dupont SARL" })).toBe("Dupont SARL");
+  });
+});
+
+describe("durées, centimes et registre", () => {
+  it("lit les durées saisies de plusieurs façons", () => {
+    expect(parseDuration("90")).toBe(90);
+    expect(parseDuration("1h30")).toBe(90);
+    expect(parseDuration("1 h")).toBe(60);
+    expect(parseDuration("1:05")).toBe(65);
+    expect(parseDuration("1,5h")).toBe(90);
+    expect(parseDuration("45 min")).toBe(45);
+    expect(parseDuration("")).toBeNull();
+    expect(Number.isNaN(parseDuration("bientôt"))).toBe(true);
+    expect(formatDuration(95)).toBe("1 h 35");
+    expect(formatDuration(120)).toBe("2 h");
+    expect(formatDuration(40)).toBe("40 min");
+  });
+
+  it("filtre en euros une colonne stockée en centimes", () => {
+    const fields = ENTITIES.invoice.fields;
+    expect(
+      buildWhere(fields, {
+        combinator: "and",
+        rules: [{ field: "totalCents", operator: "gte", value: "1 250,5".replace(" ", "") }],
+      }),
+    ).toEqual({ totalCents: { gte: 125050 } });
+  });
+
+  it("donne un titre aux documents et des chemins par module", () => {
+    expect(recordTitle("invoice", { number: "FA-2026-0001" })).toBe("FA-2026-0001");
+    expect(recordTitle("quote", { number: null })).toBe("Brouillon");
+    expect(recordPath("invoice", "abc")).toBe("/ventes/factures/abc");
+    expect(entityPath("task")).toBe("/projets/taches");
+    expect(stageProbability("negotiation")).toBe(75);
+  });
+
+  it("chaque relation vise une entité connue et chaque entité a un champ titre", () => {
+    for (const def of Object.values(ENTITIES)) {
+      for (const field of def.fields) {
+        if (field.type === "relation") expect(ENTITIES[field.relation!]).toBeDefined();
+      }
+      for (const key of def.titleFields) expect(def.fields.some((f) => f.key === key)).toBe(true);
+      for (const layout of [def.layouts?.board?.field, def.layouts?.calendar?.start])
+        if (layout) expect(def.fields.some((f) => f.key === layout)).toBe(true);
+    }
   });
 });

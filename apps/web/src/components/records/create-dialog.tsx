@@ -29,6 +29,7 @@ export function CreateRecordDialog({
   onOpenChange,
   labels,
   onCreated,
+  openAfterCreate = false,
   defaults,
 }: {
   entity: EntityKey;
@@ -37,10 +38,27 @@ export function CreateRecordDialog({
   onOpenChange: (open: boolean) => void;
   labels: { singular: string; feminine: boolean };
   onCreated: (row: Row) => void;
+  /** Ouvre la fiche aussitôt créée (documents : les lignes se saisissent sur leur écran). */
+  openAfterCreate?: boolean;
   defaults?: Record<string, unknown>;
 }) {
   const { create } = useRecordMutations(entity);
-  const [values, setValues] = React.useState<Record<string, unknown>>(defaults ?? {});
+  // Valeurs par défaut du registre (statut, priorité…), puis celles du contexte (colonne, date).
+  const initial = React.useCallback(
+    () => ({
+      ...Object.fromEntries(
+        fields
+          .filter((f) => f.defaultValue !== undefined)
+          .map((f) => [
+            f.key,
+            f.defaultValue === "today" ? new Date().toISOString().slice(0, 10) : f.defaultValue,
+          ]),
+      ),
+      ...defaults,
+    }),
+    [fields, defaults],
+  );
+  const [values, setValues] = React.useState<Record<string, unknown>>(initial);
   const [formKey, setFormKey] = React.useState(0);
   const shown = fields.filter(
     (f) => f.editable && (f.required || f.defaultVisible) && f.key !== "ownerId",
@@ -51,7 +69,7 @@ export function CreateRecordDialog({
 
   React.useEffect(() => {
     if (open) {
-      setValues(defaults ?? {});
+      setValues(initial());
       setFormKey((k) => k + 1);
       create.reset();
     }
@@ -66,6 +84,10 @@ export function CreateRecordDialog({
       {
         onSuccess: (row) => {
           onOpenChange(false);
+          if (openAfterCreate) {
+            onCreated(row as Row);
+            return;
+          }
           toast.success(
             `${labels.singular} « ${row.title} » ${labels.feminine ? "créée" : "créé"}.`,
             {

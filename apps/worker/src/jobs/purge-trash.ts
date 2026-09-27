@@ -7,6 +7,13 @@ export const TRASH_RETENTION_DAYS = 30;
 export interface PurgeResult {
   companies: number;
   contacts: number;
+  deals: number;
+  activities: number;
+  products: number;
+  documents: number;
+  projects: number;
+  tasks: number;
+  timeEntries: number;
   comments: number;
   files: number;
   views: number;
@@ -38,8 +45,30 @@ export async function purgeTrash(now: Date = new Date()): Promise<PurgeResult> {
       );
     }
   }
-  const [contacts, companies, comments, removedFiles, views] = await prisma.$transaction([
+  // Ordre : des fiches dépendantes vers les fiches parentes.
+  const [
+    timeEntries,
+    tasks,
+    activities,
+    documents,
+    deals,
+    projects,
+    contacts,
+    products,
+    companies,
+    comments,
+    removedFiles,
+    views,
+  ] = await prisma.$transaction([
+    prisma.timeEntry.deleteMany({ where: expired }),
+    prisma.task.deleteMany({ where: expired }),
+    prisma.activity.deleteMany({ where: expired }),
+    // Seuls des brouillons peuvent être en corbeille : les documents émis ne se suppriment pas.
+    prisma.salesDocument.deleteMany({ where: expired }),
+    prisma.deal.deleteMany({ where: expired }),
+    prisma.project.deleteMany({ where: expired }),
     prisma.contact.deleteMany({ where: expired }),
+    prisma.product.deleteMany({ where: expired }),
     prisma.company.deleteMany({ where: expired }),
     prisma.comment.deleteMany({ where: expired }),
     prisma.storedFile.deleteMany({ where: { id: { in: files.map((f) => f.id) } } }),
@@ -48,6 +77,13 @@ export async function purgeTrash(now: Date = new Date()): Promise<PurgeResult> {
   return {
     companies: companies.count,
     contacts: contacts.count,
+    deals: deals.count,
+    activities: activities.count,
+    products: products.count,
+    documents: documents.count,
+    projects: projects.count,
+    tasks: tasks.count,
+    timeEntries: timeEntries.count,
     comments: comments.count,
     files: removedFiles.count,
     views: views.count,
