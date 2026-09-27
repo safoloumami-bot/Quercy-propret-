@@ -4,6 +4,7 @@ export type ShortcutAction =
   | { type: "palette" }
   | { type: "help" }
   | { type: "sidebar" }
+  | { type: "assistant" }
   | { type: "create" }
   | { type: "navigate"; href: string };
 
@@ -18,6 +19,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
   { keys: ["mod", "K"], description: "Ouvrir la palette de commandes", group: "Général" },
   { keys: ["/"], description: "Rechercher", group: "Général" },
   { keys: ["mod", "B"], description: "Replier ou déplier la barre latérale", group: "Général" },
+  { keys: ["mod", "J"], description: "Ouvrir ou fermer l'assistant", group: "Général" },
   { keys: ["?"], description: "Afficher les raccourcis clavier", group: "Général" },
   { keys: ["Échap"], description: "Fermer la fenêtre ou le menu ouvert", group: "Général" },
   { keys: ["C"], description: "Créer (sur une liste)", group: "Général" },
@@ -66,6 +68,7 @@ export function resolveShortcut(
   if (input.mod && !input.alt) {
     if (key === "k") return { action: { type: "palette" }, state: idle };
     if (key === "b") return { action: { type: "sidebar" }, state: idle };
+    if (key === "j") return { action: { type: "assistant" }, state: idle };
     return { action: null, state: idle };
   }
   if (input.typing || input.mod || input.alt) return { action: null, state: idle };

@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 
+import { useAssistantFocus } from "@/components/assistant/assistant-context";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useRecordTabs } from "@/components/shell/record-tabs";
 import { errorMessage, useTRPC } from "@/lib/trpc";
@@ -109,6 +110,7 @@ export function RecordView({
   const trpc = useTRPC();
   const router = useRouter();
   const def = ENTITIES[entity];
+  useAssistantFocus(entity, id);
   const record = useQuery(trpc.records.get.queryOptions({ entity, id }));
   const { update, remove } = useRecordMutations(entity);
   const [confirmDelete, setConfirmDelete] = React.useState(false);

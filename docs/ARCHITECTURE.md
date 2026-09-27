@@ -179,6 +179,39 @@ temps facturable non encore facturé d'un projet, au taux horaire du projet.
 - **Graphiques** : Recharts avec les jetons de couleur du thème (`--chart-1…6`), infobulles,
   légendes, et un tableau équivalent pour les lecteurs d'écran.
 
+## Assistant IA
+
+- **Modèle** : API Claude via le SDK officiel (`@anthropic-ai/sdk`), `claude-opus-5` par défaut
+  (`AI_MODEL`), réflexion adaptative et niveau d'effort réglable (`AI_EFFORT`), repli
+  automatique côté serveur (`fallbacks: "default"`), invite système identique pour tous mise
+  en cache (`cache_control`), le contexte variable (date, espace, personne, écran ouvert,
+  comptes rendus d'actions) arrivant avec chaque question.
+- **Boucle** (`server/ai/chat.ts`) : réponse en flux (`/api/ai/chat`, Server-Sent Events),
+  exécution des outils demandés par le modèle, 8 allers-retours au plus, historique au format
+  de l'API Messages borné aux 12 dernières questions ; en cas d'échec l'historique n'est pas
+  corrompu. Conversations par personne (`ai_conversation` : messages pour le modèle, tours
+  affichés pour l'écran).
+- **Outils** (`server/ai/tools.ts`, entrées validées par Zod) : lecture (`search_records`,
+  `run_report`, `get_record`, `list_members`) via l'appelant tRPC de la personne — mêmes droits,
+  même portée, mêmes filtres que l'interface — et **propositions d'action** (`propose_*` :
+  création ou modification de fiche, devis, relances, envoi de document). Une proposition
+  n'exécute rien : elle crée une `ai_action` en attente, affichée en carte à confirmer ;
+  `ai.confirmAction` l'exécute une seule fois (transition atomique) avec les droits actuels, et
+  le compte rendu est transmis au modèle au tour suivant.
+- **Lecture de documents** (`server/ai/extract.ts`) : PDF ou photo (10 Mo), sortie structurée
+  validée par un schéma Zod (`documentExtractionSchema` : fournisseur, numéro, dates, HT, TVA
+  par taux, TTC, lignes, IBAN, remarques), contrôle HT + TVA = TTC ; les données lues
+  rejoignent la conversation.
+- **Crédits** (`ai_usage`) : 1 par question (quelle que soit la longueur des étapes d'outils),
+  3 par document ; quota mensuel = crédits par membre de l'offre effective × membres ; jetons
+  consommés conservés pour le suivi des coûts.
+- **Interface** : panneau ancré à droite (non modal : la navigation reste possible), fiche
+  ouverte transmise en contexte (`useAssistantFocus`), rendu Markdown (liens internes seulement
+  en navigation directe, pas d'images distantes), tableaux, graphiques Recharts, cartes
+  d'action et de document lu.
+- **Tests** : `scripts/fake-anthropic.ts` imite l'API (flux SSE et JSON) avec des réponses
+  scriptées ; il sert aux tests d'intégration et aux parcours E2E.
+
 ## Super-admin
 
 Plugin `admin` de Better Auth (`user.role = "admin"`). L'espace `/admin` et le routeur

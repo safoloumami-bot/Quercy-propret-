@@ -33,6 +33,12 @@ const schema = z.object({
    * Par défaut, dérivée de BETTER_AUTH_SECRET.
    */
   ENCRYPTION_KEY: z.string().optional(),
+  /** Assistant IA (Claude). Sans clé, l'assistant affiche qu'il n'est pas configuré. */
+  ANTHROPIC_API_KEY: z.string().optional(),
+  /** Point d'accès de l'API (tests : faux serveur local). */
+  ANTHROPIC_BASE_URL: z.url().optional(),
+  AI_MODEL: z.string().default("claude-opus-5"),
+  AI_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("medium"),
   ENABLE_DEV_MAILBOX: z
     .enum(["true", "false"])
     .default("false")

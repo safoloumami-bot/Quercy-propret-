@@ -37,24 +37,25 @@ model User {
   twoFactors      TwoFactor[]
   memberships     Membership[]
   teamMembers     TeamMember[]
-  invitations     Invitation[]    @relation("InvitedBy")
+  invitations     Invitation[]     @relation("InvitedBy")
   auditEntries    AuditLog[]
   savedViews      SavedView[]
-  ownedCompanies  Company[]       @relation("CompanyOwner")
-  ownedContacts   Contact[]       @relation("ContactOwner")
+  ownedCompanies  Company[]        @relation("CompanyOwner")
+  ownedContacts   Contact[]        @relation("ContactOwner")
   comments        Comment[]
   files           StoredFile[]
-  notifications   Notification[]  @relation("NotificationRecipient")
-  ownedDeals      Deal[]          @relation("DealOwner")
-  ownedActivities Activity[]      @relation("ActivityOwner")
-  ownedProducts   Product[]       @relation("ProductOwner")
-  salesDocuments  SalesDocument[] @relation("SalesDocumentOwner")
-  payments        Payment[]       @relation("PaymentCreator")
-  ownedProjects   Project[]       @relation("ProjectOwner")
-  assignedTasks   Task[]          @relation("TaskOwner")
-  timeEntries     TimeEntry[]     @relation("TimeEntryOwner")
+  notifications   Notification[]   @relation("NotificationRecipient")
+  ownedDeals      Deal[]           @relation("DealOwner")
+  ownedActivities Activity[]       @relation("ActivityOwner")
+  ownedProducts   Product[]        @relation("ProductOwner")
+  salesDocuments  SalesDocument[]  @relation("SalesDocumentOwner")
+  payments        Payment[]        @relation("PaymentCreator")
+  ownedProjects   Project[]        @relation("ProjectOwner")
+  assignedTasks   Task[]           @relation("TaskOwner")
+  timeEntries     TimeEntry[]      @relation("TimeEntryOwner")
   dashboards      Dashboard[]
-  reports         Report[]        @relation("ReportOwner")
+  reports         Report[]         @relation("ReportOwner")
+  aiConversations AiConversation[]
 
   @@map("user")
 }
@@ -209,6 +210,9 @@ model Organization {
   duplicateDismissals DuplicateDismissal[]
   dashboards          Dashboard[]
   reports             Report[]
+  aiConversations     AiConversation[]
+  aiActions           AiAction[]
+  aiUsage             AiUsage[]
 
   @@map("organization")
 }
@@ -982,4 +986,69 @@ model Report {
   @@index([organizationId, deletedAt])
   @@index([schedule, deletedAt])
   @@map("report")
+}
+
+// ─────────────────────────── Assistant IA ───────────────────────────
+
+/// Conversation avec l'assistant : historique envoyé au modèle et rendu affiché.
+model AiConversation {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  title          String
+  /// Historique au format de l'API Messages (tours utilisateur / assistant, outils).
+  messages       Json     @default("[]")
+  /// Tours affichés : texte, tableaux, graphiques, actions proposées.
+  display        Json     @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actions      AiAction[]
+
+  @@index([organizationId, userId, updatedAt(sort: Desc)])
+  @@map("ai_conversation")
+}
+
+/// Action proposée par l'assistant, exécutée seulement après confirmation explicite.
+model AiAction {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  conversationId String
+  tool           String
+  input          Json
+  summary        String
+  /// pending, confirmed, rejected, failed
+  status         String    @default("pending")
+  result         Json?
+  error          String?
+  createdAt      DateTime  @default(now())
+  decidedAt      DateTime?
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, status])
+  @@map("ai_action")
+}
+
+/// Consommation de l'assistant (crédits de l'offre, jetons facturés par le fournisseur).
+model AiUsage {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  /// chat, extraction
+  kind           String
+  credits        Int
+  model          String
+  inputTokens    Int      @default(0)
+  outputTokens   Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("ai_usage")
 }

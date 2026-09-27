@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.7.0] — 2026-09-28 — Phase 7 : assistant IA
+
+### Ajouté
+
+- Panneau **Assistant** ouvrable partout (`Ctrl+J` ou bouton de la barre supérieure), ancré à
+  droite, qui connaît l'écran et la fiche ouverts ; suggestions selon le contexte (résumer une
+  fiche, rédiger une relance, CA du mois…).
+- Questions en langage naturel sur les données : réponse en flux, tableau ou graphique, lien
+  vers la liste filtrée et ouverture dans le constructeur de rapports.
+- Actions avec **confirmation obligatoire** : création et modification de fiches, devis avec
+  lignes, relance des factures impayées, envoi de documents ; compte rendu et lien vers le
+  résultat.
+- Rédaction (emails, relances, descriptions, comptes rendus, réponses) et résumés de fiches.
+- Lecture de factures fournisseurs et de justificatifs (PDF ou photo) : fournisseur, numéro,
+  dates, HT, TVA par taux, TTC, contrôle de cohérence, copie des données.
+- Historique des conversations (ouvrir, supprimer), crédits mensuels par offre, état « non
+  configuré » sans clé d'API.
+- Faux service Claude pour les tests ; tests d'intégration (questions, actions, confirmation
+  unique, crédits, erreurs, lecture de documents) et 3 parcours E2E.
+
 ## [0.6.0] — 2026-09-28 — Phase 6 : tableaux de bord et rapports
 
 ### Ajouté

@@ -8,3 +8,4 @@ export * from "./schemas";
 export * from "./records";
 export * from "./sales";
 export * from "./analytics";
+export * from "./ai";

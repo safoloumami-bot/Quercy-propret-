@@ -29,6 +29,9 @@ export const TENANT_MODELS = [
   "DuplicateDismissal",
   "Dashboard",
   "Report",
+  "AiConversation",
+  "AiAction",
+  "AiUsage",
 ] as const;
 
 /** Modèles à suppression douce : les éléments en corbeille sont masqués par défaut. */

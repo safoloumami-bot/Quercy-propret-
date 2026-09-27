@@ -11,7 +11,14 @@ import { useShell } from "./shell-context";
 /** Écoute le clavier au niveau de la fenêtre et déclenche les raccourcis globaux. */
 export function useGlobalShortcuts() {
   const router = useRouter();
-  const { setPaletteOpen, paletteOpen, setHelpOpen, toggleSidebar } = useShell();
+  const {
+    setPaletteOpen,
+    paletteOpen,
+    setHelpOpen,
+    toggleSidebar,
+    assistantOpen,
+    setAssistantOpen,
+  } = useShell();
   const state = React.useRef<ShortcutState>({ pendingGoAt: null });
 
   React.useEffect(() => {
@@ -42,6 +49,9 @@ export function useGlobalShortcuts() {
         case "sidebar":
           toggleSidebar();
           break;
+        case "assistant":
+          setAssistantOpen(!assistantOpen);
+          break;
         case "create":
           // L'écran courant (liste, fiche) décide quoi créer.
           window.dispatchEvent(new CustomEvent("quercy:create"));
@@ -53,5 +63,13 @@ export function useGlobalShortcuts() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [router, paletteOpen, setPaletteOpen, setHelpOpen, toggleSidebar]);
+  }, [
+    router,
+    paletteOpen,
+    setPaletteOpen,
+    setHelpOpen,
+    toggleSidebar,
+    assistantOpen,
+    setAssistantOpen,
+  ]);
 }

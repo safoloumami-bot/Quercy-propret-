@@ -204,3 +204,28 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
     période écoulée, en PDF et CSV joints ; une seule fois par jour.
 66. **Corrigé** : le filtre « n'est aucun de » et « est vide » sur une colonne obligatoire
     produisaient une requête refusée par Prisma (test `null` sur une colonne non nulle).
+
+## 2026-09-28 — Phase 7
+
+67. **API Claude en direct avec une boucle d'outils maison** plutôt qu'un cadre d'agent : la
+    boucle est courte (8 allers-retours au plus), chaque étape est visible dans le panneau et
+    les outils réutilisent l'appelant tRPC de la personne, donc exactement les mêmes droits,
+    filtres et validations que l'interface. Aucun accès direct à la base depuis un outil.
+68. **Les actions ne sont que proposées** par le modèle (`propose_*`) : l'exécution passe par un
+    clic « Confirmer » (`ai.confirmAction`), une seule fois, avec les droits du moment. Une
+    action refusée ou échouée est signalée au modèle au tour suivant.
+69. **Un crédit par question** (et non par jeton) pour rester lisible par les clients ; les
+    jetons sont tout de même enregistrés pour suivre le coût réel. La lecture d'un document
+    coûte 3 crédits. Pas de facturation en cas d'erreur du service.
+70. **Invite système identique pour tous et mise en cache** ; ce qui varie (date, écran,
+    personne, rôle) est placé dans le message de la question, ce qui garde le cache valable
+    entre les espaces.
+71. **Historique borné aux 12 dernières questions** renvoyées au modèle (le fil complet reste
+    affiché) : coût maîtrisé sans résumé automatique.
+72. **Panneau ancré, non modal** : on peut cliquer sur les liens des réponses et naviguer sans
+    perdre la conversation, qui continue en arrière-plan si on ferme le panneau.
+73. **Les données lues d'un document restent dans la conversation**, pas le fichier : le
+    document n'est ni stocké ni renvoyé au modèle aux tours suivants.
+74. **Faux service Claude pour les tests** (`scripts/fake-anthropic.ts`), au format réel du flux
+    SSE : les tests et la CI n'ont besoin ni de clé ni de réseau, et les parcours restent
+    déterministes.

@@ -14,6 +14,7 @@
     "stripe:setup": "dotenv -e ../../.env -- tsx scripts/stripe-setup.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -48,8 +49,10 @@
     "react-grid-layout": "^2.2.4",
     "react-hook-form": "^7.89.0",
     "react-is": "^19.3.0",
+    "react-markdown": "^10.1.0",
     "read-excel-file": "^9.3.10",
     "recharts": "^3.10.1",
+    "remark-gfm": "^4.0.1",
     "resend": "^6.30.0",
     "server-only": "^0.0.1",
     "stripe": "^22.6.2",

@@ -2,7 +2,14 @@
 
 import { Button } from "@quercy/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@quercy/ui/components/tooltip";
-import { ChevronRightIcon, KeyboardIcon, MoonIcon, SearchIcon, SunIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  KeyboardIcon,
+  MoonIcon,
+  SearchIcon,
+  SparklesIcon,
+  SunIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
@@ -18,7 +25,7 @@ import { useShell } from "./shell-context";
 export function Topbar() {
   const pathname = usePathname();
   const crumbs = breadcrumbFor(pathname);
-  const { setPaletteOpen, setHelpOpen } = useShell();
+  const { setPaletteOpen, setHelpOpen, assistantOpen, setAssistantOpen } = useShell();
   const { resolvedTheme, setTheme } = useThemePreference();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -69,6 +76,23 @@ export function Topbar() {
       </button>
 
       <div className="flex items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={assistantOpen ? "subtle" : "ghost"}
+              size="sm"
+              onClick={() => setAssistantOpen(!assistantOpen)}
+              aria-pressed={assistantOpen}
+              aria-keyshortcuts="Control+J"
+            >
+              <SparklesIcon />
+              Assistant
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            Assistant IA <KeyCombo keys={["mod", "J"]} />
+          </TooltipContent>
+        </Tooltip>
         <TimerWidget />
         <NotificationsBell />
         <Tooltip>

@@ -5,6 +5,7 @@ import {
   PRESET_REPORTS,
   type ReportDefinition,
   can,
+  reportDefinitionSchema,
 } from "@quercy/core";
 import type { Metadata } from "next";
 
@@ -18,26 +19,31 @@ export const metadata: Metadata = { title: "Nouveau rapport" };
 export default async function NewReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ modele?: string }>;
+  searchParams: Promise<{ modele?: string; definition?: string }>;
 }) {
-  const { modele } = await searchParams;
+  const { modele, definition: rawDefinition } = await searchParams;
   const { organization, role } = await requireWorkspaceContext();
   const allowed = (module: ModuleKey) =>
     organization.modules.includes(module) && can(role.permissions, module, "view");
-  const preset = PRESET_REPORTS.find((p) => p.key === modele && allowed(p.module));
+  const given = parseDefinition(rawDefinition);
+  const fromLink = given && allowed(ENTITIES[given.entity].module) ? given : null;
+  const preset = fromLink
+    ? undefined
+    : PRESET_REPORTS.find((p) => p.key === modele && allowed(p.module));
   const firstEntity = ENTITY_KEYS.find((k) => allowed(ENTITIES[k].module));
   if (!preset && !firstEntity) return <Forbidden what="aux rapports (aucun module accessible)" />;
-  const definition: ReportDefinition = preset?.definition ?? {
-    entity: firstEntity!,
-    measure: { op: "count" },
-    groupBy: ENTITIES[firstEntity!].fields.find((f) => f.type === "select")?.key ?? null,
-    dateBucket: null,
-    dateField: "createdAt",
-    filter: { combinator: "and", rules: [] },
-    chart: "bar",
-    limit: 12,
-    sort: "value_desc",
-  };
+  const definition: ReportDefinition = fromLink ??
+    preset?.definition ?? {
+      entity: firstEntity!,
+      measure: { op: "count" },
+      groupBy: ENTITIES[firstEntity!].fields.find((f) => f.type === "select")?.key ?? null,
+      dateBucket: null,
+      dateField: "createdAt",
+      filter: { combinator: "and", rules: [] },
+      chart: "bar",
+      limit: 12,
+      sort: "value_desc",
+    };
   return (
     <div className="mx-auto w-full max-w-[2000px] space-y-6 px-8 py-8">
       <PageHeader
@@ -51,4 +57,15 @@ export default async function NewReportPage({
       />
     </div>
   );
+}
+
+/** Définition transmise par lien (graphique de l'assistant), ignorée si invalide. */
+function parseDefinition(raw: string | undefined): ReportDefinition | null {
+  if (!raw) return null;
+  try {
+    const parsed = reportDefinitionSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
 }

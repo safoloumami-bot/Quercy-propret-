@@ -58,6 +58,7 @@ import { Presence } from "@/components/records/presence";
 import { FieldRow } from "@/components/records/record-view";
 import type { EntityPermissions } from "@/components/records/types";
 import { useRecordTabs } from "@/components/shell/record-tabs";
+import { useAssistantFocus } from "@/components/assistant/assistant-context";
 import { toastError } from "@/components/toast-error";
 import { errorMessage, useTRPC } from "@/lib/trpc";
 
@@ -95,6 +96,7 @@ export function DocumentPage({
   const trpc = useTRPC();
   const router = useRouter();
   const queryClient = useQueryClient();
+  useAssistantFocus(entity, id);
   const def = ENTITIES[entity];
   const detail = useQuery(trpc.sales.document.queryOptions({ id }));
   const record = useQuery(trpc.records.get.queryOptions({ entity, id }));

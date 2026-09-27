@@ -49,6 +49,9 @@ describe("resolveShortcut", () => {
   it("? ouvre l'aide et Ctrl+B replie la barre latérale", () => {
     expect(resolveShortcut(key("?"), idle, 0).action).toEqual({ type: "help" });
     expect(resolveShortcut(key("b", { mod: true }), idle, 0).action).toEqual({ type: "sidebar" });
+    expect(resolveShortcut(key("j", { mod: true, typing: true }), idle, 0).action).toEqual({
+      type: "assistant",
+    });
   });
 });
 

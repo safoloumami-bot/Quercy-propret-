@@ -4,7 +4,7 @@ Logiciel de gestion tout-en-un et modulaire pour les PME, TPE et indépendants :
 commun et des modules que chaque entreprise active selon ses besoins. Il sera disponible dans
 le navigateur (optimisé pour ordinateur) et en application Windows/macOS (Tauri).
 
-> **État actuel : phases 1 à 6 terminées** : fondations, comptes et multi-entreprises,
+> **État actuel : phases 1 à 7 terminées** : fondations, comptes et multi-entreprises,
 > abonnements, moteur générique (tableau, Kanban, calendrier, Gantt, fiches, champs
 > personnalisés, vues, import/export, historique, commentaires, fichiers, recherche, temps réel)
 > et modules cœur : CRM (contacts, entreprises, pipeline d'opportunités, activités, doublons),
@@ -12,7 +12,8 @@ le navigateur (optimisé pour ordinateur) et en application Windows/macOS (Tauri
 > PDF Factur-X, envoi par email, relances, paiement en ligne, acceptation des devis en ligne),
 > projets et tâches (Kanban, Gantt, calendrier, chronomètre, facturation du temps),
 > tableaux de bord personnalisables et rapports (constructeur, exports PDF/Excel/CSV, envois
-> programmés).
+> programmés), assistant IA (Ctrl+J : questions sur les données avec tableaux et graphiques,
+> actions soumises à confirmation, rédaction, résumés, lecture de factures fournisseurs).
 > Authentification complète (mot de passe, lien magique, Google, Microsoft, double
 > authentification), espaces multiples, invitations, rôles et permissions personnalisables,
 > équipes, assistant d'accueil, journal d'audit, export RGPD et isolation des données testée ;
@@ -72,6 +73,18 @@ répond 404 dès que Resend est configuré.
 
 Sans clés Stripe, la page Facturation reste consultable (offre, utilisation, comparatif) et
 indique aux propriétaires que le paiement n'est pas configuré.
+
+### Assistant IA (Claude)
+
+Renseignez `ANTHROPIC_API_KEY` (clé de l'API Claude). Réglages facultatifs : `AI_MODEL`
+(`claude-opus-5` par défaut), `AI_EFFORT` (`low`, `medium` par défaut, `high`) et
+`ANTHROPIC_BASE_URL`. Sans clé, le panneau (`Ctrl+J`) indique que l'assistant n'est pas
+configuré. Chaque question consomme 1 crédit et chaque lecture de document 3 crédits, sur le
+quota mensuel de l'offre (crédits par membre × membres).
+
+Pour essayer sans clé ni réseau : `pnpm --filter @quercy/web exec tsx scripts/fake-anthropic.ts 4010`
+puis `ANTHROPIC_API_KEY=test ANTHROPIC_BASE_URL=http://127.0.0.1:4010` : réponses scriptées
+(utilisées par les tests et les parcours E2E).
 
 ### Connexion Google et Microsoft
 
@@ -134,10 +147,13 @@ docs/             Architecture et décisions
 - `/admin` — super-admin : MRR, churn, essais, espaces clients, connexion « en tant que »,
   webhooks Stripe à rejouer
 - `/api/stripe/webhook` — webhooks Stripe (signés, idempotents)
+- Panneau **Assistant** (`Ctrl+J`, bouton de la barre supérieure) sur tous les écrans ;
+  `/api/ai/chat` (réponse en flux SSE) et `/api/ai/extract` (lecture de PDF ou de photos)
 - `/design-system` — jetons et composants
 - `/api/health` — état de la base et de Redis (200 ou 503)
 
-Raccourcis : `Ctrl+K` palette, `/` recherche, `?` aide, `Ctrl+B` barre latérale,
+Raccourcis : `Ctrl+K` palette, `/` recherche, `?` aide, `Ctrl+B` barre latérale, `Ctrl+J`
+assistant,
 `G` puis `H` (accueil), `C` (contacts), `E` (entreprises), `O` (opportunités), `A`
 (activités), `S` (rapports), `V` (devis), `F` (factures), `P` (projets), `T` (tâches), `R` (réglages), `M`
 (membres), `D` (design system) ; `C` crée une fiche sur une liste ; dans un tableau : `J`/`K`, `Entrée`,
