@@ -179,3 +179,28 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
     précédent. Durée arrondie à la minute supérieure.
 58. **Valeurs par défaut dans le registre** (statut, priorité, étape, unité, TVA, date du jour)
     appliquées à la création côté serveur et pré-remplies dans le formulaire.
+
+## 2026-09-28 — Phase 6
+
+59. **Agrégation des rapports en mémoire** (lecture des seules colonnes utiles, 50 000 fiches au
+    plus) plutôt qu'en SQL brut : le même filtre, la même portée des droits et les mêmes
+    libellés que les listes, sans construire de SQL dynamique. Au-delà, un message invite à
+    réduire la période. Un passage en SQL agrégé reste possible sans changer l'interface.
+60. **Exécution des rapports dans un paquet partagé** (`@quercy/reports`) : le worker envoie les
+    rapports programmés avec les droits actuels de leur auteur (membre retiré ou rôle modifié :
+    envoi ignoré et tracé), sans appel HTTP interne vers l'application.
+61. **react-grid-layout v2** pour la grille (réécriture TypeScript compatible React 19), avec une
+    mesure de largeur maison (ResizeObserver) : le crochet fourni restait à sa largeur initiale.
+    Chaque geste souris a un équivalent au clavier dans le menu du widget.
+62. **Tableau par défaut selon le rôle** tant que la personne n'a rien personnalisé ;
+    « Par défaut » supprime sa disposition. Les widgets d'un module désactivé ou interdit
+    disparaissent automatiquement.
+63. **Le CA facturé déduit les avoirs émis** sur la période ; les encaissements sont en TTC
+    (montants réellement reçus) : les deux libellés le précisent.
+64. **Le clic vers la liste filtrée passe par l'URL** (`?filtre=`, filtre validé par Zod) : le
+    filtre s'applique en mode tableau puis disparaît de l'adresse, sans écraser les vues
+    enregistrées.
+65. **Envois programmés** le lundi (hebdomadaire) ou le 1er du mois (mensuel) à 7 h 30, sur la
+    période écoulée, en PDF et CSV joints ; une seule fois par jour.
+66. **Corrigé** : le filtre « n'est aucun de » et « est vide » sur une colonne obligatoire
+    produisaient une requête refusée par Prisma (test `null` sur une colonne non nulle).

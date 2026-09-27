@@ -18,6 +18,7 @@ const config: NextConfig = {
     "@quercy/storage",
     "@quercy/mailer",
     "@quercy/documents",
+    "@quercy/reports",
   ],
   serverExternalPackages: ["@prisma/client", "ioredis", "@node-rs/argon2"],
   async headers() {

@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.6.0] — 2026-09-28 — Phase 6 : tableaux de bord et rapports
+
+### Ajouté
+
+- Accueil en tableau de bord personnalisable : widgets déplaçables et redimensionnables
+  (grille), bibliothèque de 14 widgets (CA facturé, encaissements, factures en retard par
+  ancienneté, évolution du CA, meilleurs clients, devis en attente, objectif de CA, pipeline,
+  affaires gagnées, mes activités, mes tâches, temps passé, rapport enregistré, prise en main),
+  tableau par défaut selon le rôle.
+- Indicateurs comparés à la période précédente (flèche et %), sélecteur de période global
+  (aujourd'hui, 7 j, 30 j, mois, trimestre, année, 12 mois, personnalisée).
+- Clic sur un chiffre ou une barre : ouverture de la liste filtrée correspondante.
+- Rapports : 10 modèles prêts à l'emploi (ventes, CRM, projets) et constructeur (données,
+  mesure, regroupement et intervalle, période, filtre, graphique barres/courbe/aire/secteurs/
+  tableau/chiffre clé), enregistrement, partage, widget de tableau de bord.
+- Exports PDF, Excel et CSV ; envoi programmé par email (hebdomadaire ou mensuel) par le worker.
+- Paquet `@quercy/reports` ; deux rapports de démonstration.
+- Tests : périodes, agrégation, accès aux listes filtrées, envois (core et paquet), API des
+  tableaux de bord et rapports, 2 parcours E2E.
+
+### Corrigé
+
+- Filtres « n'est aucun de » et « est vide » sur une colonne obligatoire.
+
 ## [0.5.0] — 2026-09-28 — Phase 5 : modules cœur (CRM, ventes, projets)
 
 ### Ajouté

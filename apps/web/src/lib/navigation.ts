@@ -9,6 +9,7 @@ import {
 import {
   Building2Icon,
   CalendarCheckIcon,
+  ChartColumnIcon,
   ClipboardListIcon,
   ContactRoundIcon,
   FactoryIcon,
@@ -63,7 +64,24 @@ export const SIDEBAR_SECTIONS: NavSection[] = [
   {
     id: "main",
     label: null,
-    items: [{ id: "home", href: "/", label: "Accueil", icon: HomeIcon, goKey: "h" }],
+    items: [
+      {
+        id: "home",
+        href: "/",
+        label: "Accueil",
+        icon: HomeIcon,
+        goKey: "h",
+        keywords: ["tableau de bord", "widgets", "indicateurs"],
+      },
+      {
+        id: "reports",
+        href: "/rapports",
+        label: "Rapports",
+        icon: ChartColumnIcon,
+        goKey: "s",
+        keywords: ["statistiques", "graphiques", "analyse", "export", "kpi"],
+      },
+    ],
   },
 ];
 

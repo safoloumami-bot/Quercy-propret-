@@ -5,6 +5,7 @@ import { hashPassword } from "../src/password";
 import { SYSTEM_ROLE_SEEDS } from "../src/roles";
 import { seedBusiness } from "./seed-business";
 import { seedCrm } from "./seed-crm";
+import { seedReports } from "./seed-reports";
 
 /** Mot de passe commun des comptes de démonstration (documenté dans le README). */
 export const DEMO_PASSWORD = "Quercy-demo-2026";
@@ -190,6 +191,7 @@ async function main() {
   );
   await seedCrm(prisma, org.id, sellers);
   await seedBusiness(prisma, org.id, sellers);
+  await seedReports(prisma, org.id, users["demo@quercy.app"]!);
 
   // Super-admin de la plateforme (équipe Quercy), sans espace client.
   const admin = await prisma.user.upsert({

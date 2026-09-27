@@ -7,3 +7,4 @@ export * from "./preferences";
 export * from "./schemas";
 export * from "./records";
 export * from "./sales";
+export * from "./analytics";

@@ -22,3 +22,4 @@ export {
   saveLines,
 } from "./service";
 export type { DocumentData, DocumentLine, PartyInfo, SellerInfo } from "./types";
+export { GEIST_REGULAR, GEIST_SEMIBOLD } from "./fonts.generated";

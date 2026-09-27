@@ -53,6 +53,8 @@ model User {
   ownedProjects   Project[]       @relation("ProjectOwner")
   assignedTasks   Task[]          @relation("TaskOwner")
   timeEntries     TimeEntry[]     @relation("TimeEntryOwner")
+  dashboards      Dashboard[]
+  reports         Report[]        @relation("ReportOwner")
 
   @@map("user")
 }
@@ -205,6 +207,8 @@ model Organization {
   tasks               Task[]
   timeEntries         TimeEntry[]
   duplicateDismissals DuplicateDismissal[]
+  dashboards          Dashboard[]
+  reports             Report[]
 
   @@map("organization")
 }
@@ -931,4 +935,51 @@ model DuplicateDismissal {
 
   @@id([organizationId, entityType, firstId, secondId])
   @@map("duplicate_dismissal")
+}
+
+// ─────────────────────────── Tableaux de bord et rapports ───────────────────────────
+
+/// Tableau de bord d'accueil d'une personne dans un espace (grille de widgets).
+model Dashboard {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  /// [{ i, widget, x, y, w, h, config }]
+  layout         Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("dashboard")
+}
+
+/// Rapport enregistré (constructeur) : définition, partage et envoi programmé par email.
+model Report {
+  id             String    @id @default(cuid())
+  organizationId String
+  ownerId        String
+  name           String
+  description    String?
+  /// Voir reportDefinitionSchema (@quercy/core).
+  definition     Json
+  /// Période par défaut (préréglage) : utilisée à l'ouverture et pour les envois.
+  period         String    @default("30d")
+  shared         Boolean   @default(false)
+  /// none, weekly, monthly
+  schedule       String    @default("none")
+  recipients     String[]  @default([])
+  lastSentAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User         @relation("ReportOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, deletedAt])
+  @@index([schedule, deletedAt])
+  @@map("report")
 }

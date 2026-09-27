@@ -79,6 +79,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "sales.quote.accepted_online": "a accepté le devis en ligne",
   "sales.invoice_time": "a facturé le temps passé",
   "crm.merge": "a fusionné des doublons",
+  "report.create": "a créé un rapport",
+  "report.update": "a modifié un rapport",
+  "report.delete": "a supprimé un rapport",
 };
 
 export function auditActionLabel(action: string): string {

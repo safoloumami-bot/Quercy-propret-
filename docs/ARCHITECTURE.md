@@ -13,7 +13,8 @@ intermédiaire, et le typage traverse tout le dépôt.
       │      ──►  @quercy/storage   (fichiers, local ou S3)
       │      ──►  @quercy/mailer    (emails : Resend ou boîte de développement)
       └────►  @quercy/documents ──►  core, db, mailer (PDF, Factur-X, numérotation, relances)
-@quercy/worker ──►  db, storage, documents, mailer
+      └────►  @quercy/reports   ──►  core, db, documents, mailer (rapports, droits, envois)
+@quercy/worker ──►  db, storage, documents, mailer, reports
 ```
 
 `@quercy/core` ne dépend d'aucun framework (seulement Zod). Il est testable unitairement
@@ -158,6 +159,25 @@ Projets, tâches et saisies de temps sont des entités du moteur (Gantt, Kanban,
 Le chronomètre (`timer.*`) crée une saisie ouverte (`startedAt` sans `minutes`), une seule par
 personne ; l'arrêter calcule la durée. « Facturer le temps » crée une facture brouillon du
 temps facturable non encore facturé d'un projet, au taux horaire du projet.
+
+## Tableaux de bord et rapports
+
+- **Périodes** (`resolvePeriod`, `@quercy/core`) : aujourd'hui, 7 j, 30 j, mois, trimestre,
+  année, 12 mois, personnalisée, calculées dans le fuseau de l'espace, avec la période
+  précédente de même durée pour les comparaisons.
+- **Widgets** : registre `WIDGETS` (core), calcul serveur par widget
+  (`server/analytics/widgets.ts`, droits et portée du module), liens vers la liste filtrée
+  (`?filtre=` lu par `useViewState`). Disposition par personne (`dashboard`), sinon tableau par
+  défaut du rôle (`defaultDashboard`). Grille : react-grid-layout (déplacer, redimensionner) et
+  menu clavier équivalent (monter, descendre, élargir, réduire).
+- **Rapports** : définition validée (`reportDefinitionSchema` : entité, mesure, regroupement,
+  intervalle de date, champ de période, filtre, graphique). `@quercy/reports` lit les seules
+  colonnes utiles dans le périmètre de la personne, puis agrège en mémoire
+  (`aggregateReport`, pur et testé), jusqu'à 50 000 fiches. Le même code sert l'écran, les
+  exports (PDF, Excel, CSV) et le worker, qui envoie les rapports programmés (lundi ou 1er du
+  mois) avec les droits de leur auteur.
+- **Graphiques** : Recharts avec les jetons de couleur du thème (`--chart-1…6`), infobulles,
+  légendes, et un tableau équivalent pour les lecteurs d'écran.
 
 ## Super-admin
 

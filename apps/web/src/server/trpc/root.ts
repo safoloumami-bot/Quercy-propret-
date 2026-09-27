@@ -4,10 +4,12 @@ import { auditRouter } from "./routers/audit";
 import { commentsRouter } from "./routers/comments";
 import { crmRouter } from "./routers/crm";
 import { customFieldsRouter } from "./routers/custom-fields";
+import { dashboardRouter } from "./routers/dashboard";
 import { filesRouter } from "./routers/files";
 import { notificationsRouter } from "./routers/notifications";
 import { presenceRouter } from "./routers/presence";
 import { recordsRouter } from "./routers/records";
+import { reportsRouter } from "./routers/reports";
 import { searchRouter } from "./routers/search";
 import { viewsRouter } from "./routers/views";
 import { billingRouter } from "./routers/billing";
@@ -41,6 +43,8 @@ export const appRouter = createTRPCRouter({
   sales: salesRouter,
   crm: crmRouter,
   timer: timerRouter,
+  dashboard: dashboardRouter,
+  reports: reportsRouter,
 });
 
 export type AppRouter = typeof appRouter;

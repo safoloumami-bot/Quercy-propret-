@@ -9,6 +9,8 @@ import {
 } from "@quercy/core";
 import * as React from "react";
 
+import { FILTER_PARAM, readFilterParam } from "@/lib/filter-param";
+
 /** Configuration par défaut : colonnes visibles par défaut, dans l'ordre de l'entité. */
 export function defaultView(fields: FieldDef[]): ViewConfig {
   return {
@@ -61,6 +63,16 @@ export function useViewState(entity: EntityKey, fields: FieldDef[]) {
       }
     } catch {
       // Stockage indisponible : on garde la vue par défaut.
+    }
+    // Filtre transmis par l'URL (clic sur un chiffre du tableau de bord ou d'un rapport) :
+    // appliqué en tableau, puis retiré de l'adresse pour ne pas se réappliquer.
+    const url = new URL(window.location.href);
+    const fromUrl = readFilterParam(url.searchParams.get(FILTER_PARAM));
+    if (fromUrl) {
+      setConfig((c) => ({ ...c, filter: fromUrl, groupBy: null, layout: "table" }));
+      setViewId(null);
+      url.searchParams.delete(FILTER_PARAM);
+      window.history.replaceState(window.history.state, "", url.toString());
     }
     setLoaded(true);
     // Les champs ne changent pas pendant la vie de la page.

@@ -1,5 +1,6 @@
 import { runDailySales } from "@quercy/documents";
 import { closeMailer } from "@quercy/mailer";
+import { dispatchScheduledReports } from "@quercy/reports";
 import { Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
 
@@ -46,6 +47,21 @@ await queue.upsertJobScheduler(
   },
 );
 
+// Rapports programmés (lundi pour l'hebdomadaire, 1er du mois pour le mensuel).
+await queue.upsertJobScheduler(
+  "reports-daily",
+  { pattern: "30 7 * * *", tz: "Europe/Paris" },
+  {
+    name: "reports-daily",
+    opts: {
+      removeOnComplete: 100,
+      removeOnFail: 500,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 300_000 },
+    },
+  },
+);
+
 /** URL publique de l'application (liens des emails envoyés par le worker). */
 const appUrl =
   process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -58,6 +74,8 @@ const worker = new Worker(
         return purgeTrash();
       case "sales-daily":
         return runDailySales(appUrl);
+      case "reports-daily":
+        return dispatchScheduledReports(appUrl);
       default:
         throw new Error(`Tâche inconnue : ${job.name}`);
     }

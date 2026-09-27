@@ -251,3 +251,21 @@ describe("durées, centimes et registre", () => {
     }
   });
 });
+
+describe("colonnes jamais nulles", () => {
+  it("n'ajoute pas de test « null » impossible sur une colonne obligatoire", () => {
+    const fields = ENTITIES.invoice.fields;
+    expect(
+      buildWhere(fields, {
+        combinator: "and",
+        rules: [{ field: "status", operator: "not_in", value: ["draft"] }],
+      }),
+    ).toEqual({ status: { notIn: ["draft"] } });
+    expect(
+      buildWhere(fields, {
+        combinator: "and",
+        rules: [{ field: "totalCents", operator: "is_not_empty" }],
+      }),
+    ).toEqual({});
+  });
+});

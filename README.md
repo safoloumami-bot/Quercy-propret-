@@ -4,13 +4,15 @@ Logiciel de gestion tout-en-un et modulaire pour les PME, TPE et indépendants :
 commun et des modules que chaque entreprise active selon ses besoins. Il sera disponible dans
 le navigateur (optimisé pour ordinateur) et en application Windows/macOS (Tauri).
 
-> **État actuel : phases 1 à 5 terminées** : fondations, comptes et multi-entreprises,
+> **État actuel : phases 1 à 6 terminées** : fondations, comptes et multi-entreprises,
 > abonnements, moteur générique (tableau, Kanban, calendrier, Gantt, fiches, champs
 > personnalisés, vues, import/export, historique, commentaires, fichiers, recherche, temps réel)
 > et modules cœur : CRM (contacts, entreprises, pipeline d'opportunités, activités, doublons),
 > ventes et facturation (catalogue, devis, commandes, factures, avoirs, factures récurrentes,
 > PDF Factur-X, envoi par email, relances, paiement en ligne, acceptation des devis en ligne),
-> projets et tâches (Kanban, Gantt, calendrier, chronomètre, facturation du temps).
+> projets et tâches (Kanban, Gantt, calendrier, chronomètre, facturation du temps),
+> tableaux de bord personnalisables et rapports (constructeur, exports PDF/Excel/CSV, envois
+> programmés).
 > Authentification complète (mot de passe, lien magique, Google, Microsoft, double
 > authentification), espaces multiples, invitations, rôles et permissions personnalisables,
 > équipes, assistant d'accueil, journal d'audit, export RGPD et isolation des données testée ;
@@ -102,6 +104,7 @@ packages/db       Prisma + PostgreSQL : schéma, migrations, seed
 packages/storage  Stockage des fichiers (disque local ou S3), partagé web/worker
 packages/documents  Documents commerciaux : PDF, Factur-X, numérotation, relances (web/worker)
 packages/mailer   Envoi d'emails (Resend ou boîte de développement), partagé web/worker
+packages/reports  Exécution des rapports, droits hors requête, PDF, envois programmés
 legacy/           Application terrain Quercy Propreté v15 (référence, non compilée)
 docs/             Architecture et décisions
 ```
@@ -111,7 +114,9 @@ docs/             Architecture et décisions
 - `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser`, `/connexion/deux-facteurs`
 - `/bienvenue` — assistant d'accueil : entreprise, modules, couleur, invitations
 - `/invitation/<jeton>` — acceptation d'une invitation
-- `/` — accueil
+- `/` — accueil : tableau de bord personnalisable (widgets, période globale, clic vers les listes)
+- `/rapports`, `/rapports/nouveau`, `/rapports/<id>` — modèles, constructeur, rapports
+  enregistrés ; exports sur `/api/rapports/export`
 - `/crm/contacts`, `/crm/entreprises`, `/crm/opportunites` (pipeline Kanban), `/crm/activites`
   (calendrier), `/crm/doublons` — tableaux, panneau de détail, fiches (`/<id>`)
 - `/ventes/devis`, `/ventes/commandes`, `/ventes/factures`, `/ventes/avoirs`,
@@ -134,7 +139,7 @@ docs/             Architecture et décisions
 
 Raccourcis : `Ctrl+K` palette, `/` recherche, `?` aide, `Ctrl+B` barre latérale,
 `G` puis `H` (accueil), `C` (contacts), `E` (entreprises), `O` (opportunités), `A`
-(activités), `V` (devis), `F` (factures), `P` (projets), `T` (tâches), `R` (réglages), `M`
+(activités), `S` (rapports), `V` (devis), `F` (factures), `P` (projets), `T` (tâches), `R` (réglages), `M`
 (membres), `D` (design system) ; `C` crée une fiche sur une liste ; dans un tableau : `J`/`K`, `Entrée`,
 `O`, `E`, `X`.
 

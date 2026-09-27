@@ -216,6 +216,7 @@ function columnCondition(field: FieldDef, rule: FilterRule, now: Date): Where | 
   const column = field.column ?? field.key;
   const v = field.cents ? toCents(rule.value) : rule.value;
   const textual = ["text", "longtext", "email", "phone", "url"].includes(field.type);
+  const notNull = Boolean(field.required || field.notNull || NON_NULL.has(field.key));
   const insensitive = textual ? { mode: "insensitive" as const } : {};
 
   switch (rule.operator) {
@@ -285,8 +286,10 @@ function columnCondition(field: FieldDef, rule: FilterRule, now: Date): Where | 
     case "not_in": {
       const list = asList(v);
       if (list.length === 0) return null;
-      return rule.operator === "in"
-        ? { [column]: { in: list } }
+      if (rule.operator === "in") return { [column]: { in: list } };
+      // « N'est aucun de » garde les fiches non renseignées (colonne facultative seulement).
+      return notNull
+        ? { [column]: { notIn: list } }
         : { OR: [{ [column]: { notIn: list } }, { [column]: null }] };
     }
     case "has_any": {
@@ -308,10 +311,13 @@ function columnCondition(field: FieldDef, rule: FilterRule, now: Date): Where | 
     case "is_empty":
       if (field.type === "tags" || field.type === "multiselect")
         return { [column]: { isEmpty: true } };
+      // Colonne jamais nulle : aucune fiche ne peut être vide.
+      if (notNull) return textual ? { [column]: "" } : { [column]: { in: [] } };
       return textual ? { OR: [{ [column]: null }, { [column]: "" }] } : { [column]: null };
     case "is_not_empty":
       if (field.type === "tags" || field.type === "multiselect")
         return { NOT: { [column]: { isEmpty: true } } };
+      if (notNull) return textual ? { NOT: { [column]: "" } } : {};
       return textual
         ? { AND: [{ NOT: { [column]: null } }, { NOT: { [column]: "" } }] }
         : { NOT: { [column]: null } };
