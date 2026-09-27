@@ -1,0 +1,92 @@
+"use client";
+
+import { Avatar, AvatarFallback, AvatarImage, initials } from "@quercy/ui/components/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@quercy/ui/components/dropdown-menu";
+import { cn } from "@quercy/ui/lib/utils";
+import { KeyboardIcon, MonitorIcon, MoonIcon, SunIcon, SunMoonIcon } from "lucide-react";
+import { useTheme } from "next-themes";
+
+import { useShell } from "./shell-context";
+
+export function UserMenu({
+  user,
+  roleName,
+  collapsed,
+}: {
+  user: { name: string; email: string; image: string | null };
+  roleName: string;
+  collapsed: boolean;
+}) {
+  const { theme, setTheme } = useTheme();
+  const { setHelpOpen } = useShell();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn(
+          "flex h-10 w-full items-center gap-2 rounded-md px-1.5 text-left transition-colors outline-none hover:bg-sidebar-accent focus-visible:ring-[3px] focus-visible:ring-ring/40 data-[state=open]:bg-sidebar-accent",
+          collapsed && "justify-center px-0",
+        )}
+        aria-label={`Compte : ${user.name}`}
+      >
+        <Avatar>
+          {user.image ? <AvatarImage src={user.image} alt="" /> : null}
+          <AvatarFallback>{initials(user.name)}</AvatarFallback>
+        </Avatar>
+        {collapsed ? null : (
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium">{user.name}</span>
+            <span className="block truncate text-xs text-muted-foreground">{roleName}</span>
+          </span>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="top" align="start" className="w-60">
+        <DropdownMenuLabel className="font-normal">
+          <span className="block text-sm font-medium text-foreground">{user.name}</span>
+          <span className="block truncate">{user.email}</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <SunMoonIcon />
+            Thème
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuRadioGroup value={theme ?? "system"} onValueChange={setTheme}>
+              <DropdownMenuRadioItem value="light">
+                <SunIcon />
+                Clair
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="dark">
+                <MoonIcon />
+                Sombre
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="system">
+                <MonitorIcon />
+                Automatique
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuItem onSelect={() => setHelpOpen(true)}>
+          <KeyboardIcon />
+          Raccourcis clavier
+          <DropdownMenuShortcut>?</DropdownMenuShortcut>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

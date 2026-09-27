@@ -1,0 +1,42 @@
+{
+  "name": "@quercy/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "dotenv -e ../../.env -- next dev --turbopack",
+    "build": "dotenv -e ../../.env -- next build",
+    "start": "dotenv -e ../../.env -- next start",
+    "lint": "eslint src e2e",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@quercy/core": "workspace:*",
+    "@quercy/db": "workspace:*",
+    "@quercy/ui": "workspace:*",
+    "geist": "^1.7.2",
+    "ioredis": "^5.8.2",
+    "lucide-react": "^1.48.0",
+    "next": "15.5.26",
+    "next-themes": "^0.4.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "server-only": "^0.0.1",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@next/eslint-plugin-next": "15.5.26",
+    "@playwright/test": "~1.56.1",
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "dotenv-cli": "^10.0.0",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.0"
+  }
+}

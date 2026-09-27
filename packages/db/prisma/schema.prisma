@@ -1,0 +1,308 @@
+// Schéma de données Quercy.
+// Règles : toute table métier porte `organizationId` (isolation multi-entreprises),
+// `createdAt`, `updatedAt` et `deletedAt` (corbeille de 30 jours).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────── Identité ───────────────────────────────
+// Tables au format attendu par Better Auth (phase 2).
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  emailVerified    Boolean   @default(false)
+  name             String
+  image            String?
+  /// Préférences personnelles (thème, langue, densité…) — voir userPreferencesSchema.
+  preferences      Json      @default("{}")
+  twoFactorEnabled Boolean   @default(false)
+  isSuperAdmin     Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  sessions     Session[]
+  accounts     Account[]
+  memberships  Membership[]
+  teamMembers  TeamMember[]
+  invitations  Invitation[] @relation("InvitedBy")
+  auditEntries AuditLog[]
+  savedViews   SavedView[]
+
+  @@map("user")
+}
+
+model Session {
+  id                   String   @id @default(cuid())
+  userId               String
+  token                String   @unique
+  expiresAt            DateTime
+  ipAddress            String?
+  userAgent            String?
+  /// Espace actif de la session.
+  activeOrganizationId String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ─────────────────────────────── Espaces ───────────────────────────────
+
+enum Plan {
+  FREE
+  PRO
+  BUSINESS
+  ENTERPRISE
+}
+
+model Organization {
+  id           String    @id @default(cuid())
+  name         String
+  slug         String    @unique
+  logoUrl      String?
+  industry     String?
+  size         String?
+  plan         Plan      @default(FREE)
+  trialEndsAt  DateTime?
+  /// Clés des modules activés (voir MODULE_KEYS dans @quercy/core).
+  modules      String[]  @default([])
+  /// Langue, devise, fuseau, format de date, couleur d'accent.
+  preferences  Json      @default("{}")
+  onboardedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  memberships  Membership[]
+  roles        Role[]
+  teams        Team[]
+  invitations  Invitation[]
+  auditLogs    AuditLog[]
+  customFields CustomFieldDefinition[]
+  savedViews   SavedView[]
+
+  @@map("organization")
+}
+
+/// Rôle : prédéfini (`systemKey` renseigné) ou personnalisé par l'entreprise.
+model Role {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  systemKey      String?
+  /// Matrice ressource × action → portée (voir permissionMatrixSchema).
+  permissions    Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships  Membership[]
+  invitations  Invitation[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("role")
+}
+
+model Membership {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  roleId         String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@map("membership")
+}
+
+model Team {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  color          String?
+  leadUserId     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      TeamMember[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("team")
+}
+
+model TeamMember {
+  teamId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@index([userId])
+  @@map("team_member")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+model Invitation {
+  id             String           @id @default(cuid())
+  organizationId String
+  email          String
+  roleId         String
+  invitedById    String
+  token          String           @unique
+  status         InvitationStatus @default(PENDING)
+  expiresAt      DateTime
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([email])
+  @@map("invitation")
+}
+
+// ─────────────────────────── Traçabilité ───────────────────────────
+
+/// Historique des modifications et journal d'audit (qui, quoi, quand, avant/après).
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  actorId        String?
+  /// Rempli quand un super-admin agit « en tant que » un utilisateur.
+  impersonatorId String?
+  action         String
+  entityType     String
+  entityId       String?
+  /// { champ: { before, after } }
+  changes        Json?
+  metadata       Json?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor        User?        @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, entityType, entityId])
+  @@map("audit_log")
+}
+
+// ─────────────────────────── Personnalisation ───────────────────────────
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  SELECT
+  CHECKBOX
+  FILE
+  RELATION
+}
+
+model CustomFieldDefinition {
+  id             String          @id @default(cuid())
+  organizationId String
+  entityType     String
+  key            String
+  label          String
+  type           CustomFieldType
+  /// Options (valeurs de liste, entité cible d'une relation, obligatoire…).
+  options        Json            @default("{}")
+  position       Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, entityType, key])
+  @@map("custom_field_definition")
+}
+
+/// Vue enregistrée d'un tableau : filtres, tris, colonnes, regroupement.
+model SavedView {
+  id             String    @id @default(cuid())
+  organizationId String
+  ownerId        String
+  entityType     String
+  name           String
+  /// true = partagée avec toute l'équipe.
+  shared         Boolean   @default(false)
+  config         Json
+  position       Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entityType])
+  @@map("saved_view")
+}

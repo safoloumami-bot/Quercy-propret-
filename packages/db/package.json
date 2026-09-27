@@ -1,0 +1,30 @@
+{
+  "name": "@quercy/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate:dev": "dotenv -e ../../.env -- prisma migrate dev",
+    "migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
+    "seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
+    "studio": "dotenv -e ../../.env -- prisma studio",
+    "lint": "eslint src prisma",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/client": "~6.19.3",
+    "@quercy/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "dotenv-cli": "^10.0.0",
+    "prisma": "~6.19.3",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.0"
+  }
+}

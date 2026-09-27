@@ -1,0 +1,10 @@
+legacy/
+pnpm-lock.yaml
+**/generated/
+**/.next/
+**/dist/
+**/src-tauri/target/
+**/src-tauri/gen/
+coverage/
+playwright-report/
+test-results/

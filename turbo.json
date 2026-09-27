@@ -1,0 +1,28 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "stream",
+  "globalEnv": ["NODE_ENV", "DATABASE_URL", "REDIS_URL", "NEXT_PUBLIC_APP_URL"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build", "^generate"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "generate": {
+      "cache": false
+    },
+    "dev": {
+      "dependsOn": ["^generate"],
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^generate"]
+    },
+    "typecheck": {
+      "dependsOn": ["^generate"]
+    },
+    "test": {
+      "dependsOn": ["^generate"]
+    }
+  }
+}

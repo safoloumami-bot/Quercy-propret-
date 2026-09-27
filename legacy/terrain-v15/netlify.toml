@@ -1,0 +1,4 @@
+# Les fichiers du site sont à la racine du dépôt : aucun dossier à retrouver.
+[build]
+  publish = "."
+  functions = "netlify/functions"
