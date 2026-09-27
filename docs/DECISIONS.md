@@ -101,3 +101,32 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
     champ `isSuperAdmin`. Sessions d'assistance limitées à une heure.
 33. **Migration générée par `prisma migrate diff`** : `migrate dev` refuse l'environnement non
     interactif lorsqu'une colonne est supprimée.
+
+## 2026-09-27 — Phase 4
+
+34. **Le CRM (Contacts et Entreprises) sert de module pilote au moteur générique**, sans quoi
+    la phase n'aurait rien à montrer. La phase 5 le complétera (pipeline, opportunités,
+    activités, doublons).
+35. **TanStack Table v8** (v9 vient de paraître avec une API réécrite) ; la virtualisation passe
+    par TanStack Virtual. Pagination par décalage (100 lignes par page) : simple et correcte ;
+    la pagination par curseur de tri est une optimisation possible pour les très grands volumes.
+36. **Mode regroupé** : les groupes (valeur, nombre, sous-totaux) viennent d'un `groupBy` SQL ;
+    les lignes d'un groupe se chargent à son ouverture (50 par 50). Le regroupement porte sur les
+    champs standards regroupables.
+37. **Champs personnalisés** en JSON (`customFields`) : filtrables, modifiables, importables et
+    exportables, mais **non triables** (un tri sur une valeur JSON n'est pas indexable).
+38. **Gestes du tableau** : un clic sur la colonne principale ouvre le panneau, un double-clic sur
+    une autre cellule la modifie (la touche `E` aussi), le clic droit ouvre le menu contextuel.
+    Les deux gestes sont distincts pour que le double-clic ne rouvre jamais le panneau.
+39. **Import** : CSV ou Excel lus dans le navigateur (papaparse, read-excel-file), correspondance
+    automatique des colonnes par libellé, vérification à blanc côté serveur, puis import. Les
+    lignes invalides ne sont jamais importées ; limite de 5 000 lignes par import. Les références
+    se résolvent par libellé (responsable par email ou nom, entreprise par nom exact).
+40. **Temps réel** : Server-Sent Events plutôt que WebSocket. C'est unidirectionnel, compatible
+    avec Next.js sans serveur dédié, avec reconnexion automatique. Redis Pub/Sub relaie les
+    événements entre instances.
+41. **Stockage extrait dans `@quercy/storage`**, partagé avec le worker (purge des fichiers).
+    Pilote local par défaut en développement, S3 compatible en production.
+42. **Quota de stockage** = Go par membre de l'offre × nombre de membres, vérifié à chaque envoi.
+43. **Marqueur `data-ready` sur `<html>`** une fois l'interface interactive. Il remplace l'attente
+    « réseau inactif » des tests E2E, devenue impossible avec la connexion SSE permanente.

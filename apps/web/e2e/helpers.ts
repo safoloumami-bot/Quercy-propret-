@@ -90,3 +90,8 @@ export async function createWorkspace(page: Page, name: string) {
   await page.getByRole("button", { name: "Créer l'espace" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^(Bonjour|Bonsoir) /);
 }
+
+/** Attend que l'interface soit interactive (raccourcis et écouteurs branchés). */
+export async function waitForApp(page: Page) {
+  await page.locator("html[data-ready]").waitFor();
+}

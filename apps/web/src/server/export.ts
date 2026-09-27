@@ -21,7 +21,7 @@ const BOM = "\uFEFF";
 
 /** CSV au format européen (séparateur « ; », BOM UTF-8 pour Excel). */
 export function toCsv(rows: Row[]): string {
-  if (rows.length === 0) return "﻿";
+  if (rows.length === 0) return "\uFEFF";
   const headers = [...new Set(rows.flatMap((r) => Object.keys(r)))];
   const lines = [headers.join(";"), ...rows.map((r) => headers.map((h) => cell(r[h])).join(";"))];
   return `${BOM}${lines.join("\r\n")}\r\n`;

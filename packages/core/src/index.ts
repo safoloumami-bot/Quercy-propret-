@@ -5,3 +5,4 @@ export * from "./modules";
 export * from "./permissions";
 export * from "./preferences";
 export * from "./schemas";
+export * from "./records";

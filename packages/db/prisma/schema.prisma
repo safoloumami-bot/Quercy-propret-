@@ -40,6 +40,11 @@ model User {
   invitations  Invitation[] @relation("InvitedBy")
   auditEntries AuditLog[]
   savedViews   SavedView[]
+  ownedCompanies Company[]      @relation("CompanyOwner")
+  ownedContacts  Contact[]      @relation("ContactOwner")
+  comments       Comment[]
+  files          StoredFile[]
+  notifications  Notification[] @relation("NotificationRecipient")
 
   @@map("user")
 }
@@ -176,6 +181,11 @@ model Organization {
   auditLogs    AuditLog[]
   customFields CustomFieldDefinition[]
   savedViews   SavedView[]
+  companies     Company[]
+  contacts      Contact[]
+  comments      Comment[]
+  files         StoredFile[]
+  notifications Notification[]
 
   @@map("organization")
 }
@@ -383,4 +393,133 @@ model StripeEvent {
   @@index([status, createdAt])
   @@index([organizationId])
   @@map("stripe_event")
+}
+
+// ─────────────────────────── CRM ───────────────────────────
+
+model Company {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  type           String?
+  email          String?
+  phone          String?
+  website        String?
+  city           String?
+  country        String?
+  siren          String?
+  annualRevenue  Float?
+  employees      Int?
+  ownerId        String?
+  tags           String[]  @default([])
+  /// Valeurs des champs personnalisés : { clé: valeur }.
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  contacts     Contact[]
+
+  @@index([organizationId, deletedAt, name])
+  @@index([organizationId, ownerId])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@map("company")
+}
+
+model Contact {
+  id             String    @id @default(cuid())
+  organizationId String
+  companyId      String?
+  firstName      String?
+  lastName       String
+  email          String?
+  phone          String?
+  jobTitle       String?
+  status         String?
+  score          Int?
+  source         String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company      Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  owner        User?        @relation("ContactOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt, lastName])
+  @@index([organizationId, companyId])
+  @@index([lastName(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([email(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@map("contact")
+}
+
+// ─────────────────────── Collaboration ───────────────────────
+
+/// Commentaire sur n'importe quelle fiche (entityType + entityId), avec @mentions.
+model Comment {
+  id             String    @id @default(cuid())
+  organizationId String
+  entityType     String
+  entityId       String
+  authorId       String
+  body           String
+  /// Identifiants des personnes mentionnées.
+  mentions       String[]  @default([])
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  editedAt       DateTime?
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entityType, entityId, createdAt])
+  @@map("comment")
+}
+
+/// Fichier stocké (disque local ou S3). Rattaché à une fiche s'il s'agit d'une pièce jointe.
+model StoredFile {
+  id             String    @id @default(cuid())
+  organizationId String
+  storageKey     String    @unique
+  name           String
+  mimeType       String
+  size           Int
+  uploadedById   String
+  entityType     String?
+  entityId       String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedBy   User         @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entityType, entityId])
+  @@map("stored_file")
+}
+
+model Notification {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  /// mention, comment, invitation.accepted, billing.payment_failed…
+  type           String
+  title          String
+  body           String?
+  url            String?
+  actorId        String?
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, organizationId, readAt, createdAt(sort: Desc)])
+  @@map("notification")
 }

@@ -21,7 +21,8 @@
     "seed": "pnpm --filter @quercy/db seed",
     "desktop": "pnpm --filter @quercy/desktop dev",
     "prepare": "husky",
-    "stripe:setup": "pnpm --filter @quercy/web stripe:setup"
+    "stripe:setup": "pnpm --filter @quercy/web stripe:setup",
+    "worker": "pnpm --filter @quercy/worker dev"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

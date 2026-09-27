@@ -78,6 +78,41 @@ tRPC v11 (`apps/web/src/server/trpc`) : `/api/trpc`, typage de bout en bout, sup
   (`FAILED`) et se rejoue depuis `/admin`. Stripe reste la source de vérité ; le traitement
   recopie l'état de l'abonnement.
 
+## Moteur générique des fiches
+
+Tout module métier s'appuie sur le même moteur (`packages/core/src/records`,
+`apps/web/src/server/records`, `apps/web/src/components/records`) :
+
+- **Registre d'entités** (`ENTITIES`) : champs typés (texte, nombre, montant, date, liste,
+  étiquettes, personne, relation…), avec leurs propriétés : modifiable, triable,
+  filtrable, regroupable, agrégat. Les **champs personnalisés** (`CustomFieldDefinition`)
+  s'y ajoutent ; leurs valeurs sont stockées dans la colonne JSON `customFields`.
+- **Filtres** (`FilterGroup`, deux niveaux ET/OU) convertis par `buildWhere()` en clause
+  Prisma, sur **liste blanche** : aucune règle ne peut viser une colonne hors du registre, ni
+  `organizationId`.
+- **Validation** unique (`parseRecordInput`), utilisée pour la création, l'édition en
+  cellule, les actions groupées et l'import ligne par ligne.
+- **API** `records.*` : liste paginée (infinie), groupes avec nombre et sous-totaux (`groupBy`
+  SQL), fiche, création, modification, actions groupées, corbeille et restauration, import
+  (vérification à blanc, puis import). Export CSV ou Excel par `/api/records/<entité>/export`.
+- **Portée des droits** : « les siens » ou « son équipe » s'appliquent via `ownerId` à la
+  lecture, à la modification et à la suppression.
+- **Historique** : chaque modification est inscrite dans `AuditLog` (avant/après, champ par
+  champ), et l'onglet Historique de la fiche la relit.
+- **Tableau** (`DataTable`) : TanStack Table (largeurs) + TanStack Virtual (100 000+ lignes),
+  vues enregistrées (personnelles ou partagées), mise à jour optimiste.
+- **Collaboration** : commentaires avec @mentions, notifications, pièces jointes (stockage
+  local ou S3, liens signés de 5 minutes, types et quota contrôlés), présence (Redis, TTL de
+  45 s) et mises à jour en direct (Redis Pub/Sub, puis Server-Sent Events vers
+  `RealtimeListener`).
+- **Corbeille** : suppression douce, purge définitive à 30 jours par le worker
+  (`apps/worker`, BullMQ, tous les jours à 3 h 15, heure de Paris).
+
+Ajouter un module métier revient à : déclarer l'entité dans le registre, ajouter le modèle
+Prisma (avec `organizationId`, `ownerId`, `customFields`, `deletedAt`) à `TENANT_MODELS`, et
+brancher son délégué dans `records/context.ts`. Tableaux, fiches, filtres, import/export,
+historique, commentaires et fichiers sont alors disponibles.
+
 ## Super-admin
 
 Plugin `admin` de Better Auth (`user.role = "admin"`). L'espace `/admin` et le routeur

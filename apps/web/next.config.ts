@@ -11,7 +11,7 @@ const securityHeaders = [
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ["@quercy/ui", "@quercy/core", "@quercy/db"],
+  transpilePackages: ["@quercy/ui", "@quercy/core", "@quercy/db", "@quercy/storage"],
   serverExternalPackages: ["@prisma/client", "ioredis", "@node-rs/argon2"],
   async headers() {
     return [

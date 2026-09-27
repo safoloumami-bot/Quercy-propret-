@@ -11,6 +11,11 @@ export const TENANT_MODELS = [
   "AuditLog",
   "CustomFieldDefinition",
   "SavedView",
+  "Company",
+  "Contact",
+  "Comment",
+  "StoredFile",
+  "Notification",
 ] as const;
 
 /** Modèles à suppression douce : les éléments en corbeille sont masqués par défaut. */
@@ -20,6 +25,10 @@ export const SOFT_DELETE_MODELS = [
   "Team",
   "CustomFieldDefinition",
   "SavedView",
+  "Company",
+  "Contact",
+  "Comment",
+  "StoredFile",
 ] as const;
 
 const tenantModels = new Set<string>(TENANT_MODELS);

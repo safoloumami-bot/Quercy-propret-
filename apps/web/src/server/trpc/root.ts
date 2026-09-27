@@ -1,6 +1,14 @@
 import { createCallerFactory, createTRPCRouter } from "./init";
 import { adminRouter } from "./routers/admin";
 import { auditRouter } from "./routers/audit";
+import { commentsRouter } from "./routers/comments";
+import { customFieldsRouter } from "./routers/custom-fields";
+import { filesRouter } from "./routers/files";
+import { notificationsRouter } from "./routers/notifications";
+import { presenceRouter } from "./routers/presence";
+import { recordsRouter } from "./routers/records";
+import { searchRouter } from "./routers/search";
+import { viewsRouter } from "./routers/views";
 import { billingRouter } from "./routers/billing";
 import { invitationsRouter } from "./routers/invitations";
 import { membersRouter } from "./routers/members";
@@ -19,6 +27,14 @@ export const appRouter = createTRPCRouter({
   profile: profileRouter,
   billing: billingRouter,
   admin: adminRouter,
+  records: recordsRouter,
+  customFields: customFieldsRouter,
+  views: viewsRouter,
+  comments: commentsRouter,
+  notifications: notificationsRouter,
+  search: searchRouter,
+  presence: presenceRouter,
+  files: filesRouter,
 });
 
 export type AppRouter = typeof appRouter;

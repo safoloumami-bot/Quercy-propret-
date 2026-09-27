@@ -6,11 +6,12 @@ import { cn } from "@quercy/ui/lib/utils";
 import { PanelLeftCloseIcon, PanelLeftOpenIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { PermissionMatrix } from "@quercy/core";
+import type { ModuleKey, PermissionMatrix } from "@quercy/core";
 import type * as React from "react";
 
 import {
   SETTINGS_ENTRY,
+  MODULE_SECTIONS,
   SIDEBAR_SECTIONS,
   activeNavItem,
   filterSections,
@@ -50,6 +51,7 @@ export function Sidebar({
   user,
   roleName,
   permissions,
+  modules,
   platformAdmin,
 }: {
   current: WorkspaceSummary;
@@ -57,6 +59,7 @@ export function Sidebar({
   user: { name: string; email: string; image: string | null };
   roleName: string;
   permissions: PermissionMatrix;
+  modules: ModuleKey[];
   platformAdmin: boolean;
 }) {
   const pathname = usePathname();
@@ -124,44 +127,48 @@ export function Sidebar({
       </div>
 
       <nav aria-label="Navigation principale" className="flex-1 overflow-y-auto px-2">
-        {filterSections(SIDEBAR_SECTIONS, permissions).map((section) => (
-          <div key={section.id} className="mb-4">
-            {section.label && !collapsed ? (
-              <p className="mb-1 px-2 text-xs font-medium text-muted-foreground">{section.label}</p>
-            ) : null}
-            {section.label && collapsed ? (
-              <div className="mx-2 mb-2 h-px bg-sidebar-border" />
-            ) : null}
-            <ul className="grid gap-0.5">
-              {section.items.map((item) => {
-                const isActive = active?.id === item.id;
-                return (
-                  <li key={item.id}>
-                    <SidebarTooltip enabled={collapsed} label={item.label}>
-                      <Link
-                        href={item.href}
-                        aria-current={isActive ? "page" : undefined}
-                        className={cn(
-                          itemClass,
-                          collapsed && "justify-center px-0",
-                          isActive &&
-                            "bg-sidebar-accent text-sidebar-accent-foreground [&_svg]:text-primary",
-                        )}
-                      >
-                        <item.icon />
-                        {collapsed ? (
-                          <span className="sr-only">{item.label}</span>
-                        ) : (
-                          <span className="truncate">{item.label}</span>
-                        )}
-                      </Link>
-                    </SidebarTooltip>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+        {filterSections([...SIDEBAR_SECTIONS, ...MODULE_SECTIONS], permissions, modules).map(
+          (section) => (
+            <div key={section.id} className="mb-4">
+              {section.label && !collapsed ? (
+                <p className="mb-1 px-2 text-xs font-medium text-muted-foreground">
+                  {section.label}
+                </p>
+              ) : null}
+              {section.label && collapsed ? (
+                <div className="mx-2 mb-2 h-px bg-sidebar-border" />
+              ) : null}
+              <ul className="grid gap-0.5">
+                {section.items.map((item) => {
+                  const isActive = active?.id === item.id;
+                  return (
+                    <li key={item.id}>
+                      <SidebarTooltip enabled={collapsed} label={item.label}>
+                        <Link
+                          href={item.href}
+                          aria-current={isActive ? "page" : undefined}
+                          className={cn(
+                            itemClass,
+                            collapsed && "justify-center px-0",
+                            isActive &&
+                              "bg-sidebar-accent text-sidebar-accent-foreground [&_svg]:text-primary",
+                          )}
+                        >
+                          <item.icon />
+                          {collapsed ? (
+                            <span className="sr-only">{item.label}</span>
+                          ) : (
+                            <span className="truncate">{item.label}</span>
+                          )}
+                        </Link>
+                      </SidebarTooltip>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ),
+        )}
       </nav>
 
       <div className="px-2 pb-2">

@@ -5,7 +5,7 @@ describe("toCsv", async () => {
 
   it("échappe les séparateurs, guillemets et retours à la ligne", () => {
     const csv = toCsv([{ nom: 'Dupont "& Fils"', note: "a;b", ligne: "x\ny", n: 3, vide: null }]);
-    expect(csv.startsWith("﻿")).toBe(true);
+    expect(csv.startsWith("\uFEFF")).toBe(true);
     const [header, row] = csv.slice(1).split("\r\n");
     expect(header).toBe("nom;note;ligne;n;vide");
     expect(row).toBe('"Dupont ""& Fils""";"a;b";"x\ny";3;');

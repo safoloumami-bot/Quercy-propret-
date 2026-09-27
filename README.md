@@ -4,7 +4,9 @@ Logiciel de gestion tout-en-un et modulaire pour les PME, TPE et indépendants :
 commun et des modules que chaque entreprise active selon ses besoins. Il sera disponible dans
 le navigateur (optimisé pour ordinateur) et en application Windows/macOS (Tauri).
 
-> **État actuel : phases 1 (fondations), 2 (comptes et multi-entreprises) et 3 (abonnements) terminées.**
+> **État actuel : phases 1 à 4 terminées** : fondations, comptes et multi-entreprises,
+> abonnements, moteur générique (tableau avancé, fiches, champs personnalisés, vues, import/export,
+> historique, commentaires, fichiers, recherche, temps réel) avec le CRM comme premier module.
 > Authentification complète (mot de passe, lien magique, Google, Microsoft, double
 > authentification), espaces multiples, invitations, rôles et permissions personnalisables,
 > équipes, assistant d'accueil, journal d'audit, export RGPD et isolation des données testée ;
@@ -27,6 +29,7 @@ pnpm db:up                  # démarre PostgreSQL et Redis (docker compose)
 pnpm db:migrate             # applique les migrations Prisma
 pnpm seed                   # crée l'espace de démonstration « Quercy Propreté »
 pnpm dev                    # http://localhost:3000
+pnpm worker                 # tâches planifiées (purge de la corbeille…), dans un 2e terminal
 ```
 
 ### Comptes de démonstration
@@ -88,9 +91,11 @@ n'apparaissent que pour les fournisseurs configurés.
 
 ```
 apps/web          Next.js 15 (App Router) — interface et API
+apps/worker       Worker BullMQ (tâches planifiées et files d'attente)
 packages/ui       Design system : jetons CSS (Tailwind 4) et composants (Radix, shadcn)
 packages/core     Logique métier partagée : modules, rôles et permissions, préférences (Zod)
 packages/db       Prisma + PostgreSQL : schéma, migrations, seed
+packages/storage  Stockage des fichiers (disque local ou S3), partagé web/worker
 legacy/           Application terrain Quercy Propreté v15 (référence, non compilée)
 docs/             Architecture et décisions
 ```
@@ -101,6 +106,7 @@ docs/             Architecture et décisions
 - `/bienvenue` — assistant d'accueil : entreprise, modules, couleur, invitations
 - `/invitation/<jeton>` — acceptation d'une invitation
 - `/` — accueil
+- `/crm/contacts`, `/crm/entreprises` (+ `/<id>`) — tableaux, panneau de détail, fiches
 - `/reglages/profil`, `/reglages/securite` (mot de passe, 2FA, appareils, suppression du compte),
   `/reglages/apparence`
 - `/reglages/espace` (entreprise, modules, export RGPD), `/reglages/membres`, `/reglages/equipes`,
@@ -112,7 +118,9 @@ docs/             Architecture et décisions
 - `/api/health` — état de la base et de Redis (200 ou 503)
 
 Raccourcis : `Ctrl+K` palette, `/` recherche, `?` aide, `Ctrl+B` barre latérale,
-`G` puis `H` (accueil), `R` (réglages), `M` (membres), `D` (design system).
+`G` puis `H` (accueil), `C` (contacts), `E` (entreprises), `R` (réglages), `M` (membres),
+`D` (design system) ; `C` crée une fiche sur une liste ; dans un tableau : `J`/`K`, `Entrée`,
+`O`, `E`, `X`.
 
 ## Déploiement
 

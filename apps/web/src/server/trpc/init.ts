@@ -27,6 +27,9 @@ const t = initTRPC.context<Context>().create({
         ...shape.data,
         zodError: error.cause instanceof ZodError ? error.cause.flatten() : null,
         planLimit: error.cause instanceof PlanLimitError,
+        fieldErrors:
+          (error.cause as { fieldErrors?: Record<string, string> } | undefined)?.fieldErrors ??
+          null,
       },
     };
   },

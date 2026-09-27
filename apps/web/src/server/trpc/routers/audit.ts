@@ -1,4 +1,8 @@
+import { ENTITY_KEYS } from "@quercy/core";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+
+import { delegate, entityContext } from "../../records/context";
 
 import { authorize, createTRPCRouter, orgProcedure } from "../init";
 
@@ -41,6 +45,31 @@ export const auditRouter = createTRPCRouter({
         })),
         nextCursor: hasMore ? page[page.length - 1]!.id : null,
       };
+    }),
+
+  /** Historique d'une fiche (visible par quiconque peut consulter la fiche). */
+  forRecord: orgProcedure
+    .input(z.object({ entity: z.enum(ENTITY_KEYS), id: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const { scopeWhere } = await entityContext(ctx, input.entity, "view");
+      const visible = await delegate(ctx, input.entity).count({
+        where: { id: input.id, ...scopeWhere },
+      });
+      if (!visible) throw new TRPCError({ code: "NOT_FOUND", message: "Fiche introuvable." });
+      const items = await ctx.db.auditLog.findMany({
+        where: { entityType: input.entity, entityId: input.id },
+        include: { actor: { select: { id: true, name: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      });
+      return items.map((i) => ({
+        id: i.id,
+        action: i.action,
+        createdAt: i.createdAt,
+        actor: i.actor,
+        changes: i.changes as Record<string, { before: unknown; after: unknown }> | null,
+        impersonated: Boolean(i.impersonatorId),
+      }));
     }),
 
   entityTypes: orgProcedure.query(async ({ ctx }) => {

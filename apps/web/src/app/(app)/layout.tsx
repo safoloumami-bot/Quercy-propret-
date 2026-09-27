@@ -31,6 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         user={{ name: user.name, email: user.email, image: user.image }}
         roleName={role.name}
         permissions={role.permissions}
+        modules={organization.modules}
         platformAdmin={platformAdmin}
         banner={
           <>

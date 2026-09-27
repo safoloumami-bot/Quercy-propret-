@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test.describe("clavier", () => {
   test("Ctrl+K ouvre la palette et navigue vers un écran", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.locator("html[data-ready]").waitFor();
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await page.keyboard.press("ControlOrMeta+k");
     const palette = page.getByRole("dialog", { name: "Palette de commandes" });
@@ -16,7 +16,7 @@ test.describe("clavier", () => {
 
   test("? affiche l'aide et « G puis M » ouvre les membres", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.locator("html[data-ready]").waitFor();
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await page.keyboard.press("?");
     await expect(page.getByRole("dialog", { name: "Raccourcis clavier" })).toBeVisible();
@@ -29,7 +29,7 @@ test.describe("clavier", () => {
 
   test("Ctrl+B replie la barre latérale et l'état survit au rechargement", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.locator("html[data-ready]").waitFor();
     const sidebar = page.getByRole("complementary", { name: "Barre latérale" });
     await expect(sidebar).toHaveAttribute("data-collapsed", "false");
     await page.keyboard.press("ControlOrMeta+b");

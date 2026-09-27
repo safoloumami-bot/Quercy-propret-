@@ -1,9 +1,18 @@
-import { type Action, type PermissionMatrix, type Resource, can } from "@quercy/core";
+import {
+  type Action,
+  type ModuleKey,
+  type PermissionMatrix,
+  type Resource,
+  can,
+} from "@quercy/core";
 import {
   Building2Icon,
+  ContactRoundIcon,
+  FactoryIcon,
   CreditCardIcon,
   HomeIcon,
   KeyRoundIcon,
+  ListPlusIcon,
   type LucideIcon,
   PaletteIcon,
   ScrollTextIcon,
@@ -26,6 +35,8 @@ export interface NavItem {
   goKey?: string;
   /** Droit requis pour voir l'écran. */
   permission?: readonly [Resource, Action];
+  /** Module auquel appartient l'écran (masqué si le module est désactivé). */
+  module?: ModuleKey;
 }
 
 export interface NavSection {
@@ -40,6 +51,36 @@ export const SIDEBAR_SECTIONS: NavSection[] = [
     id: "main",
     label: null,
     items: [{ id: "home", href: "/", label: "Accueil", icon: HomeIcon, goKey: "h" }],
+  },
+];
+
+/** Modules livrés : leurs écrans ne sont visibles que si le module est activé dans l'espace. */
+export const MODULE_SECTIONS: NavSection[] = [
+  {
+    id: "crm",
+    label: "Contacts & CRM",
+    items: [
+      {
+        id: "crm-contacts",
+        href: "/crm/contacts",
+        label: "Contacts",
+        icon: ContactRoundIcon,
+        keywords: ["crm", "personnes", "prospects", "clients"],
+        goKey: "c",
+        permission: ["crm", "view"],
+        module: "crm",
+      },
+      {
+        id: "crm-companies",
+        href: "/crm/entreprises",
+        label: "Entreprises",
+        icon: FactoryIcon,
+        keywords: ["crm", "sociétés", "comptes", "clients"],
+        goKey: "e",
+        permission: ["crm", "view"],
+        module: "crm",
+      },
+    ],
   },
 ];
 
@@ -118,6 +159,14 @@ export const SETTINGS_SECTIONS: NavSection[] = [
         permission: ["members", "view"],
       },
       {
+        id: "custom-fields",
+        href: "/reglages/champs",
+        label: "Champs personnalisés",
+        icon: ListPlusIcon,
+        keywords: ["champs", "attributs", "personnalisation"],
+        permission: ["settings", "admin"],
+      },
+      {
         id: "roles",
         href: "/reglages/roles",
         label: "Rôles et permissions",
@@ -164,20 +213,27 @@ const SETTINGS_ITEMS = SETTINGS_SECTIONS.flatMap((s) => s.items);
 /** Tous les écrans (palette de commandes, fil d'Ariane, raccourcis). */
 export const NAV_ITEMS: NavItem[] = [
   ...SIDEBAR_SECTIONS.flatMap((s) => s.items),
+  ...MODULE_SECTIONS.flatMap((s) => s.items),
   SETTINGS_ENTRY,
   ...SETTINGS_ITEMS,
 ];
 
-export function isAllowed(item: NavItem, permissions: PermissionMatrix): boolean {
+export function isAllowed(
+  item: NavItem,
+  permissions: PermissionMatrix,
+  modules?: readonly ModuleKey[],
+): boolean {
+  if (item.module && modules && !modules.includes(item.module)) return false;
   return !item.permission || can(permissions, item.permission[0], item.permission[1]);
 }
 
 export function filterSections(
   sections: NavSection[],
   permissions: PermissionMatrix,
+  modules?: readonly ModuleKey[],
 ): NavSection[] {
   return sections
-    .map((s) => ({ ...s, items: s.items.filter((i) => isAllowed(i, permissions)) }))
+    .map((s) => ({ ...s, items: s.items.filter((i) => isAllowed(i, permissions, modules)) }))
     .filter((s) => s.items.length > 0);
 }
 
@@ -208,6 +264,10 @@ export interface Crumb {
 export function breadcrumbFor(pathname: string): Crumb[] {
   const item = activeNavItem(pathname);
   if (!item) return [];
+  const moduleSection = MODULE_SECTIONS.find((s) => s.items.includes(item));
+  if (moduleSection?.label) {
+    return [{ label: moduleSection.label }, { label: item.label, href: item.href }];
+  }
   if (SETTINGS_ITEMS.includes(item)) {
     return [
       { label: SETTINGS_ENTRY.label, href: SETTINGS_ENTRY.href },

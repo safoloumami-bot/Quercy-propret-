@@ -42,6 +42,10 @@ export function useGlobalShortcuts() {
         case "sidebar":
           toggleSidebar();
           break;
+        case "create":
+          // L'écran courant (liste, fiche) décide quoi créer.
+          window.dispatchEvent(new CustomEvent("quercy:create"));
+          break;
         case "navigate":
           router.push(action.href);
           break;

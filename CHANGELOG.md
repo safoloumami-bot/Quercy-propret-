@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.4.0] — 2026-09-27 — Phase 4 : moteur générique (et CRM pilote)
+
+### Ajouté
+
+- Moteur générique des fiches : registre d'entités, champs typés, filtres ET/OU sur liste
+  blanche, tri multiple, validation unique, portée « les siens / son équipe ».
+- Tableau avancé :
+  - virtualisation et pagination infinie ;
+  - colonnes redimensionnables, déplaçables, masquables et figées ;
+  - tri multiple, filtres imbriqués, regroupement avec sous-totaux ;
+  - sélection multiple et actions groupées ;
+  - édition en cellule avec mise à jour optimiste ;
+  - densité, menu contextuel, navigation `J`/`K` ;
+  - vues enregistrées, personnelles ou partagées.
+- Fiches : panneau latéral et page complète, champs modifiables avec enregistrement automatique,
+  onglets internes, présence en temps réel, commentaires avec @mentions, historique avant/après,
+  pièces jointes (glisser-déposer, liens signés, quota de l'offre), vue 360° (contacts d'une
+  entreprise).
+- Champs personnalisés (texte, nombre, date, liste, case) sur toutes les fiches.
+- Import CSV/Excel en 3 étapes avec vérification, export CSV/Excel de la vue ou de la sélection.
+- Corbeille de 30 jours avec restauration et annulation immédiate ; purge automatique par le
+  worker BullMQ (`apps/worker`).
+- Centre de notifications (mentions, commentaires, attributions), mises à jour en direct (SSE).
+- Recherche globale des fiches dans la palette `Ctrl+K`, raccourci `C` pour créer.
+- Module CRM : contacts et entreprises, jeu de démonstration réaliste (60 entreprises, 191
+  contacts).
+- Paquet `@quercy/storage` (disque local ou S3 : AWS, R2, MinIO).
+- Tests : moteur (48 tests core), 14 tests d'intégration des fiches, stockage, purge, 4 parcours
+  E2E du CRM.
+
 ## [0.3.0] — 2026-09-27 — Phase 3 : abonnements
 
 ### Ajouté
