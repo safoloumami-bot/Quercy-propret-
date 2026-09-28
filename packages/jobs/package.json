@@ -1,28 +1,26 @@
 {
-  "name": "@quercy/worker",
+  "name": "@quercy/jobs",
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
-    "dev": "dotenv -e ../../.env -- tsx watch src/index.ts",
-    "start": "dotenv -e ../../.env -- tsx src/index.ts",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "@quercy/core": "workspace:*",
     "@quercy/db": "workspace:*",
-    "@quercy/jobs": "workspace:*",
+    "@quercy/documents": "workspace:*",
     "@quercy/mailer": "workspace:*",
-    "bullmq": "^5.81.5",
-    "ioredis": "^5.8.2",
-    "tsx": "^4.20.0"
+    "@quercy/reports": "workspace:*",
+    "@quercy/storage": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",
     "dotenv": "^17.2.0",
-    "dotenv-cli": "^10.0.0",
     "typescript": "~5.9.3",
     "vitest": "^4.0.0"
   }

@@ -59,7 +59,10 @@ export function env(): ServerEnv {
     }
     cached = {
       ...parsed.data,
-      APP_URL: parsed.data.BETTER_AUTH_URL ?? parsed.data.NEXT_PUBLIC_APP_URL,
+      // Netlify fournit l'adresse du site dans URL quand aucune adresse n'est configurée.
+      APP_URL:
+        parsed.data.BETTER_AUTH_URL ??
+        (process.env.NEXT_PUBLIC_APP_URL || process.env.URL || parsed.data.NEXT_PUBLIC_APP_URL),
     };
   }
   return cached;

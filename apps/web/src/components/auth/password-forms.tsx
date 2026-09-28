@@ -16,7 +16,7 @@ import { authClient, authErrorMessage } from "@/lib/auth-client";
 
 const forgotSchema = z.object({ email: emailSchema });
 
-export function ForgotPasswordForm() {
+export function ForgotPasswordForm({ mailReady = true }: { mailReady?: boolean }) {
   const [sent, setSent] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const form = useForm<z.infer<typeof forgotSchema>>({
@@ -62,6 +62,12 @@ export function ForgotPasswordForm() {
           Indiquez votre adresse : nous vous envoyons un lien de réinitialisation.
         </p>
       </div>
+      {!mailReady ? (
+        <Callout variant="warning" icon={<CircleAlertIcon />}>
+          L&apos;envoi d&apos;e-mails n&apos;est pas encore configuré sur ce site : aucun lien ne
+          pourra vous être envoyé. Demandez à l&apos;administrateur de réinitialiser votre accès.
+        </Callout>
+      ) : null}
       {error ? (
         <Callout variant="danger" icon={<CircleAlertIcon />}>
           {error}

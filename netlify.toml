@@ -1,6 +1,7 @@
 # Déploiement Netlify de l'application web (le worker s'héberge ailleurs : voir README).
 [build]
-  command = "pnpm --filter @quercy/db generate && pnpm --filter @quercy/web build"
+  # Client Prisma, migrations de la base (automatiques), puis application : voir le script.
+  command = "bash scripts/netlify-build.sh"
   publish = "apps/web/.next"
 
 [build.environment]

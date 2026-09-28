@@ -22,6 +22,7 @@
     "@quercy/core": "workspace:*",
     "@quercy/db": "workspace:*",
     "@quercy/documents": "workspace:*",
+    "@quercy/jobs": "workspace:*",
     "@quercy/mailer": "workspace:*",
     "@quercy/reports": "workspace:*",
     "@quercy/storage": "workspace:*",

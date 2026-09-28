@@ -1,6 +1,7 @@
 import "server-only";
 
 import { hashPassword, prisma, verifyPassword } from "@quercy/db";
+import { MailNotConfiguredError } from "@quercy/mailer";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
@@ -8,7 +9,7 @@ import { admin, magicLink, twoFactor } from "better-auth/plugins";
 import { headers } from "next/headers";
 import { cache } from "react";
 
-import { sendEmail } from "./email/send";
+import { sendEmail as sendAppEmail } from "./email/send";
 import { MagicLinkEmail, ResetPasswordEmail, VerifyEmail } from "./email/templates";
 import { env } from "./env";
 
@@ -48,6 +49,19 @@ export function requestOrigin(request: Request): string | null {
     return new URL(`${proto}://${host}`).origin;
   } catch {
     return null;
+  }
+}
+
+/**
+ * E-mails de connexion : sans service d'envoi configuré, l'inscription et la connexion
+ * continuent (l'avertissement est affiché sur les pages concernées).
+ */
+async function sendEmail(message: Parameters<typeof sendAppEmail>[0]) {
+  try {
+    await sendAppEmail(message);
+  } catch (error) {
+    if (!(error instanceof MailNotConfiguredError)) throw error;
+    console.warn(JSON.stringify({ level: "warn", msg: "auth.mail_not_configured" }));
   }
 }
 

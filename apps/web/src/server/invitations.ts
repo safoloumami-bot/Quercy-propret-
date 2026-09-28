@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 
 import { prisma } from "@quercy/db";
+import { MailNotConfiguredError } from "@quercy/mailer";
 
 import { sendEmail } from "./email/send";
 import { InvitationEmail } from "./email/templates";
@@ -23,6 +24,8 @@ export interface InvitationResult {
   email: string;
   status: "invited" | "already_member";
   url?: string;
+  /** Faux quand aucun service d'e-mail n'est configuré : le lien est à partager soi-même. */
+  emailSent?: boolean;
 }
 
 /**
@@ -69,7 +72,7 @@ export async function createInvitations(params: {
         });
 
     const url = invitationUrl(token);
-    await sendEmail({
+    const emailSent = await sendEmail({
       to: email,
       subject: `${inviter.name} vous invite sur Quercy`,
       react: InvitationEmail({
@@ -78,7 +81,13 @@ export async function createInvitations(params: {
         organizationName: organization.name,
         roleName: role.name,
       }),
-    });
+    }).then(
+      () => true,
+      (error: unknown) => {
+        if (error instanceof MailNotConfiguredError) return false;
+        throw error;
+      },
+    );
     await prisma.auditLog.create({
       data: {
         organizationId: organization.id,
@@ -90,7 +99,7 @@ export async function createInvitations(params: {
         ipAddress: params.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
       },
     });
-    results.push({ email, status: "invited", url });
+    results.push({ email, status: "invited", url, emailSent });
   }
   return results;
 }

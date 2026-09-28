@@ -38,6 +38,29 @@ function devMailboxEnabled(): boolean {
   return process.env.ENABLE_DEV_MAILBOX === "true" && !process.env.RESEND_API_KEY && redisAvailable;
 }
 
+/**
+ * Vrai si les e-mails partent vraiment (Resend) ou sont capturés (développement, tests,
+ * boîte de développement). Faux en production sans RESEND_API_KEY : rien ne partirait.
+ */
+export function mailConfigured(): boolean {
+  return (
+    Boolean(process.env.RESEND_API_KEY) ||
+    process.env.NODE_ENV !== "production" ||
+    devMailboxEnabled()
+  );
+}
+
+/** Levée quand un e-mail est demandé alors qu'aucun service d'envoi n'est configuré. */
+export class MailNotConfiguredError extends Error {
+  constructor() {
+    super(
+      "Aucun e-mail n'est parti : l'envoi d'e-mails n'est pas encore configuré sur ce site " +
+        "(clé RESEND_API_KEY à ajouter par l'administrateur).",
+    );
+    this.name = "MailNotConfiguredError";
+  }
+}
+
 async function mailbox(): Promise<Redis> {
   redis ??= new Redis(process.env.REDIS_URL ?? "redis://localhost:6379", {
     lazyConnect: true,
@@ -51,7 +74,9 @@ async function mailbox(): Promise<Redis> {
 
 /**
  * Envoie un email (application web et worker). Avec RESEND_API_KEY : envoi réel via Resend.
- * Sans clé : l'email est journalisé, et gardé dans la boîte de développement si elle est activée.
+ * Sans clé : l'email est journalisé, et gardé dans la boîte de développement si elle est activée ;
+ * en production sans clé ni boîte de développement, MailNotConfiguredError est levée pour que
+ * l'interface dise clairement que rien n'est parti.
  */
 export async function sendMail(message: MailMessage): Promise<void> {
   const key = process.env.RESEND_API_KEY;
@@ -88,6 +113,7 @@ export async function sendMail(message: MailMessage): Promise<void> {
       attachments,
     }),
   );
+  if (!mailConfigured()) throw new MailNotConfiguredError();
   if (!devMailboxEnabled()) return;
   const mail: DevMail = {
     to: message.to,

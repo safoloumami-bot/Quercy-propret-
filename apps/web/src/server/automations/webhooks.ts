@@ -2,6 +2,7 @@ import "server-only";
 
 import { type AutomationTrigger, type EntityKey, eventName } from "@quercy/core";
 import { type Prisma, prisma } from "@quercy/db";
+import { deliverWebhook } from "@quercy/jobs";
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
 
@@ -17,7 +18,10 @@ function webhookQueue(): Queue {
   return queue;
 }
 
-/** Crée une livraison par webhook abonné et la confie au worker (nouvelles tentatives incluses). */
+/**
+ * Crée une livraison par webhook abonné et la confie au worker (nouvelles tentatives incluses),
+ * ou la livre tout de suite quand aucun Redis n'est configuré.
+ */
 export async function enqueueDeliveries(
   organizationId: string,
   event: string,
@@ -44,6 +48,11 @@ export async function enqueueDeliveries(
         } as Prisma.InputJsonValue,
       },
     });
+    // Sans Redis (hébergement Netlify) : livraison immédiate, une seule tentative.
+    if (!process.env.REDIS_URL) {
+      await deliverWebhook(delivery.id).catch(() => undefined);
+      continue;
+    }
     try {
       await webhookQueue().add(
         "deliver",

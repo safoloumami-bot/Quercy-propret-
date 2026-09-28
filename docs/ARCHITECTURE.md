@@ -219,7 +219,7 @@ temps facturable non encore facturé d'un projet, au taux horaire du projet.
   et `server/records/after-change.ts` (stock des articles, soldes bancaires recalculés).
 - **Après chaque écriture** (`afterRecordChange`) : valeurs calculées, puis livraison des
   webhooks (`server/automations/webhooks.ts` → file BullMQ `webhooks` → worker
-  `jobs/webhooks.ts`, signature HMAC) et automatisations (`server/automations/engine.ts`).
+  `packages/jobs/src/webhooks.ts`, signature HMAC) et automatisations (`server/automations/engine.ts`).
 - **API publique** : `app/api/v1/[entity]` appelle les procédures tRPC internes avec la
   session de la personne qui a créé la clé (`server/api/keys.ts`) ; description OpenAPI
   générée depuis le registre (`server/api/openapi.ts`).

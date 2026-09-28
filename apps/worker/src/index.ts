@@ -1,11 +1,7 @@
-import { runDailySales } from "@quercy/documents";
+import { WEBHOOK_QUEUE, deliverWebhook, isDailyJob, runDailyJob } from "@quercy/jobs";
 import { closeMailer } from "@quercy/mailer";
-import { dispatchScheduledReports } from "@quercy/reports";
 import { Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
-
-import { purgeTrash } from "./jobs/purge-trash";
-import { WEBHOOK_QUEUE, deliverWebhook } from "./jobs/webhooks";
 
 /**
  * Worker Quercy : tâches planifiées et en file d'attente (BullMQ sur Redis).
@@ -70,16 +66,8 @@ const appUrl =
 const worker = new Worker(
   MAINTENANCE_QUEUE,
   async (job) => {
-    switch (job.name) {
-      case "purge-trash":
-        return purgeTrash();
-      case "sales-daily":
-        return runDailySales(appUrl);
-      case "reports-daily":
-        return dispatchScheduledReports(appUrl);
-      default:
-        throw new Error(`Tâche inconnue : ${job.name}`);
-    }
+    if (!isDailyJob(job.name)) throw new Error(`Tâche inconnue : ${job.name}`);
+    return runDailyJob(job.name, appUrl);
   },
   { connection, concurrency: 2 },
 );

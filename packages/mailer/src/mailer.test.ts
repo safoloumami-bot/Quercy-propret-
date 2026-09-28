@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 
-import { closeMailer, sendMail } from "./index";
+import { MailNotConfiguredError, closeMailer, mailConfigured, sendMail } from "./index";
 
 afterAll(closeMailer);
 
@@ -22,6 +22,22 @@ describe("sendMail", () => {
     };
     expect(entry.links).toEqual(["https://quercy.test/f/abc?x=1&y=2"]);
     expect(entry.attachments).toEqual(["FA-2026-0001.pdf"]);
+    log.mockRestore();
+  });
+
+  it("en production sans fournisseur, signale clairement que rien n'est parti", async () => {
+    delete process.env.RESEND_API_KEY;
+    process.env.ENABLE_DEV_MAILBOX = "false";
+    vi.stubEnv("NODE_ENV", "production");
+    const log = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    expect(mailConfigured()).toBe(false);
+    await expect(
+      sendMail({ to: "client@example.fr", subject: "Test", html: "<p>x</p>", text: "x" }),
+    ).rejects.toBeInstanceOf(MailNotConfiguredError);
+    process.env.RESEND_API_KEY = "re_test";
+    expect(mailConfigured()).toBe(true);
+    delete process.env.RESEND_API_KEY;
+    vi.unstubAllEnvs();
     log.mockRestore();
   });
 });

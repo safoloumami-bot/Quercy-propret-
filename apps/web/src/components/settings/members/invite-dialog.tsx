@@ -81,7 +81,7 @@ export function InviteDialog({
   const [raw, setRaw] = React.useState("");
   const [roleId, setRoleId] = React.useState(defaultRole);
   const [results, setResults] = React.useState<
-    { email: string; status: string; url?: string }[] | null
+    { email: string; status: string; url?: string; emailSent?: boolean }[] | null
   >(null);
   const invite = useMutation(trpc.invitations.create.mutationOptions());
   const { valid, invalid } = parseEmails(raw);
@@ -108,12 +108,18 @@ export function InviteDialog({
           setResults(data);
           await queryClient.invalidateQueries({ queryKey: trpc.invitations.list.queryKey() });
           const sent = data.filter((d) => d.status === "invited").length;
-          if (sent > 0)
+          if (data.some((d) => d.status === "invited" && d.emailSent === false))
+            toast.warning(
+              "Invitations créées, mais aucun e-mail n'est parti : l'envoi d'e-mails n'est pas configuré. Copiez les liens ci-dessous.",
+            );
+          else if (sent > 0)
             toast.success(sent > 1 ? `${sent} invitations envoyées.` : "Invitation envoyée.");
         },
       },
     );
   }
+
+  const mailOff = results?.some((r) => r.status === "invited" && r.emailSent === false) ?? false;
 
   return (
     <Dialog open={open} onOpenChange={reset}>
@@ -121,10 +127,11 @@ export function InviteDialog({
         {results ? (
           <div className="grid gap-4">
             <DialogHeader>
-              <DialogTitle>Invitations envoyées</DialogTitle>
+              <DialogTitle>{mailOff ? "Invitations créées" : "Invitations envoyées"}</DialogTitle>
               <DialogDescription>
-                Chaque personne reçoit un email. Vous pouvez aussi partager le lien directement
-                (valable 7 jours).
+                {mailOff
+                  ? "Aucun e-mail n'est parti (envoi d'e-mails non configuré) : envoyez vous-même chaque lien à la personne (valable 7 jours)."
+                  : "Chaque personne reçoit un email. Vous pouvez aussi partager le lien directement (valable 7 jours)."}
               </DialogDescription>
             </DialogHeader>
             <ul className="divide-y divide-border rounded-lg border border-border">
