@@ -1,0 +1,1717 @@
+// Schéma de données Quercy.
+// Règles : toute table métier porte `organizationId` (isolation multi-entreprises),
+// `createdAt`, `updatedAt` et `deletedAt` (corbeille de 30 jours).
+
+generator client {
+  provider      = "prisma-client-js"
+  /// « native » pour le développement et Docker ; « rhel-openssl-3.0.x » pour les fonctions
+  /// serverless (Netlify, Vercel, AWS Lambda).
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────── Identité ───────────────────────────────
+// Tables au format attendu par Better Auth (phase 2).
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  emailVerified    Boolean   @default(false)
+  name             String
+  image            String?
+  /// Préférences personnelles (thème, langue, densité…) — voir userPreferencesSchema.
+  preferences      Json      @default("{}")
+  twoFactorEnabled Boolean   @default(false)
+  /// Rôle plateforme (plugin admin de Better Auth) : « admin » = super-admin du SaaS.
+  role             String?
+  banned           Boolean?  @default(false)
+  banReason        String?
+  banExpires       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  sessions        Session[]
+  accounts        Account[]
+  twoFactors      TwoFactor[]
+  memberships     Membership[]
+  teamMembers     TeamMember[]
+  invitations     Invitation[]     @relation("InvitedBy")
+  auditEntries    AuditLog[]
+  savedViews      SavedView[]
+  ownedCompanies  Company[]        @relation("CompanyOwner")
+  ownedContacts   Contact[]        @relation("ContactOwner")
+  comments        Comment[]
+  files           StoredFile[]
+  notifications   Notification[]   @relation("NotificationRecipient")
+  ownedDeals      Deal[]           @relation("DealOwner")
+  ownedActivities Activity[]       @relation("ActivityOwner")
+  ownedProducts   Product[]        @relation("ProductOwner")
+  salesDocuments  SalesDocument[]  @relation("SalesDocumentOwner")
+  payments        Payment[]        @relation("PaymentCreator")
+  ownedProjects   Project[]        @relation("ProjectOwner")
+  assignedTasks   Task[]           @relation("TaskOwner")
+  timeEntries     TimeEntry[]      @relation("TimeEntryOwner")
+  dashboards      Dashboard[]
+  reports         Report[]         @relation("ReportOwner")
+  aiConversations AiConversation[]
+
+  ownedSuppliers        Supplier[]        @relation("SupplierOwner")
+  ownedPurchaseOrders   PurchaseOrder[]   @relation("PurchaseOrderOwner")
+  ownedBills            Bill[]            @relation("BillOwner")
+  ownedExpenses         Expense[]         @relation("ExpenseOwner")
+  ownedWarehouses       Warehouse[]       @relation("WarehouseOwner")
+  ownedStockMovements   StockMovement[]   @relation("StockMovementOwner")
+  ownedEvents           Event[]           @relation("EventOwner")
+  ownedTickets          Ticket[]          @relation("TicketOwner")
+  ownedEmployees        Employee[]        @relation("EmployeeOwner")
+  ownedLeaves           Leave[]           @relation("LeaveOwner")
+  ownedBankAccounts     BankAccount[]     @relation("BankAccountOwner")
+  ownedBankTransactions BankTransaction[] @relation("BankTransactionOwner")
+  ownedDocuments        Document[]        @relation("DocumentOwner")
+
+  ownedSites             Site[]             @relation("SiteOwner")
+  ownedCleaningContracts CleaningContract[] @relation("CleaningContractOwner")
+  agentContracts         CleaningContract[] @relation("CleaningContractAgent")
+  ownedInterventions     Intervention[]     @relation("InterventionOwner")
+  ownedInspections       Inspection[]       @relation("InspectionOwner")
+
+  apiKeys ApiKey[] @relation("ApiKeyUser")
+
+  @@map("user")
+}
+
+model Session {
+  id                   String   @id @default(cuid())
+  userId               String
+  token                String   @unique
+  expiresAt            DateTime
+  ipAddress            String?
+  userAgent            String?
+  /// Espace actif de la session.
+  activeOrganizationId String?
+  /// Rempli quand un super-admin se connecte « en tant que » cet utilisateur.
+  impersonatedBy       String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+/// Secret TOTP et codes de secours (plugin two-factor de Better Auth).
+model TwoFactor {
+  id                      String    @id @default(cuid())
+  userId                  String
+  secret                  String
+  backupCodes             String
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([secret])
+  @@map("two_factor")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ─────────────────────────────── Espaces ───────────────────────────────
+
+enum Plan {
+  FREE
+  PRO
+  BUSINESS
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  NONE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  UNPAID
+  CANCELED
+  INCOMPLETE
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
+model Organization {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  logoUrl     String?
+  industry    String?
+  size        String?
+  plan        Plan      @default(FREE)
+  trialEndsAt DateTime?
+
+  // Abonnement (source de vérité : Stripe, synchronisé par webhooks)
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  subscriptionStatus   SubscriptionStatus @default(NONE)
+  billingInterval      BillingInterval?
+  seats                Int                @default(0)
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  pastDueSince         DateTime?
+  subscribedAt         DateTime?
+  canceledAt           DateTime?
+
+  /// Clés des modules activés (voir MODULE_KEYS dans @quercy/core).
+  modules     String[]  @default([])
+  /// Langue, devise, fuseau, format de date, couleur d'accent.
+  preferences Json      @default("{}")
+  onboardedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  memberships         Membership[]
+  roles               Role[]
+  teams               Team[]
+  invitations         Invitation[]
+  auditLogs           AuditLog[]
+  customFields        CustomFieldDefinition[]
+  savedViews          SavedView[]
+  companies           Company[]
+  contacts            Contact[]
+  comments            Comment[]
+  files               StoredFile[]
+  notifications       Notification[]
+  deals               Deal[]
+  activities          Activity[]
+  products            Product[]
+  salesDocuments      SalesDocument[]
+  payments            Payment[]
+  salesSettings       SalesSettings?
+  sequences           NumberSequence[]
+  projects            Project[]
+  tasks               Task[]
+  timeEntries         TimeEntry[]
+  duplicateDismissals DuplicateDismissal[]
+  dashboards          Dashboard[]
+  reports             Report[]
+  aiConversations     AiConversation[]
+  aiActions           AiAction[]
+  aiUsage             AiUsage[]
+
+  suppliers        Supplier[]
+  purchaseOrders   PurchaseOrder[]
+  bills            Bill[]
+  expenses         Expense[]
+  warehouses       Warehouse[]
+  stockMovements   StockMovement[]
+  events           Event[]
+  tickets          Ticket[]
+  employees        Employee[]
+  leaves           Leave[]
+  bankAccounts     BankAccount[]
+  bankTransactions BankTransaction[]
+  documents        Document[]
+
+  sites             Site[]
+  cleaningContracts CleaningContract[]
+  interventions     Intervention[]
+  inspections       Inspection[]
+
+  automations Automation[]
+  apiKeys     ApiKey[]
+  webhooks    Webhook[]
+
+  @@map("organization")
+}
+
+/// Rôle : prédéfini (`systemKey` renseigné) ou personnalisé par l'entreprise.
+model Role {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  systemKey      String?
+  /// Matrice ressource × action → portée (voir permissionMatrixSchema).
+  permissions    Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships  Membership[]
+  invitations  Invitation[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("role")
+}
+
+model Membership {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  roleId         String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@map("membership")
+}
+
+model Team {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  color          String?
+  leadUserId     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      TeamMember[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("team")
+}
+
+model TeamMember {
+  teamId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@index([userId])
+  @@map("team_member")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+model Invitation {
+  id             String           @id @default(cuid())
+  organizationId String
+  email          String
+  roleId         String
+  invitedById    String
+  token          String           @unique
+  status         InvitationStatus @default(PENDING)
+  expiresAt      DateTime
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([email])
+  @@map("invitation")
+}
+
+// ─────────────────────────── Traçabilité ───────────────────────────
+
+/// Historique des modifications et journal d'audit (qui, quoi, quand, avant/après).
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  actorId        String?
+  /// Rempli quand un super-admin agit « en tant que » un utilisateur.
+  impersonatorId String?
+  action         String
+  entityType     String
+  entityId       String?
+  /// { champ: { before, after } }
+  changes        Json?
+  metadata       Json?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor        User?        @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, entityType, entityId])
+  @@map("audit_log")
+}
+
+// ─────────────────────────── Personnalisation ───────────────────────────
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  SELECT
+  CHECKBOX
+  FILE
+  RELATION
+}
+
+model CustomFieldDefinition {
+  id             String          @id @default(cuid())
+  organizationId String
+  entityType     String
+  key            String
+  label          String
+  type           CustomFieldType
+  /// Options (valeurs de liste, entité cible d'une relation, obligatoire…).
+  options        Json            @default("{}")
+  position       Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, entityType, key])
+  @@map("custom_field_definition")
+}
+
+/// Vue enregistrée d'un tableau : filtres, tris, colonnes, regroupement.
+model SavedView {
+  id             String    @id @default(cuid())
+  organizationId String
+  ownerId        String
+  entityType     String
+  name           String
+  /// true = partagée avec toute l'équipe.
+  shared         Boolean   @default(false)
+  config         Json
+  position       Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entityType])
+  @@map("saved_view")
+}
+
+// ─────────────────────────── Facturation ───────────────────────────
+
+enum StripeEventStatus {
+  PENDING
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+/// Journal des webhooks Stripe : idempotence (id unique) et rejeu des échecs.
+model StripeEvent {
+  id             String            @id
+  type           String
+  organizationId String?
+  payload        Json
+  status         StripeEventStatus @default(PENDING)
+  attempts       Int               @default(0)
+  error          String?
+  createdAt      DateTime          @default(now())
+  processedAt    DateTime?
+
+  @@index([status, createdAt])
+  @@index([organizationId])
+  @@map("stripe_event")
+}
+
+// ─────────────────────────── CRM ───────────────────────────
+
+model Company {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  type           String?
+  email          String?
+  phone          String?
+  website        String?
+  address        String?
+  postalCode     String?
+  city           String?
+  country        String?
+  siren          String?
+  vatNumber      String?
+  annualRevenue  Float?
+  employees      Int?
+  ownerId        String?
+  tags           String[]  @default([])
+  /// Valeurs des champs personnalisés : { clé: valeur }.
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?           @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  contacts     Contact[]
+  deals        Deal[]
+  activities   Activity[]
+  documents    SalesDocument[]
+  projects     Project[]
+
+  eventCompanys    Event[]    @relation("EventCompany")
+  ticketCompanys   Ticket[]   @relation("TicketCompany")
+  documentCompanys Document[] @relation("DocumentCompany")
+
+  sites             Site[]             @relation("SiteCompany")
+  cleaningContracts CleaningContract[] @relation("CleaningContractCompany")
+  interventions     Intervention[]     @relation("InterventionCompany")
+
+  @@index([organizationId, deletedAt, name])
+  @@index([organizationId, ownerId])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@map("company")
+}
+
+model Contact {
+  id             String    @id @default(cuid())
+  organizationId String
+  companyId      String?
+  firstName      String?
+  lastName       String
+  email          String?
+  phone          String?
+  jobTitle       String?
+  status         String?
+  score          Int?
+  source         String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company      Company?        @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  owner        User?           @relation("ContactOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  deals        Deal[]
+  activities   Activity[]
+  documents    SalesDocument[]
+
+  eventContacts  Event[]  @relation("EventContact")
+  ticketContacts Ticket[] @relation("TicketContact")
+
+  @@index([organizationId, deletedAt, lastName])
+  @@index([organizationId, companyId])
+  @@index([lastName(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([email(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@map("contact")
+}
+
+// ─────────────────────── Collaboration ───────────────────────
+
+/// Commentaire sur n'importe quelle fiche (entityType + entityId), avec @mentions.
+model Comment {
+  id             String    @id @default(cuid())
+  organizationId String
+  entityType     String
+  entityId       String
+  authorId       String
+  body           String
+  /// Identifiants des personnes mentionnées.
+  mentions       String[]  @default([])
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  editedAt       DateTime?
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entityType, entityId, createdAt])
+  @@map("comment")
+}
+
+/// Fichier stocké (disque local ou S3). Rattaché à une fiche s'il s'agit d'une pièce jointe.
+model StoredFile {
+  id             String    @id @default(cuid())
+  organizationId String
+  storageKey     String    @unique
+  name           String
+  mimeType       String
+  size           Int
+  uploadedById   String
+  entityType     String?
+  entityId       String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedBy   User         @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entityType, entityId])
+  @@map("stored_file")
+}
+
+model Notification {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  /// mention, comment, invitation.accepted, billing.payment_failed…
+  type           String
+  title          String
+  body           String?
+  url            String?
+  actorId        String?
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, organizationId, readAt, createdAt(sort: Desc)])
+  @@map("notification")
+}
+
+// ─────────────────────────── CRM : pipeline ───────────────────────────
+
+/// Opportunité commerciale, suivie dans le pipeline (étape, montant, probabilité).
+model Deal {
+  id                String    @id @default(cuid())
+  organizationId    String
+  name              String
+  companyId         String?
+  contactId         String?
+  /// lead, qualified, proposal, negotiation, won, lost
+  stage             String    @default("lead")
+  amount            Float?
+  /// Probabilité de gain (0–100), initialisée selon l'étape.
+  probability       Int?
+  expectedCloseDate DateTime?
+  closedAt          DateTime?
+  source            String?
+  lostReason        String?
+  ownerId           String?
+  tags              String[]  @default([])
+  customFields      Json      @default("{}")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company      Company?        @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contact      Contact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  owner        User?           @relation("DealOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  activities   Activity[]
+  documents    SalesDocument[]
+
+  @@index([organizationId, deletedAt, stage])
+  @@index([organizationId, companyId])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@map("deal")
+}
+
+/// Activité commerciale : appel, email, rendez-vous, tâche ou note.
+model Activity {
+  id              String    @id @default(cuid())
+  organizationId  String
+  /// call, email, meeting, task, note
+  type            String    @default("task")
+  subject         String
+  dueAt           DateTime?
+  done            Boolean   @default(false)
+  completedAt     DateTime?
+  durationMinutes Int?
+  notes           String?
+  companyId       String?
+  contactId       String?
+  dealId          String?
+  ownerId         String?
+  tags            String[]  @default([])
+  customFields    Json      @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company      Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  deal         Deal?        @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  owner        User?        @relation("ActivityOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt, dueAt])
+  @@index([organizationId, ownerId, done])
+  @@map("activity")
+}
+
+// ─────────────────────────── Ventes ───────────────────────────
+
+/// Article du catalogue (produit ou prestation).
+model Product {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  /// Image de l'article : data URL (fond transparent), fichier du site ou adresse https.
+  imageUrl       String?
+  sku            String?
+  /// service, good
+  type           String    @default("service")
+  /// unit, hour, day, flat, sqm, kg
+  unit           String    @default("unit")
+  unitPrice      Float     @default(0)
+  purchasePrice  Float?
+  /// Taux de TVA en pourcentage, sous forme de texte (« 20 », « 5.5 »).
+  vatRate        String    @default("20")
+  description    String?
+  active         Boolean   @default(true)
+  stockQuantity  Float     @default(0)
+  reorderLevel   Float?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?               @relation("ProductOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  lines        SalesDocumentLine[]
+
+  stockMovementProducts StockMovement[] @relation("StockMovementProduct")
+
+  @@index([organizationId, deletedAt, name])
+  @@map("product")
+}
+
+/// Devis, commande, facture, avoir ou modèle de facture récurrente.
+model SalesDocument {
+  id                String    @id @default(cuid())
+  organizationId    String
+  /// QUOTE, ORDER, INVOICE, CREDIT_NOTE, RECURRING
+  kind              String
+  /// Numéro définitif, attribué à l'émission (null tant que brouillon).
+  number            String?
+  status            String    @default("draft")
+  subject           String?
+  companyId         String?
+  contactId         String?
+  dealId            String?
+  projectId         String?
+  ownerId           String?
+  issueDate         DateTime?
+  /// Échéance (facture), validité (devis), livraison prévue (commande).
+  dueDate           DateTime?
+  /// Délai de paiement en jours.
+  paymentTermsDays  Int       @default(30)
+  notes             String?
+  totalExclCents    Int       @default(0)
+  taxCents          Int       @default(0)
+  totalCents        Int       @default(0)
+  paidCents         Int       @default(0)
+  /// Reste dû (total − payé − avoirs imputés), maintenu à chaque encaissement.
+  dueCents          Int       @default(0)
+  /// Document d'origine (devis → commande → facture).
+  sourceId          String?
+  /// Facture corrigée par un avoir.
+  creditedInvoiceId String?
+  /// Facturation récurrente : monthly, quarterly, yearly.
+  interval          String?
+  nextRunAt         DateTime?
+  endsAt            DateTime?
+  autoSend          Boolean   @default(false)
+  sentAt            DateTime?
+  acceptedAt        DateTime?
+  paidAt            DateTime?
+  reminderCount     Int       @default(0)
+  lastReminderAt    DateTime?
+  /// Jeton du lien public (consultation, acceptation, paiement en ligne).
+  publicToken       String    @unique @default(cuid())
+  tags              String[]  @default([])
+  customFields      Json      @default("{}")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company         Company?            @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contact         Contact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  deal            Deal?               @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  project         Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  owner           User?               @relation("SalesDocumentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  source          SalesDocument?      @relation("DocumentSource", fields: [sourceId], references: [id], onDelete: SetNull)
+  derived         SalesDocument[]     @relation("DocumentSource")
+  creditedInvoice SalesDocument?      @relation("CreditNotes", fields: [creditedInvoiceId], references: [id], onDelete: SetNull)
+  creditNotes     SalesDocument[]     @relation("CreditNotes")
+  lines           SalesDocumentLine[]
+  payments        Payment[]
+  timeEntries     TimeEntry[]
+
+  bankTransactionInvoices BankTransaction[] @relation("BankTransactionInvoice")
+
+  @@unique([organizationId, kind, number])
+  @@index([organizationId, kind, deletedAt, status])
+  @@index([organizationId, companyId])
+  @@index([kind, status, dueDate])
+  @@map("sales_document")
+}
+
+/// Ligne d'un document commercial. Montants en centimes, taux de TVA en pourcentage.
+model SalesDocumentLine {
+  id              String  @id @default(cuid())
+  documentId      String
+  position        Int
+  productId       String?
+  description     String
+  quantity        Float   @default(1)
+  unit            String?
+  unitPriceCents  Int     @default(0)
+  discountPercent Float   @default(0)
+  vatRate         Float   @default(20)
+  totalExclCents  Int     @default(0)
+
+  document SalesDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  product  Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([documentId, position])
+  @@map("sales_document_line")
+}
+
+/// Encaissement imputé sur une facture.
+model Payment {
+  id             String   @id @default(cuid())
+  organizationId String
+  documentId     String
+  amountCents    Int
+  date           DateTime
+  /// transfer, card, check, cash, direct_debit, stripe, other
+  method         String
+  reference      String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  document     SalesDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdBy    User?         @relation("PaymentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, date])
+  @@index([documentId])
+  @@map("payment")
+}
+
+/// Paramètres de facturation de l'espace (mentions légales, numérotation, relances, paiement).
+model SalesSettings {
+  id                     String   @id @default(cuid())
+  organizationId         String   @unique
+  legalName              String?
+  address                String?
+  postalCode             String?
+  city                   String?
+  country                String   @default("France")
+  siret                  String?
+  vatNumber              String?
+  email                  String?
+  phone                  String?
+  iban                   String?
+  bic                    String?
+  /// Franchise en base de TVA (art. 293 B du CGI).
+  vatExempt              Boolean  @default(false)
+  quotePrefix            String   @default("DV")
+  orderPrefix            String   @default("BC")
+  invoicePrefix          String   @default("FA")
+  creditNotePrefix       String   @default("AV")
+  paymentTermsDays       Int      @default(30)
+  quoteValidityDays      Int      @default(30)
+  footer                 String?
+  latePenaltyText        String?
+  remindersEnabled       Boolean  @default(true)
+  /// Jours après l'échéance où une relance part.
+  reminderDays           Int[]    @default([7, 15, 30])
+  /// Clés Stripe de l'entreprise (paiement en ligne des factures), chiffrées (AES-256-GCM).
+  stripeSecretKeyEnc     String?
+  stripeWebhookSecretEnc String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("sales_settings")
+}
+
+/// Compteurs de numérotation continue (par type de document et par année).
+model NumberSequence {
+  organizationId String
+  key            String
+  value          Int    @default(0)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, key])
+  @@map("number_sequence")
+}
+
+// ─────────────────────────── Projets ───────────────────────────
+
+model Project {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  companyId      String?
+  /// planned, active, on_hold, done, cancelled
+  status         String    @default("planned")
+  startDate      DateTime?
+  endDate        DateTime?
+  budget         Float?
+  /// Taux horaire facturé pour le temps passé.
+  hourlyRate     Float?
+  description    String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company      Company?        @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  owner        User?           @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  tasks        Task[]
+  timeEntries  TimeEntry[]
+  documents    SalesDocument[]
+
+  purchaseOrderProjects PurchaseOrder[] @relation("PurchaseOrderProject")
+  billProjects          Bill[]          @relation("BillProject")
+  expenseProjects       Expense[]       @relation("ExpenseProject")
+  eventProjects         Event[]         @relation("EventProject")
+  documentProjects      Document[]      @relation("DocumentProject")
+
+  @@index([organizationId, deletedAt, status])
+  @@map("project")
+}
+
+model Task {
+  id             String    @id @default(cuid())
+  organizationId String
+  title          String
+  projectId      String?
+  /// todo, in_progress, review, done
+  status         String    @default("todo")
+  /// low, normal, high, urgent
+  priority       String    @default("normal")
+  startDate      DateTime?
+  dueDate        DateTime?
+  estimateHours  Float?
+  completedAt    DateTime?
+  description    String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  owner        User?        @relation("TaskOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  timeEntries  TimeEntry[]
+
+  @@index([organizationId, deletedAt, status])
+  @@index([organizationId, projectId])
+  @@index([organizationId, ownerId, dueDate])
+  @@map("task")
+}
+
+/// Temps passé. `startedAt` sans `minutes` = chronomètre en cours.
+model TimeEntry {
+  id             String    @id @default(cuid())
+  organizationId String
+  description    String?
+  projectId      String?
+  taskId         String?
+  ownerId        String?
+  date           DateTime
+  startedAt      DateTime?
+  minutes        Int?
+  billable       Boolean   @default(true)
+  /// Facture sur laquelle ce temps a été facturé.
+  invoiceId      String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  task         Task?          @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  owner        User?          @relation("TimeEntryOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  invoice      SalesDocument? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt, date])
+  @@index([organizationId, ownerId, minutes])
+  @@index([organizationId, projectId])
+  @@map("time_entry")
+}
+
+/// Paire de fiches signalée « pas un doublon » (exclue de la détection).
+model DuplicateDismissal {
+  organizationId String
+  entityType     String
+  /// Identifiants triés (le plus petit en premier).
+  firstId        String
+  secondId       String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, entityType, firstId, secondId])
+  @@map("duplicate_dismissal")
+}
+
+// ─────────────────────────── Tableaux de bord et rapports ───────────────────────────
+
+/// Tableau de bord d'accueil d'une personne dans un espace (grille de widgets).
+model Dashboard {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  /// [{ i, widget, x, y, w, h, config }]
+  layout         Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("dashboard")
+}
+
+/// Rapport enregistré (constructeur) : définition, partage et envoi programmé par email.
+model Report {
+  id             String    @id @default(cuid())
+  organizationId String
+  ownerId        String
+  name           String
+  description    String?
+  /// Voir reportDefinitionSchema (@quercy/core).
+  definition     Json
+  /// Période par défaut (préréglage) : utilisée à l'ouverture et pour les envois.
+  period         String    @default("30d")
+  shared         Boolean   @default(false)
+  /// none, weekly, monthly
+  schedule       String    @default("none")
+  recipients     String[]  @default([])
+  lastSentAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User         @relation("ReportOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, deletedAt])
+  @@index([schedule, deletedAt])
+  @@map("report")
+}
+
+// ─────────────────────────── Assistant IA ───────────────────────────
+
+/// Conversation avec l'assistant : historique envoyé au modèle et rendu affiché.
+model AiConversation {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  title          String
+  /// Historique au format de l'API Messages (tours utilisateur / assistant, outils).
+  messages       Json     @default("[]")
+  /// Tours affichés : texte, tableaux, graphiques, actions proposées.
+  display        Json     @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actions      AiAction[]
+
+  @@index([organizationId, userId, updatedAt(sort: Desc)])
+  @@map("ai_conversation")
+}
+
+/// Action proposée par l'assistant, exécutée seulement après confirmation explicite.
+model AiAction {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  conversationId String
+  tool           String
+  input          Json
+  summary        String
+  /// pending, confirmed, rejected, failed
+  status         String    @default("pending")
+  result         Json?
+  error          String?
+  createdAt      DateTime  @default(now())
+  decidedAt      DateTime?
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, status])
+  @@map("ai_action")
+}
+
+/// Consommation de l'assistant (crédits de l'offre, jetons facturés par le fournisseur).
+model AiUsage {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  /// chat, extraction
+  kind           String
+  credits        Int
+  model          String
+  inputTokens    Int      @default(0)
+  outputTokens   Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("ai_usage")
+}
+
+// ─────────────────────────── Phase 8 : modules complémentaires ───────────────────────────
+
+model Supplier {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  category       String?
+  email          String?
+  phone          String?
+  siret          String?
+  vatNumber      String?
+  iban           String?
+  address        String?
+  city           String?
+  notes          String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("SupplierOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  purchaseOrderSuppliers PurchaseOrder[] @relation("PurchaseOrderSupplier")
+  billSuppliers          Bill[]          @relation("BillSupplier")
+
+  @@index([organizationId, deletedAt])
+  @@map("supplier")
+}
+
+model PurchaseOrder {
+  id             String    @id @default(cuid())
+  organizationId String
+  number         String?
+  status         String    @default("draft")
+  orderDate      DateTime  @default(now())
+  expectedDate   DateTime?
+  totalExclCents Int       @default(0)
+  notes          String?
+  supplierId     String
+  projectId      String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("PurchaseOrderOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  supplier     Supplier     @relation("PurchaseOrderSupplier", fields: [supplierId], references: [id], onDelete: Cascade)
+  project      Project?     @relation("PurchaseOrderProject", fields: [projectId], references: [id], onDelete: SetNull)
+
+  billPurchaseOrders Bill[] @relation("BillPurchaseOrder")
+
+  @@index([organizationId, deletedAt])
+  @@map("purchase_order")
+}
+
+model Bill {
+  id              String    @id @default(cuid())
+  organizationId  String
+  number          String?
+  status          String    @default("to_pay")
+  category        String?
+  issueDate       DateTime  @default(now())
+  dueDate         DateTime?
+  totalExclCents  Int       @default(0)
+  vatCents        Int       @default(0)
+  totalCents      Int       @default(0)
+  paidAt          DateTime?
+  notes           String?
+  supplierId      String
+  purchaseOrderId String?
+  projectId       String?
+  ownerId         String?
+  tags            String[]  @default([])
+  customFields    Json      @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner         User?          @relation("BillOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  supplier      Supplier       @relation("BillSupplier", fields: [supplierId], references: [id], onDelete: Cascade)
+  purchaseOrder PurchaseOrder? @relation("BillPurchaseOrder", fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  project       Project?       @relation("BillProject", fields: [projectId], references: [id], onDelete: SetNull)
+
+  bankTransactionBills BankTransaction[] @relation("BankTransactionBill")
+
+  @@index([organizationId, deletedAt])
+  @@map("bill")
+}
+
+model Expense {
+  id             String    @id @default(cuid())
+  organizationId String
+  description    String
+  date           DateTime  @default(now())
+  category       String    @default("travel")
+  amountCents    Int       @default(0)
+  vatCents       Int       @default(0)
+  status         String    @default("submitted")
+  projectId      String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("ExpenseOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  project      Project?     @relation("ExpenseProject", fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("expense")
+}
+
+model Warehouse {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  address        String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("WarehouseOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  stockMovementWarehouses StockMovement[] @relation("StockMovementWarehouse")
+
+  @@index([organizationId, deletedAt])
+  @@map("warehouse")
+}
+
+model StockMovement {
+  id             String    @id @default(cuid())
+  organizationId String
+  date           DateTime  @default(now())
+  type           String    @default("in")
+  quantity       Float     @default(0)
+  reference      String?
+  note           String?
+  productId      String
+  warehouseId    String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("StockMovementOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  product      Product      @relation("StockMovementProduct", fields: [productId], references: [id], onDelete: Cascade)
+  warehouse    Warehouse?   @relation("StockMovementWarehouse", fields: [warehouseId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("stock_movement")
+}
+
+model Event {
+  id             String    @id @default(cuid())
+  organizationId String
+  title          String
+  type           String    @default("meeting")
+  startAt        DateTime
+  endAt          DateTime?
+  location       String?
+  description    String?
+  companyId      String?
+  contactId      String?
+  projectId      String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("EventOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  company      Company?     @relation("EventCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  contact      Contact?     @relation("EventContact", fields: [contactId], references: [id], onDelete: SetNull)
+  project      Project?     @relation("EventProject", fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("event")
+}
+
+model Ticket {
+  id             String    @id @default(cuid())
+  organizationId String
+  subject        String
+  status         String    @default("new")
+  priority       String    @default("normal")
+  channel        String?
+  dueDate        DateTime?
+  resolvedAt     DateTime?
+  description    String?
+  companyId      String?
+  contactId      String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("TicketOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  company      Company?     @relation("TicketCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  contact      Contact?     @relation("TicketContact", fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("ticket")
+}
+
+model Employee {
+  id               String    @id @default(cuid())
+  organizationId   String
+  firstName        String
+  lastName         String
+  jobTitle         String?
+  department       String?
+  email            String?
+  phone            String?
+  contractType     String?
+  status           String    @default("active")
+  startDate        DateTime?
+  endDate          DateTime?
+  grossSalaryCents Int       @default(0)
+  ownerId          String?
+  tags             String[]  @default([])
+  customFields     Json      @default("{}")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("EmployeeOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  leaveEmployees    Leave[]    @relation("LeaveEmployee")
+  documentEmployees Document[] @relation("DocumentEmployee")
+
+  @@index([organizationId, deletedAt])
+  @@map("employee")
+}
+
+model Leave {
+  id             String    @id @default(cuid())
+  organizationId String
+  type           String    @default("paid")
+  startDate      DateTime
+  endDate        DateTime
+  days           Float?
+  status         String    @default("requested")
+  reason         String?
+  employeeId     String
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("LeaveOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  employee     Employee     @relation("LeaveEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, deletedAt])
+  @@map("leave")
+}
+
+model BankAccount {
+  id                  String    @id @default(cuid())
+  organizationId      String
+  name                String
+  bank                String?
+  iban                String?
+  openingBalanceCents Int       @default(0)
+  balanceCents        Int       @default(0)
+  ownerId             String?
+  tags                String[]  @default([])
+  customFields        Json      @default("{}")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("BankAccountOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  bankTransactionAccounts BankTransaction[] @relation("BankTransactionAccount")
+
+  @@index([organizationId, deletedAt])
+  @@map("bank_account")
+}
+
+model BankTransaction {
+  id             String    @id @default(cuid())
+  organizationId String
+  date           DateTime  @default(now())
+  label          String
+  amountCents    Int       @default(0)
+  category       String?
+  reconciled     Boolean   @default(false)
+  note           String?
+  accountId      String
+  invoiceId      String?
+  billId         String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?          @relation("BankTransactionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  account      BankAccount    @relation("BankTransactionAccount", fields: [accountId], references: [id], onDelete: Cascade)
+  invoice      SalesDocument? @relation("BankTransactionInvoice", fields: [invoiceId], references: [id], onDelete: SetNull)
+  bill         Bill?          @relation("BankTransactionBill", fields: [billId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("bank_transaction")
+}
+
+model Document {
+  id             String    @id @default(cuid())
+  organizationId String
+  title          String
+  folder         String?
+  category       String?
+  expiresAt      DateTime?
+  description    String?
+  companyId      String?
+  projectId      String?
+  employeeId     String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  company      Company?     @relation("DocumentCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  project      Project?     @relation("DocumentProject", fields: [projectId], references: [id], onDelete: SetNull)
+  employee     Employee?    @relation("DocumentEmployee", fields: [employeeId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("document")
+}
+
+// ─────────────────────────── Phase 9 : automatisations et intégrations ───────────────────────────
+
+/// Règle « quand… si… alors… » sur une entité.
+model Automation {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  entity         String
+  /// created, updated, deleted
+  trigger        String
+  conditions     Json      @default("{}")
+  actions        Json      @default("[]")
+  active         Boolean   @default(true)
+  runCount       Int       @default(0)
+  lastRunAt      DateTime?
+  lastError      String?
+  createdById    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entity, trigger, active])
+  @@map("automation")
+}
+
+/// Clé d'API publique (seule l'empreinte est conservée).
+model ApiKey {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  /// Début de la clé, affiché pour la reconnaître.
+  prefix         String
+  hash           String    @unique
+  /// read, write
+  scope          String    @default("read")
+  /// La clé agit avec les droits de cette personne.
+  userId         String
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation("ApiKeyUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("api_key")
+}
+
+/// Webhook sortant : les évènements choisis sont envoyés signés (HMAC SHA-256).
+model Webhook {
+  id              String    @id @default(cuid())
+  organizationId  String
+  url             String
+  /// Secret de signature, chiffré.
+  secret          String
+  events          String[]  @default([])
+  active          Boolean   @default(true)
+  lastStatus      Int?
+  lastDeliveredAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deliveries   WebhookDelivery[]
+
+  @@index([organizationId, active])
+  @@map("webhook")
+}
+
+model WebhookDelivery {
+  id         String   @id @default(cuid())
+  webhookId  String
+  event      String
+  /// pending, delivered, failed
+  status     String   @default("pending")
+  statusCode Int?
+  error      String?
+  attempts   Int      @default(0)
+  payload    Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt(sort: Desc)])
+  @@map("webhook_delivery")
+}
+
+// ─────────────────────────── Nettoyage & interventions ───────────────────────────
+
+/// Site client : lieu d'intervention (adresse, accès, consignes).
+model Site {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  companyId      String?
+  address        String?
+  postalCode     String?
+  city           String?
+  surfaceM2      Float?
+  openingHours   String?
+  accessCode     String?
+  keys           String?
+  instructions   String?
+  status         String    @default("active")
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner         User?              @relation("SiteOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  company       Company?           @relation("SiteCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  contracts     CleaningContract[] @relation("CleaningContractSite")
+  interventions Intervention[]     @relation("InterventionSite")
+  inspections   Inspection[]       @relation("InspectionSite")
+
+  @@index([organizationId, deletedAt])
+  @@map("site")
+}
+
+/// Contrat d'entretien récurrent : jours, horaire et durée ; génère les interventions.
+model CleaningContract {
+  id                String    @id @default(cuid())
+  organizationId    String
+  name              String
+  companyId         String?
+  siteId            String
+  status            String    @default("active")
+  weekdays          String[]  @default([])
+  startTime         String?
+  durationMinutes   Int?
+  agentId           String?
+  monthlyPriceCents Int?
+  startDate         DateTime?
+  endDate           DateTime?
+  generatedUntil    DateTime?
+  description       String?
+  ownerId           String?
+  tags              String[]  @default([])
+  customFields      Json      @default("{}")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner         User?          @relation("CleaningContractOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  agent         User?          @relation("CleaningContractAgent", fields: [agentId], references: [id], onDelete: SetNull)
+  company       Company?       @relation("CleaningContractCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  site          Site           @relation("CleaningContractSite", fields: [siteId], references: [id], onDelete: Cascade)
+  interventions Intervention[] @relation("InterventionContract")
+
+  @@index([organizationId, deletedAt])
+  @@map("cleaning_contract")
+}
+
+/// Intervention planifiée chez un client : agent (ownerId), horaire, pointage et signature.
+model Intervention {
+  id              String    @id @default(cuid())
+  organizationId  String
+  title           String
+  siteId          String?
+  contractId      String?
+  companyId       String?
+  ownerId         String?
+  date            DateTime
+  startTime       String?
+  durationMinutes Int?
+  status          String    @default("planned")
+  checkInAt       DateTime?
+  checkOutAt      DateTime?
+  workedMinutes   Int?
+  signatureUrl    String?
+  signedBy        String?
+  photoUrl        String?
+  notes           String?
+  tags            String[]  @default([])
+  customFields    Json      @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?             @relation("InterventionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  site         Site?             @relation("InterventionSite", fields: [siteId], references: [id], onDelete: SetNull)
+  contract     CleaningContract? @relation("InterventionContract", fields: [contractId], references: [id], onDelete: SetNull)
+  company      Company?          @relation("InterventionCompany", fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@unique([contractId, date])
+  @@index([organizationId, deletedAt, date])
+  @@index([organizationId, ownerId, date])
+  @@map("intervention")
+}
+
+/// Contrôle qualité d'un site : grille notée, résultat et photo.
+model Inspection {
+  id             String    @id @default(cuid())
+  organizationId String
+  title          String
+  siteId         String?
+  date           DateTime
+  floors         Boolean   @default(false)
+  sanitary       Boolean   @default(false)
+  dusting        Boolean   @default(false)
+  windows        Boolean   @default(false)
+  bins           Boolean   @default(false)
+  score          Int?
+  result         String?
+  photoUrl       String?
+  comments       String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("InspectionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  site         Site?        @relation("InspectionSite", fields: [siteId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("inspection")
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@quercy/desktop",
+  "version": "0.10.0",
+  "private": true,
+  "description": "Application de bureau Quercy (Windows, macOS, Linux) — Tauri 2.",
+  "scripts": {
+    "tauri": "tauri",
+    "tauri:dev": "QUERCY_URL=${QUERCY_URL:-http://localhost:3000} tauri dev",
+    "tauri:build": "tauri build",
+    "icons": "tauri icon ../web/public/brand/quercy-mark.png",
+    "check:rust": "cargo check --manifest-path src-tauri/Cargo.toml"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.0"
+  }
+}
