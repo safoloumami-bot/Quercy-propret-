@@ -93,6 +93,7 @@ export const OPERATORS_BY_TYPE: Record<FieldType, Operator[]> = {
   email: TEXT_OPS,
   phone: TEXT_OPS,
   url: TEXT_OPS,
+  image: ["is_empty", "is_not_empty"],
   number: NUMBER_OPS,
   currency: NUMBER_OPS,
   percent: NUMBER_OPS,

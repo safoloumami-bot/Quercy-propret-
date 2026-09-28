@@ -14,6 +14,7 @@ import { CheckIcon } from "lucide-react";
 import Link from "next/link";
 
 import type { Row } from "./types";
+import { ImageThumb } from "./image-field";
 
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" });
 const dateTimeFmt = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short" });
@@ -54,6 +55,8 @@ export function FieldDisplay({
   if (isEmptyValue(value)) return <span className="text-muted-foreground/60">—</span>;
 
   switch (field.type) {
+    case "image":
+      return <ImageThumb src={String(value)} alt={field.label} size={32} className={className} />;
     case "select": {
       const option = field.options?.find((o) => o.value === value);
       return <Badge variant={option?.tone ?? "neutral"}>{option?.label ?? String(value)}</Badge>;

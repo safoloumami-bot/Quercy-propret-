@@ -72,7 +72,8 @@ export const TableRow = React.memo(function TableRow({
   style?: React.CSSProperties;
   index: number;
 }) {
-  const firstEditable = columns.find((c) => c.field.editable)?.field.key;
+  const firstEditable = columns.find((c) => c.field.editable && c.field.type !== "image")?.field
+    .key;
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -114,7 +115,7 @@ export const TableRow = React.memo(function TableRow({
                 )}
                 style={{ width, left: left ?? undefined }}
                 onDoubleClick={(e) => {
-                  if (!canEdit || !field.editable) return;
+                  if (!canEdit || !field.editable || field.type === "image") return;
                   e.stopPropagation();
                   actions.onEdit(row, field.key);
                 }}

@@ -683,6 +683,8 @@ model Product {
   id             String    @id @default(cuid())
   organizationId String
   name           String
+  /// Image de l'article : data URL (fond transparent), fichier du site ou adresse https.
+  imageUrl       String?
   sku            String?
   /// service, good
   type           String    @default("service")

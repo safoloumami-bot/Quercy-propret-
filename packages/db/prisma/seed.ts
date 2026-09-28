@@ -5,6 +5,7 @@ import { hashPassword } from "../src/password";
 import { SYSTEM_ROLE_SEEDS } from "../src/roles";
 import { seedBusiness } from "./seed-business";
 import { seedCrm } from "./seed-crm";
+import { seedExtras } from "./seed-extras";
 import { seedModules } from "./seed-modules";
 import { seedReports } from "./seed-reports";
 
@@ -193,6 +194,7 @@ async function main() {
   await seedCrm(prisma, org.id, sellers);
   await seedBusiness(prisma, org.id, sellers);
   await seedModules(prisma, org.id, sellers);
+  await seedExtras(prisma, org.id, sellers);
   await seedReports(prisma, org.id, users["demo@quercy.app"]!);
 
   // Super-admin de la plateforme (équipe Quercy), sans espace client.

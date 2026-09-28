@@ -65,6 +65,24 @@ export function fieldValueSchema(field: FieldDef): z.ZodType<unknown> {
         .pipe(z.url({ error: `${field.label} : adresse web invalide.` }).nullable())
         .nullable();
       break;
+    case "image":
+      // Image intégrée (PNG/JPEG/WebP/SVG en data URL, ~500 Ko max), fichier du site
+      // (« /catalogue/… ») ou adresse https.
+      schema = z
+        .string()
+        .trim()
+        .max(700_000, { error: `${field.label} : image trop lourde (500 Ko maximum).` })
+        .transform((v) => (v === "" ? null : v))
+        .refine(
+          (v) =>
+            v === null ||
+            /^data:image\/(png|jpeg|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(v) ||
+            /^\/[a-z0-9/_-]+\.(svg|png|webp|jpe?g)$/i.test(v) ||
+            /^https:\/\/\S+$/.test(v),
+          { error: `${field.label} : image invalide.` },
+        )
+        .nullable();
+      break;
     case "number":
     case "percent":
     case "currency":

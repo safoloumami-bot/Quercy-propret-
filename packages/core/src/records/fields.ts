@@ -19,6 +19,7 @@ export const FIELD_TYPES = [
   "user",
   "relation",
   "duration",
+  "image",
 ] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 

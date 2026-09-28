@@ -25,6 +25,7 @@ import { CheckIcon } from "lucide-react";
 import * as React from "react";
 
 import { useTRPC } from "@/lib/trpc";
+import { ImageEditor } from "./image-field";
 
 const NONE = "__none__";
 
@@ -149,6 +150,8 @@ export function FieldEditor({
   };
 
   switch (field.type) {
+    case "image":
+      return <ImageEditor id={id} label={field.label} value={value} onCommit={onCommit} />;
     case "boolean":
       return (
         <Checkbox

@@ -798,6 +798,15 @@ export const ENTITIES: Record<EntityKey, EntityDef> = {
     defaultSort: { field: "name", direction: "asc" },
     related: [{ entity: "stockMovement", field: "productId", label: "Mouvements de stock" }],
     fields: [
+      {
+        key: "imageUrl",
+        label: "Image",
+        type: "image",
+        editable: true,
+        filterable: true,
+        defaultVisible: true,
+        width: 76,
+      },
       text("name", "Désignation", { required: true, defaultVisible: true, width: 260 }),
       text("sku", "Référence", { defaultVisible: true, width: 130, maxLength: 60 }),
       choice("type", "Type", PRODUCT_TYPES, {
