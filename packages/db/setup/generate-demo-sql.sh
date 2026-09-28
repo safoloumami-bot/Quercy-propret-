@@ -24,7 +24,7 @@ DELETE FROM session; DELETE FROM verification;
 DELETE FROM account;
 SQL
 pg_dump "$DB" --data-only --column-inserts --rows-per-insert=200 --no-owner --no-privileges \
-  --exclude-table=_prisma_migrations 2>/dev/null | grep -vE "^(SET |SELECT pg_catalog|--|$)" \
+  --exclude-table=_prisma_migrations 2>/dev/null | grep -vE "^(SET |SELECT pg_catalog|--|\\\\|$)" \
   | sed "s/'$SRC_ORG'/'$ORG'/g" > "$TMP"
 
 {
