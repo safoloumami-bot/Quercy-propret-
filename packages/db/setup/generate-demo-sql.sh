@@ -16,6 +16,8 @@ DATABASE_URL="$DB" pnpm exec prisma migrate deploy >/dev/null
 DATABASE_URL="$DB" pnpm exec tsx prisma/seed.ts >/dev/null
 
 SRC_ORG="$(psql "$DB" -Atc "select id from organization where name = 'Quercy Propreté'")"
+# Adresse (slug) propre à la démonstration : l'espace de la personne peut porter le même nom.
+psql "$DB" -qc "UPDATE organization SET name = 'Quercy Propreté (démo)', slug = 'quercy-proprete-demo' WHERE id = '$SRC_ORG'"
 psql "$DB" -q <<SQL
 DELETE FROM organization WHERE id <> '$SRC_ORG';
 DELETE FROM "user" WHERE role = 'admin' OR id NOT IN (SELECT "userId" FROM membership);
