@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { trustedOrigins } from "../auth";
+import { requestOrigin, trustedOrigins } from "../auth";
 
 const saved = { ...process.env };
 afterEach(() => {
@@ -18,5 +18,14 @@ describe("origines de confiance", () => {
       "https://claude-saas-modulaire-prompt-bgo7mm--mon-site-exemple.netlify.app",
       "https://app.exemple.fr",
     ]);
+  });
+
+  it("reconnaît l'origine de la requête, y compris derrière le proxy de l'hébergeur", () => {
+    const direct = new Request("https://mon-site-exemple.netlify.app/api/auth/sign-up/email");
+    expect(requestOrigin(direct)).toBe("https://mon-site-exemple.netlify.app");
+    const proxied = new Request("http://127.0.0.1:3000/api/auth/sign-up/email", {
+      headers: { "x-forwarded-host": "app.exemple.fr", "x-forwarded-proto": "https" },
+    });
+    expect(requestOrigin(proxied)).toBe("https://app.exemple.fr");
   });
 });

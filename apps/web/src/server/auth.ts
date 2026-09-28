@@ -37,13 +37,32 @@ export function trustedOrigins(configured: string[]): string[] {
   return [...new Set(origins)];
 }
 
+/** Origine publique de la requête (derrière le proxy de l'hébergeur : en-têtes X-Forwarded-*). */
+export function requestOrigin(request: Request): string | null {
+  try {
+    const url = new URL(request.url);
+    const host = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() || url.host;
+    const proto =
+      request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
+      url.protocol.replace(":", "");
+    return new URL(`${proto}://${host}`).origin;
+  } catch {
+    return null;
+  }
+}
+
 function createAuth() {
   const e = env();
   return betterAuth({
     appName: "Quercy",
     baseURL: e.APP_URL,
     secret: e.BETTER_AUTH_SECRET,
-    trustedOrigins: trustedOrigins([e.APP_URL, e.NEXT_PUBLIC_APP_URL]),
+    // Adresses configurées + l'adresse du site qui reçoit la requête (même origine) : une
+    // page servie par ce serveur peut toujours se connecter, un autre site non.
+    trustedOrigins: (request) => [
+      ...trustedOrigins([e.APP_URL, e.NEXT_PUBLIC_APP_URL]),
+      ...(request ? [requestOrigin(request)] : []),
+    ],
     database: prismaAdapter(prisma, { provider: "postgresql" }),
     session: {
       expiresIn: 60 * 60 * 24 * 30,
