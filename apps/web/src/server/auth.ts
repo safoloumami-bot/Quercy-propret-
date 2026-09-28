@@ -12,13 +12,38 @@ import { sendEmail } from "./email/send";
 import { MagicLinkEmail, ResetPasswordEmail, VerifyEmail } from "./email/templates";
 import { env } from "./env";
 
+/**
+ * Origines autorisées à appeler l'authentification : l'adresse configurée, plus celles que
+ * l'hébergeur fournit (Netlify : adresse principale, du déploiement et de la branche ; Vercel)
+ * et `TRUSTED_ORIGINS` (liste séparée par des virgules, ex. un domaine personnalisé).
+ * Normalisées (sans chemin ni barre finale) pour éviter les refus « Invalid origin ».
+ */
+export function trustedOrigins(configured: string[]): string[] {
+  const candidates = [
+    ...configured,
+    process.env.URL,
+    process.env.DEPLOY_URL,
+    process.env.DEPLOY_PRIME_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+    ...(process.env.TRUSTED_ORIGINS ?? "").split(","),
+  ];
+  const origins = candidates.flatMap((value) => {
+    try {
+      return value?.trim() ? [new URL(value.trim()).origin] : [];
+    } catch {
+      return [];
+    }
+  });
+  return [...new Set(origins)];
+}
+
 function createAuth() {
   const e = env();
   return betterAuth({
     appName: "Quercy",
     baseURL: e.APP_URL,
     secret: e.BETTER_AUTH_SECRET,
-    trustedOrigins: [...new Set([e.APP_URL, e.NEXT_PUBLIC_APP_URL])],
+    trustedOrigins: trustedOrigins([e.APP_URL, e.NEXT_PUBLIC_APP_URL]),
     database: prismaAdapter(prisma, { provider: "postgresql" }),
     session: {
       expiresIn: 60 * 60 * 24 * 30,
