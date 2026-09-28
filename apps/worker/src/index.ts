@@ -5,6 +5,7 @@ import { Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
 
 import { purgeTrash } from "./jobs/purge-trash";
+import { WEBHOOK_QUEUE, deliverWebhook } from "./jobs/webhooks";
 
 /**
  * Worker Quercy : tâches planifiées et en file d'attente (BullMQ sur Redis).
@@ -83,6 +84,18 @@ const worker = new Worker(
   { connection, concurrency: 2 },
 );
 
+// Webhooks sortants : livraisons signées, avec nouvelles tentatives.
+const webhookWorker = new Worker(
+  WEBHOOK_QUEUE,
+  async (job) => deliverWebhook((job.data as { deliveryId: string }).deliveryId),
+  { connection, concurrency: 5 },
+);
+webhookWorker.on("failed", (job, error) => {
+  console.error(
+    JSON.stringify({ level: "warn", msg: "webhook.failed", id: job?.id, error: error.message }),
+  );
+});
+
 worker.on("completed", (job, result) => {
   console.info(
     JSON.stringify({ level: "info", msg: "job.completed", job: job.name, id: job.id, result }),
@@ -100,10 +113,17 @@ worker.on("failed", (job, error) => {
   );
 });
 
-console.info(JSON.stringify({ level: "info", msg: "worker.ready", queues: [MAINTENANCE_QUEUE] }));
+console.info(
+  JSON.stringify({
+    level: "info",
+    msg: "worker.ready",
+    queues: [MAINTENANCE_QUEUE, WEBHOOK_QUEUE],
+  }),
+);
 
 async function shutdown() {
   await worker.close();
+  await webhookWorker.close();
   await queue.close();
   await connection.quit();
   await closeMailer();

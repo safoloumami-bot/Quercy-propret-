@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.9.0] — 2026-09-28 — Phase 9 : automatisations et intégrations
+
+### Ajouté
+
+- **Éditeur d'automatisations** « Quand… Si… Alors… » : création, modification ou mise en
+  corbeille d'une fiche de n'importe quel module, conditions avec le constructeur de filtres,
+  actions notifier, modifier un champ, envoyer un email (variables `{{titre}}`, `{{lien}}`,
+  `{{champ}}`) et créer une tâche ; enchaînements limités, compteur d'exécutions, dernière
+  erreur, activation en un clic.
+- **API REST publique** `/api/v1/<ressource>` (lister, filtrer, trier, lire, créer, modifier,
+  mettre à la corbeille) pour toutes les entités, clés d'API en lecture seule ou en écriture
+  (empreinte seule conservée, révocation), 600 requêtes par minute, droits de la personne qui
+  a créé la clé.
+- **OpenAPI 3.1** généré depuis le registre : `/api/v1/openapi.json`.
+- **Webhooks sortants** signés (HMAC SHA-256, en-tête `X-Quercy-Signature`), livrés par le
+  worker avec 5 tentatives, historique des livraisons, test en un clic.
+- **Connecteur agenda** : abonnement iCalendar (Google Agenda, Outlook, Apple Calendrier).
+- Écrans **Automatisations** et **Intégrations** ; tests d'intégration, du worker et E2E.
+
 ## [0.8.0] — 2026-09-28 — Phase 8 : modules complémentaires
 
 ### Ajouté

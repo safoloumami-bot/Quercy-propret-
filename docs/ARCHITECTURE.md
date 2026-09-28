@@ -212,6 +212,18 @@ temps facturable non encore facturé d'un projet, au taux horaire du projet.
 - **Tests** : `scripts/fake-anthropic.ts` imite l'API (flux SSE et JSON) avec des réponses
   scriptées ; il sert aux tests d'intégration et aux parcours E2E.
 
+## Modules complémentaires, automatisations et intégrations
+
+- **Modules** (achats, stocks, agenda, support, RH, trésorerie, documents) : entités du
+  registre ; règles propres dans `server/records/hooks.ts` (dates automatiques, jours ouvrés)
+  et `server/records/after-change.ts` (stock des articles, soldes bancaires recalculés).
+- **Après chaque écriture** (`afterRecordChange`) : valeurs calculées, puis livraison des
+  webhooks (`server/automations/webhooks.ts` → file BullMQ `webhooks` → worker
+  `jobs/webhooks.ts`, signature HMAC) et automatisations (`server/automations/engine.ts`).
+- **API publique** : `app/api/v1/[entity]` appelle les procédures tRPC internes avec la
+  session de la personne qui a créé la clé (`server/api/keys.ts`) ; description OpenAPI
+  générée depuis le registre (`server/api/openapi.ts`).
+
 ## Super-admin
 
 Plugin `admin` de Better Auth (`user.role = "admin"`). L'espace `/admin` et le routeur

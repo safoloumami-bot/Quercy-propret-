@@ -2,24 +2,48 @@ import "server-only";
 
 import { type EntityKey, recordPath } from "@quercy/core";
 
+import { runAutomations } from "../automations/engine";
+import { enqueueDeliveries, webhookEvent } from "../automations/webhooks";
 import { notify } from "../notify";
-import type { RecordsCtx } from "./context";
+import { type RecordsCtx, delegate } from "./context";
 
 export type ChangeAction = "created" | "updated" | "deleted" | "restored";
 
+/** Fiches traitées au plus par écriture groupée pour les automatisations et webhooks. */
+const MAX_EVENT_RECORDS = 200;
+
 /**
  * Effets après une écriture de fiches (création, modification, corbeille, restauration,
- * import) : valeurs calculées (stock, soldes).
+ * import) : valeurs calculées (stock, soldes), webhooks et automatisations.
+ * Une erreur d'automatisation ou de webhook n'annule jamais l'écriture de la personne.
  */
 export async function afterRecordChange(
   ctx: RecordsCtx,
   entity: EntityKey,
   ids: string[],
-  _action: ChangeAction,
+  action: ChangeAction,
+  depth = 0,
 ): Promise<void> {
   if (entity === "stockMovement") await syncStock(ctx, ids);
   if (entity === "bankTransaction" || entity === "bankAccount")
     await syncBalances(ctx, entity, ids);
+  // L'import (sans identifiants) ne déclenche ni automatisation ni webhook.
+  if (ids.length === 0) return;
+  const trigger = action === "restored" ? "created" : action;
+  try {
+    const rows = (await delegate(ctx, entity).findMany({
+      where: { id: { in: ids.slice(0, MAX_EVENT_RECORDS) }, deletedAt: undefined },
+    })) as (Record<string, unknown> & { id: string })[];
+    for (const row of rows)
+      await enqueueDeliveries(ctx.organizationId, webhookEvent(entity, trigger), row);
+    await runAutomations(ctx, entity, rows, trigger, depth, (e, changed, d) =>
+      afterRecordChange(ctx, e, changed, e === entity ? "updated" : "created", d),
+    );
+  } catch (error) {
+    console.error(
+      JSON.stringify({ level: "error", msg: "automation.failed", entity, error: String(error) }),
+    );
+  }
 }
 
 /** Stock d'un article = entrées − sorties ± ajustements (mouvements hors corbeille). */

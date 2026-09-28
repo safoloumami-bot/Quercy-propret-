@@ -71,6 +71,8 @@ model User {
   ownedBankTransactions BankTransaction[] @relation("BankTransactionOwner")
   ownedDocuments        Document[]        @relation("DocumentOwner")
 
+  apiKeys ApiKey[] @relation("ApiKeyUser")
+
   @@map("user")
 }
 
@@ -241,6 +243,10 @@ model Organization {
   bankAccounts     BankAccount[]
   bankTransactions BankTransaction[]
   documents        Document[]
+
+  automations Automation[]
+  apiKeys     ApiKey[]
+  webhooks    Webhook[]
 
   @@map("organization")
 }
@@ -1460,4 +1466,93 @@ model Document {
 
   @@index([organizationId, deletedAt])
   @@map("document")
+}
+
+// ─────────────────────────── Phase 9 : automatisations et intégrations ───────────────────────────
+
+/// Règle « quand… si… alors… » sur une entité.
+model Automation {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  entity         String
+  /// created, updated, deleted
+  trigger        String
+  conditions     Json      @default("{}")
+  actions        Json      @default("[]")
+  active         Boolean   @default(true)
+  runCount       Int       @default(0)
+  lastRunAt      DateTime?
+  lastError      String?
+  createdById    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entity, trigger, active])
+  @@map("automation")
+}
+
+/// Clé d'API publique (seule l'empreinte est conservée).
+model ApiKey {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  /// Début de la clé, affiché pour la reconnaître.
+  prefix         String
+  hash           String    @unique
+  /// read, write
+  scope          String    @default("read")
+  /// La clé agit avec les droits de cette personne.
+  userId         String
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation("ApiKeyUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("api_key")
+}
+
+/// Webhook sortant : les évènements choisis sont envoyés signés (HMAC SHA-256).
+model Webhook {
+  id              String    @id @default(cuid())
+  organizationId  String
+  url             String
+  /// Secret de signature, chiffré.
+  secret          String
+  events          String[]  @default([])
+  active          Boolean   @default(true)
+  lastStatus      Int?
+  lastDeliveredAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deliveries   WebhookDelivery[]
+
+  @@index([organizationId, active])
+  @@map("webhook")
+}
+
+model WebhookDelivery {
+  id         String   @id @default(cuid())
+  webhookId  String
+  event      String
+  /// pending, delivered, failed
+  status     String   @default("pending")
+  statusCode Int?
+  error      String?
+  attempts   Int      @default(0)
+  payload    Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt(sort: Desc)])
+  @@map("webhook_delivery")
 }

@@ -4,7 +4,7 @@ Logiciel de gestion tout-en-un et modulaire pour les PME, TPE et indépendants :
 commun et des modules que chaque entreprise active selon ses besoins. Il sera disponible dans
 le navigateur (optimisé pour ordinateur) et en application Windows/macOS (Tauri).
 
-> **État actuel : phases 1 à 8 terminées** : fondations, comptes et multi-entreprises,
+> **État actuel : phases 1 à 9 terminées** : fondations, comptes et multi-entreprises,
 > abonnements, moteur générique (tableau, Kanban, calendrier, Gantt, fiches, champs
 > personnalisés, vues, import/export, historique, commentaires, fichiers, recherche, temps réel)
 > et modules cœur : CRM (contacts, entreprises, pipeline d'opportunités, activités, doublons),
@@ -14,7 +14,8 @@ le navigateur (optimisé pour ordinateur) et en application Windows/macOS (Tauri
 > tableaux de bord personnalisables et rapports (constructeur, exports PDF/Excel/CSV, envois
 > programmés), assistant IA (Ctrl+J : questions sur les données avec tableaux et graphiques,
 > actions soumises à confirmation, rédaction, résumés, lecture de factures fournisseurs),
-> achats, stocks, agenda, support, RH, trésorerie et documents.
+> achats, stocks, agenda, support, RH, trésorerie et documents, automatisations, API REST
+> publique (OpenAPI), webhooks et abonnement d'agenda.
 > Authentification complète (mot de passe, lien magique, Google, Microsoft, double
 > authentification), espaces multiples, invitations, rôles et permissions personnalisables,
 > équipes, assistant d'accueil, journal d'audit, export RGPD et isolation des données testée ;
@@ -144,6 +145,9 @@ docs/             Architecture et décisions
 - `/achats/{fournisseurs,commandes,factures,notes-de-frais}`, `/stocks/{mouvements,entrepots}`,
   `/agenda/evenements`, `/support/tickets`, `/rh/{salaries,absences}`,
   `/tresorerie/{comptes,operations}`, `/documents/bibliotheque`
+- `/automatisations`, `/integrations` — règles automatiques ; clés d'API, webhooks, agenda iCal
+- `/api/v1/<ressource>` — API REST publique (`Authorization: Bearer qk_…`),
+  `/api/v1/openapi.json`, `/api/v1/agenda.ics?key=…`
 - `/reglages/profil`, `/reglages/securite` (mot de passe, 2FA, appareils, suppression du compte),
   `/reglages/apparence`
 - `/reglages/espace` (entreprise, modules, export RGPD), `/reglages/membres`, `/reglages/equipes`,

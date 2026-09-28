@@ -1,6 +1,8 @@
 import { createCallerFactory, createTRPCRouter } from "./init";
 import { adminRouter } from "./routers/admin";
 import { aiRouter } from "./routers/ai";
+import { automationsRouter } from "./routers/automations";
+import { integrationsRouter } from "./routers/integrations";
 import { auditRouter } from "./routers/audit";
 import { commentsRouter } from "./routers/comments";
 import { crmRouter } from "./routers/crm";
@@ -49,6 +51,8 @@ export const appRouter = createTRPCRouter({
   reports: reportsRouter,
   ai: aiRouter,
   purchases: purchasesRouter,
+  automations: automationsRouter,
+  integrations: integrationsRouter,
 });
 
 export type AppRouter = typeof appRouter;

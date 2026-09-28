@@ -48,6 +48,8 @@ import {
   LandmarkIcon,
   BanknoteIcon,
   FolderOpenIcon,
+  WorkflowIcon,
+  PlugIcon,
 } from "lucide-react";
 
 export interface NavItem {
@@ -423,6 +425,30 @@ export const MODULE_SECTIONS: NavSection[] = [
         "documents",
         ["ged", "fichiers", "contrats"],
       ),
+    ],
+  },
+  {
+    id: "platform",
+    label: "Automatisations & intégrations",
+    items: [
+      {
+        id: "automations",
+        href: "/automatisations",
+        label: "Automatisations",
+        icon: WorkflowIcon,
+        keywords: ["règles", "workflow", "déclencheurs"],
+        permission: ["automations", "admin"],
+        module: "automations",
+      },
+      {
+        id: "integrations",
+        href: "/integrations",
+        label: "Intégrations",
+        icon: PlugIcon,
+        keywords: ["api", "webhooks", "zapier", "make", "clés", "ical", "agenda"],
+        permission: ["integrations", "admin"],
+        module: "integrations",
+      },
     ],
   },
 ];

@@ -242,3 +242,23 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
 77. **Le stock est porté par l'article du catalogue** (un seul référentiel pour vendre et
     stocker), les mouvements précisent l'entrepôt.
 78. **Montants des nouveaux modules en centimes** (comme les ventes), saisis en euros.
+
+## 2026-09-28 — Phase 9
+
+79. **Un seul point d'entrée pour les effets d'une écriture** (`afterRecordChange`) : valeurs
+    calculées, webhooks et automatisations partent tous de là, quelle que soit l'origine
+    (écran, import, API, assistant). L'import en masse ne déclenche ni automatisation ni
+    webhook.
+80. **Conditions d'automatisation = filtres des listes** : même constructeur et même
+    traduction en requête (`buildWhere`), donc le même sens partout.
+81. **Enchaînements limités à 2 niveaux** (`AUTOMATION_MAX_DEPTH`) pour éviter les boucles ;
+    une automatisation en erreur n'annule jamais l'écriture et affiche sa dernière erreur.
+82. **L'API publique réutilise les procédures internes** avec les droits de la personne qui a
+    créé la clé : mêmes validations, portée et journal ; aucune logique métier dupliquée.
+83. **Clés d'API stockées en empreinte SHA-256** (affichées une fois) ; secrets de webhooks
+    chiffrés (AES-256-GCM) car ils doivent être relus pour signer.
+84. **Webhooks livrés par le worker** (BullMQ, 5 tentatives, délai exponentiel), jamais
+    pendant la requête de la personne.
+85. **Connecteurs** : API + webhooks couvrent Zapier, Make et n8n sans connecteur dédié ;
+    l'abonnement iCalendar couvre les agendas. La clé est dans l'URL du flux car les agendas
+    ne savent pas envoyer d'en-tête (clé en lecture seule, révocable).
