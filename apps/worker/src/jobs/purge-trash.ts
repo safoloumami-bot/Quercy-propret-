@@ -5,6 +5,8 @@ import { deleteObject } from "@quercy/storage";
 export const TRASH_RETENTION_DAYS = 30;
 
 export interface PurgeResult {
+  /** Fiches des modules complémentaires (achats, stocks, agenda, support, RH, trésorerie, documents). */
+  others: number;
   companies: number;
   contacts: number;
   deals: number;
@@ -74,7 +76,24 @@ export async function purgeTrash(now: Date = new Date()): Promise<PurgeResult> {
     prisma.storedFile.deleteMany({ where: { id: { in: files.map((f) => f.id) } } }),
     prisma.savedView.deleteMany({ where: expired }),
   ]);
+  // Modules complémentaires, des fiches dépendantes vers les fiches parentes.
+  const others = await prisma.$transaction([
+    prisma.stockMovement.deleteMany({ where: expired }),
+    prisma.bankTransaction.deleteMany({ where: expired }),
+    prisma.leave.deleteMany({ where: expired }),
+    prisma.document.deleteMany({ where: expired }),
+    prisma.bill.deleteMany({ where: expired }),
+    prisma.purchaseOrder.deleteMany({ where: expired }),
+    prisma.expense.deleteMany({ where: expired }),
+    prisma.event.deleteMany({ where: expired }),
+    prisma.ticket.deleteMany({ where: expired }),
+    prisma.warehouse.deleteMany({ where: expired }),
+    prisma.bankAccount.deleteMany({ where: expired }),
+    prisma.employee.deleteMany({ where: expired }),
+    prisma.supplier.deleteMany({ where: expired }),
+  ]);
   return {
+    others: others.reduce((sum, r) => sum + r.count, 0),
     companies: companies.count,
     contacts: contacts.count,
     deals: deals.count,

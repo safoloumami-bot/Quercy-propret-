@@ -10,16 +10,22 @@ import {
   CheckCircle2Icon,
   CircleSlashIcon,
   ClipboardCopyIcon,
+  FilePlusIcon,
   FileTextIcon,
   InfoIcon,
   Loader2Icon,
   SearchIcon,
   XCircleIcon,
 } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { ReportChart, unitOf } from "@/components/dashboard/charts";
+import { useAccess } from "@/components/shell/access-context";
+import { toastError } from "@/components/toast-error";
 import type { AiPart } from "@/lib/ai-types";
+import { useTRPC } from "@/lib/trpc";
 
 import { Markdown } from "./markdown";
 
@@ -326,19 +332,49 @@ function ExtractionCard({ part }: { part: Extract<AiPart, { type: "extraction" }
         </p>
       ) : null}
       {d.notes ? <p className="text-xs text-warning">{d.notes}</p> : null}
-      <Button
-        size="sm"
-        variant="secondary"
-        onClick={() =>
-          navigator.clipboard
-            .writeText(extractionText(part))
-            .then(() => toast.success("Données copiées."))
-            .catch(() => toast.error("Copie impossible : autorisez l'accès au presse-papiers."))
-        }
-      >
-        <ClipboardCopyIcon aria-hidden />
-        Copier les données
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <CreateBillButton part={part} />
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() =>
+            navigator.clipboard
+              .writeText(extractionText(part))
+              .then(() => toast.success("Données copiées."))
+              .catch(() => toast.error("Copie impossible : autorisez l'accès au presse-papiers."))
+          }
+        >
+          <ClipboardCopyIcon aria-hidden />
+          Copier les données
+        </Button>
+      </div>
     </section>
+  );
+}
+
+/** Crée la facture fournisseur (et le fournisseur s'il est nouveau) à partir des données lues. */
+function CreateBillButton({ part }: { part: Extract<AiPart, { type: "extraction" }> }) {
+  const trpc = useTRPC();
+  const router = useRouter();
+  const { allows } = useAccess();
+  const create = useMutation(
+    trpc.purchases.billFromExtraction.mutationOptions({
+      onSuccess: (result) => {
+        toast.success("Facture fournisseur créée.");
+        router.push(result.url);
+      },
+      onError: toastError,
+    }),
+  );
+  if (!allows("purchases", "create")) return null;
+  return (
+    <Button
+      size="sm"
+      onClick={() => create.mutate({ data: part.data })}
+      disabled={create.isPending}
+    >
+      <FilePlusIcon aria-hidden />
+      Créer la facture fournisseur
+    </Button>
   );
 }

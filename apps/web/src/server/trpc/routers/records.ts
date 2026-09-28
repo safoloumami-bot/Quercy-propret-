@@ -25,6 +25,7 @@ import { z } from "zod";
 import { notify } from "../../notify";
 import { publish } from "../../realtime";
 import { type RecordsCtx, delegate, entityContext } from "../../records/context";
+import { afterRecordChange } from "../../records/after-change";
 import { applyBusinessRules, bulkEditable, deletableWhere } from "../../records/hooks";
 import { searchWhere } from "../../records/search";
 import { listInclude, serialize } from "../../records/serialize";
@@ -259,6 +260,7 @@ export const recordsRouter = createTRPCRouter({
         ids: [created.id],
         actorId: ctx.user.id,
       });
+      await afterRecordChange(ctx, input.entity, [created.id], "created");
       return serialize(input.entity, created);
     }),
 
@@ -320,6 +322,7 @@ export const recordsRouter = createTRPCRouter({
           ids: [input.id],
           actorId: ctx.user.id,
         });
+        await afterRecordChange(ctx, input.entity, [input.id], "updated");
       }
       return serialize(input.entity, updated);
     }),
@@ -355,6 +358,7 @@ export const recordsRouter = createTRPCRouter({
         ids: input.ids,
         actorId: ctx.user.id,
       });
+      await afterRecordChange(ctx, input.entity, input.ids, "updated");
       return { count: result.count };
     }),
 
@@ -395,6 +399,7 @@ export const recordsRouter = createTRPCRouter({
         ids: input.ids,
         actorId: ctx.user.id,
       });
+      await afterRecordChange(ctx, input.entity, input.ids, "deleted");
       return { count: result.count };
     }),
 
@@ -417,6 +422,7 @@ export const recordsRouter = createTRPCRouter({
         ids: input.ids,
         actorId: ctx.user.id,
       });
+      await afterRecordChange(ctx, input.entity, input.ids, "restored");
       return { count: result.count };
     }),
 
@@ -546,6 +552,7 @@ export const recordsRouter = createTRPCRouter({
         ids: [],
         actorId: ctx.user.id,
       });
+      await afterRecordChange(ctx, input.entity, [], "created");
       return { valid: valid.length, errors, imported };
     }),
 

@@ -36,6 +36,18 @@ import {
   UserIcon,
   UsersIcon,
   UsersRoundIcon,
+  TruckIcon,
+  FileInputIcon,
+  WalletIcon,
+  WarehouseIcon,
+  ArrowLeftRightIcon,
+  CalendarDaysIcon,
+  LifeBuoyIcon,
+  IdCardIcon,
+  PalmtreeIcon,
+  LandmarkIcon,
+  BanknoteIcon,
+  FolderOpenIcon,
 } from "lucide-react";
 
 export interface NavItem {
@@ -100,6 +112,19 @@ export const ENTITY_ICONS: Record<EntityKey, LucideIcon> = {
   project: FolderKanbanIcon,
   task: ListTodoIcon,
   timeEntry: TimerIcon,
+  supplier: TruckIcon,
+  purchaseOrder: ClipboardListIcon,
+  bill: FileInputIcon,
+  expense: WalletIcon,
+  warehouse: WarehouseIcon,
+  stockMovement: ArrowLeftRightIcon,
+  event: CalendarDaysIcon,
+  ticket: LifeBuoyIcon,
+  employee: IdCardIcon,
+  leave: PalmtreeIcon,
+  bankAccount: LandmarkIcon,
+  bankTransaction: BanknoteIcon,
+  document: FolderOpenIcon,
 };
 
 function entityItem(
@@ -257,6 +282,147 @@ export const MODULE_SECTIONS: NavSection[] = [
         "chronomètre",
         "heures",
       ]),
+    ],
+  },
+  {
+    id: "purchases",
+    label: "Achats & dépenses",
+    items: [
+      entityItem(
+        "purchases-suppliers",
+        "/achats/fournisseurs",
+        "Fournisseurs",
+        "supplier",
+        "purchases",
+        ["prestataires"],
+      ),
+      entityItem(
+        "purchases-orders",
+        "/achats/commandes",
+        "Commandes fournisseurs",
+        "purchaseOrder",
+        "purchases",
+        ["bons de commande", "achats"],
+      ),
+      entityItem(
+        "purchases-bills",
+        "/achats/factures",
+        "Factures fournisseurs",
+        "bill",
+        "purchases",
+        ["à payer", "dépenses"],
+      ),
+      entityItem(
+        "purchases-expenses",
+        "/achats/notes-de-frais",
+        "Notes de frais",
+        "expense",
+        "purchases",
+        ["frais", "remboursements"],
+      ),
+    ],
+  },
+  {
+    id: "inventory",
+    label: "Stocks",
+    items: [
+      entityItem(
+        "inventory-products",
+        "/ventes/catalogue",
+        "Articles et stocks",
+        "product",
+        "sales",
+        ["inventaire", "quantités"],
+      ),
+      entityItem(
+        "inventory-movements",
+        "/stocks/mouvements",
+        "Mouvements",
+        "stockMovement",
+        "inventory",
+        ["entrées", "sorties", "inventaire"],
+      ),
+      entityItem(
+        "inventory-warehouses",
+        "/stocks/entrepots",
+        "Entrepôts",
+        "warehouse",
+        "inventory",
+        ["dépôts", "magasins"],
+      ),
+    ],
+  },
+  {
+    id: "calendar",
+    label: "Agenda",
+    items: [
+      entityItem("calendar-events", "/agenda/evenements", "Agenda", "event", "calendar", [
+        "rendez-vous",
+        "calendrier",
+        "planning",
+      ]),
+    ],
+  },
+  {
+    id: "support",
+    label: "Support",
+    items: [
+      entityItem("support-tickets", "/support/tickets", "Tickets", "ticket", "support", [
+        "sav",
+        "demandes",
+        "assistance",
+      ]),
+    ],
+  },
+  {
+    id: "hr",
+    label: "Ressources humaines",
+    items: [
+      entityItem("hr-employees", "/rh/salaries", "Salariés", "employee", "hr", [
+        "personnel",
+        "équipe",
+      ]),
+      entityItem("hr-leaves", "/rh/absences", "Congés et absences", "leave", "hr", [
+        "congés",
+        "rtt",
+        "maladie",
+      ]),
+    ],
+  },
+  {
+    id: "treasury",
+    label: "Trésorerie",
+    items: [
+      entityItem(
+        "treasury-accounts",
+        "/tresorerie/comptes",
+        "Comptes bancaires",
+        "bankAccount",
+        "treasury",
+        ["banque", "soldes"],
+      ),
+      entityItem(
+        "treasury-transactions",
+        "/tresorerie/operations",
+        "Opérations",
+        "bankTransaction",
+        "treasury",
+        ["relevés", "rapprochement", "encaissements"],
+      ),
+    ],
+  },
+  {
+    id: "documents",
+    label: "Documents",
+    items: [
+      entityItem(
+        "documents-library",
+        "/documents/bibliotheque",
+        "Documents",
+        "document",
+        "documents",
+        ["ged", "fichiers", "contrats"],
+      ),
     ],
   },
 ];

@@ -79,6 +79,19 @@ export const ENTITY_KEYS = [
   "project",
   "task",
   "timeEntry",
+  "supplier",
+  "purchaseOrder",
+  "bill",
+  "expense",
+  "warehouse",
+  "stockMovement",
+  "event",
+  "ticket",
+  "employee",
+  "leave",
+  "bankAccount",
+  "bankTransaction",
+  "document",
 ] as const;
 export type EntityKey = (typeof ENTITY_KEYS)[number];
 
@@ -92,7 +105,20 @@ export type EntityModel =
   | "salesDocument"
   | "project"
   | "task"
-  | "timeEntry";
+  | "timeEntry"
+  | "supplier"
+  | "purchaseOrder"
+  | "bill"
+  | "expense"
+  | "warehouse"
+  | "stockMovement"
+  | "event"
+  | "ticket"
+  | "employee"
+  | "leave"
+  | "bankAccount"
+  | "bankTransaction"
+  | "document";
 
 /** Affichages possibles d'une liste, en plus du tableau. */
 export interface EntityLayouts {

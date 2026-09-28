@@ -17,6 +17,7 @@ import { billingRouter } from "./routers/billing";
 import { invitationsRouter } from "./routers/invitations";
 import { membersRouter } from "./routers/members";
 import { profileRouter } from "./routers/profile";
+import { purchasesRouter } from "./routers/purchases";
 import { rolesRouter } from "./routers/roles";
 import { salesRouter } from "./routers/sales";
 import { teamsRouter } from "./routers/teams";
@@ -47,6 +48,7 @@ export const appRouter = createTRPCRouter({
   dashboard: dashboardRouter,
   reports: reportsRouter,
   ai: aiRouter,
+  purchases: purchasesRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -57,6 +57,43 @@ export function applyBusinessRules(
         next.completedAt = next.done ? (current?.done ? current.completedAt : now) : null;
       break;
     }
+    case "bill": {
+      if (typeof next.status === "string")
+        next.paidAt =
+          next.status === "paid" ? (current?.status === "paid" ? current.paidAt : now) : null;
+      break;
+    }
+    case "ticket": {
+      if (typeof next.status === "string") {
+        const solved = (s: unknown) => s === "resolved" || s === "closed";
+        next.resolvedAt = solved(next.status)
+          ? solved(current?.status)
+            ? current!.resolvedAt
+            : now
+          : null;
+      }
+      break;
+    }
+    case "leave": {
+      // Jours ouvrés calculés à la création si non saisis.
+      if (
+        !current &&
+        next.days == null &&
+        next.startDate instanceof Date &&
+        next.endDate instanceof Date
+      )
+        next.days = workingDays(next.startDate, next.endDate);
+      if (
+        next.startDate instanceof Date &&
+        next.endDate instanceof Date &&
+        next.endDate < next.startDate
+      )
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "La fin de l'absence précède son début.",
+        });
+      break;
+    }
     case "timeEntry": {
       // Une saisie manuelle de durée arrête un éventuel chronomètre.
       if (typeof next.minutes === "number") next.startedAt = null;
@@ -75,4 +112,17 @@ export function deletableWhere(entity: EntityKey): Record<string, unknown> {
 export function bulkEditable(entity: EntityKey, key: string): boolean {
   if (entity === "invoice" || entity === "creditNote") return key === "ownerId" || key === "tags";
   return true;
+}
+
+/** Jours ouvrés (lundi à vendredi) entre deux dates incluses. */
+export function workingDays(start: Date, end: Date): number {
+  let days = 0;
+  const d = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+  const last = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+  while (d.getTime() <= last) {
+    const day = d.getUTCDay();
+    if (day !== 0 && day !== 6) days++;
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return days;
 }

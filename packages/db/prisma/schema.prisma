@@ -57,6 +57,20 @@ model User {
   reports         Report[]         @relation("ReportOwner")
   aiConversations AiConversation[]
 
+  ownedSuppliers        Supplier[]        @relation("SupplierOwner")
+  ownedPurchaseOrders   PurchaseOrder[]   @relation("PurchaseOrderOwner")
+  ownedBills            Bill[]            @relation("BillOwner")
+  ownedExpenses         Expense[]         @relation("ExpenseOwner")
+  ownedWarehouses       Warehouse[]       @relation("WarehouseOwner")
+  ownedStockMovements   StockMovement[]   @relation("StockMovementOwner")
+  ownedEvents           Event[]           @relation("EventOwner")
+  ownedTickets          Ticket[]          @relation("TicketOwner")
+  ownedEmployees        Employee[]        @relation("EmployeeOwner")
+  ownedLeaves           Leave[]           @relation("LeaveOwner")
+  ownedBankAccounts     BankAccount[]     @relation("BankAccountOwner")
+  ownedBankTransactions BankTransaction[] @relation("BankTransactionOwner")
+  ownedDocuments        Document[]        @relation("DocumentOwner")
+
   @@map("user")
 }
 
@@ -213,6 +227,20 @@ model Organization {
   aiConversations     AiConversation[]
   aiActions           AiAction[]
   aiUsage             AiUsage[]
+
+  suppliers        Supplier[]
+  purchaseOrders   PurchaseOrder[]
+  bills            Bill[]
+  expenses         Expense[]
+  warehouses       Warehouse[]
+  stockMovements   StockMovement[]
+  events           Event[]
+  tickets          Ticket[]
+  employees        Employee[]
+  leaves           Leave[]
+  bankAccounts     BankAccount[]
+  bankTransactions BankTransaction[]
+  documents        Document[]
 
   @@map("organization")
 }
@@ -456,6 +484,10 @@ model Company {
   documents    SalesDocument[]
   projects     Project[]
 
+  eventCompanys    Event[]    @relation("EventCompany")
+  ticketCompanys   Ticket[]   @relation("TicketCompany")
+  documentCompanys Document[] @relation("DocumentCompany")
+
   @@index([organizationId, deletedAt, name])
   @@index([organizationId, ownerId])
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
@@ -487,6 +519,9 @@ model Contact {
   deals        Deal[]
   activities   Activity[]
   documents    SalesDocument[]
+
+  eventContacts  Event[]  @relation("EventContact")
+  ticketContacts Ticket[] @relation("TicketContact")
 
   @@index([organizationId, deletedAt, lastName])
   @@index([organizationId, companyId])
@@ -650,6 +685,8 @@ model Product {
   vatRate        String    @default("20")
   description    String?
   active         Boolean   @default(true)
+  stockQuantity  Float     @default(0)
+  reorderLevel   Float?
   ownerId        String?
   tags           String[]  @default([])
   customFields   Json      @default("{}")
@@ -660,6 +697,8 @@ model Product {
   organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner        User?               @relation("ProductOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   lines        SalesDocumentLine[]
+
+  stockMovementProducts StockMovement[] @relation("StockMovementProduct")
 
   @@index([organizationId, deletedAt, name])
   @@map("product")
@@ -727,6 +766,8 @@ model SalesDocument {
   lines           SalesDocumentLine[]
   payments        Payment[]
   timeEntries     TimeEntry[]
+
+  bankTransactionInvoices BankTransaction[] @relation("BankTransactionInvoice")
 
   @@unique([organizationId, kind, number])
   @@index([organizationId, kind, deletedAt, status])
@@ -857,6 +898,12 @@ model Project {
   tasks        Task[]
   timeEntries  TimeEntry[]
   documents    SalesDocument[]
+
+  purchaseOrderProjects PurchaseOrder[] @relation("PurchaseOrderProject")
+  billProjects          Bill[]          @relation("BillProject")
+  expenseProjects       Expense[]       @relation("ExpenseProject")
+  eventProjects         Event[]         @relation("EventProject")
+  documentProjects      Document[]      @relation("DocumentProject")
 
   @@index([organizationId, deletedAt, status])
   @@map("project")
@@ -1051,4 +1098,366 @@ model AiUsage {
 
   @@index([organizationId, createdAt])
   @@map("ai_usage")
+}
+
+// ─────────────────────────── Phase 8 : modules complémentaires ───────────────────────────
+
+model Supplier {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  category       String?
+  email          String?
+  phone          String?
+  siret          String?
+  vatNumber      String?
+  iban           String?
+  address        String?
+  city           String?
+  notes          String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("SupplierOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  purchaseOrderSuppliers PurchaseOrder[] @relation("PurchaseOrderSupplier")
+  billSuppliers          Bill[]          @relation("BillSupplier")
+
+  @@index([organizationId, deletedAt])
+  @@map("supplier")
+}
+
+model PurchaseOrder {
+  id             String    @id @default(cuid())
+  organizationId String
+  number         String?
+  status         String    @default("draft")
+  orderDate      DateTime  @default(now())
+  expectedDate   DateTime?
+  totalExclCents Int       @default(0)
+  notes          String?
+  supplierId     String
+  projectId      String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("PurchaseOrderOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  supplier     Supplier     @relation("PurchaseOrderSupplier", fields: [supplierId], references: [id], onDelete: Cascade)
+  project      Project?     @relation("PurchaseOrderProject", fields: [projectId], references: [id], onDelete: SetNull)
+
+  billPurchaseOrders Bill[] @relation("BillPurchaseOrder")
+
+  @@index([organizationId, deletedAt])
+  @@map("purchase_order")
+}
+
+model Bill {
+  id              String    @id @default(cuid())
+  organizationId  String
+  number          String?
+  status          String    @default("to_pay")
+  category        String?
+  issueDate       DateTime  @default(now())
+  dueDate         DateTime?
+  totalExclCents  Int       @default(0)
+  vatCents        Int       @default(0)
+  totalCents      Int       @default(0)
+  paidAt          DateTime?
+  notes           String?
+  supplierId      String
+  purchaseOrderId String?
+  projectId       String?
+  ownerId         String?
+  tags            String[]  @default([])
+  customFields    Json      @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner         User?          @relation("BillOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  supplier      Supplier       @relation("BillSupplier", fields: [supplierId], references: [id], onDelete: Cascade)
+  purchaseOrder PurchaseOrder? @relation("BillPurchaseOrder", fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  project       Project?       @relation("BillProject", fields: [projectId], references: [id], onDelete: SetNull)
+
+  bankTransactionBills BankTransaction[] @relation("BankTransactionBill")
+
+  @@index([organizationId, deletedAt])
+  @@map("bill")
+}
+
+model Expense {
+  id             String    @id @default(cuid())
+  organizationId String
+  description    String
+  date           DateTime  @default(now())
+  category       String    @default("travel")
+  amountCents    Int       @default(0)
+  vatCents       Int       @default(0)
+  status         String    @default("submitted")
+  projectId      String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("ExpenseOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  project      Project?     @relation("ExpenseProject", fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("expense")
+}
+
+model Warehouse {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  address        String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("WarehouseOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  stockMovementWarehouses StockMovement[] @relation("StockMovementWarehouse")
+
+  @@index([organizationId, deletedAt])
+  @@map("warehouse")
+}
+
+model StockMovement {
+  id             String    @id @default(cuid())
+  organizationId String
+  date           DateTime  @default(now())
+  type           String    @default("in")
+  quantity       Float     @default(0)
+  reference      String?
+  note           String?
+  productId      String
+  warehouseId    String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("StockMovementOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  product      Product      @relation("StockMovementProduct", fields: [productId], references: [id], onDelete: Cascade)
+  warehouse    Warehouse?   @relation("StockMovementWarehouse", fields: [warehouseId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("stock_movement")
+}
+
+model Event {
+  id             String    @id @default(cuid())
+  organizationId String
+  title          String
+  type           String    @default("meeting")
+  startAt        DateTime
+  endAt          DateTime?
+  location       String?
+  description    String?
+  companyId      String?
+  contactId      String?
+  projectId      String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("EventOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  company      Company?     @relation("EventCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  contact      Contact?     @relation("EventContact", fields: [contactId], references: [id], onDelete: SetNull)
+  project      Project?     @relation("EventProject", fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("event")
+}
+
+model Ticket {
+  id             String    @id @default(cuid())
+  organizationId String
+  subject        String
+  status         String    @default("new")
+  priority       String    @default("normal")
+  channel        String?
+  dueDate        DateTime?
+  resolvedAt     DateTime?
+  description    String?
+  companyId      String?
+  contactId      String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("TicketOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  company      Company?     @relation("TicketCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  contact      Contact?     @relation("TicketContact", fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("ticket")
+}
+
+model Employee {
+  id               String    @id @default(cuid())
+  organizationId   String
+  firstName        String
+  lastName         String
+  jobTitle         String?
+  department       String?
+  email            String?
+  phone            String?
+  contractType     String?
+  status           String    @default("active")
+  startDate        DateTime?
+  endDate          DateTime?
+  grossSalaryCents Int       @default(0)
+  ownerId          String?
+  tags             String[]  @default([])
+  customFields     Json      @default("{}")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("EmployeeOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  leaveEmployees    Leave[]    @relation("LeaveEmployee")
+  documentEmployees Document[] @relation("DocumentEmployee")
+
+  @@index([organizationId, deletedAt])
+  @@map("employee")
+}
+
+model Leave {
+  id             String    @id @default(cuid())
+  organizationId String
+  type           String    @default("paid")
+  startDate      DateTime
+  endDate        DateTime
+  days           Float?
+  status         String    @default("requested")
+  reason         String?
+  employeeId     String
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("LeaveOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  employee     Employee     @relation("LeaveEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, deletedAt])
+  @@map("leave")
+}
+
+model BankAccount {
+  id                  String    @id @default(cuid())
+  organizationId      String
+  name                String
+  bank                String?
+  iban                String?
+  openingBalanceCents Int       @default(0)
+  balanceCents        Int       @default(0)
+  ownerId             String?
+  tags                String[]  @default([])
+  customFields        Json      @default("{}")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("BankAccountOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  bankTransactionAccounts BankTransaction[] @relation("BankTransactionAccount")
+
+  @@index([organizationId, deletedAt])
+  @@map("bank_account")
+}
+
+model BankTransaction {
+  id             String    @id @default(cuid())
+  organizationId String
+  date           DateTime  @default(now())
+  label          String
+  amountCents    Int       @default(0)
+  category       String?
+  reconciled     Boolean   @default(false)
+  note           String?
+  accountId      String
+  invoiceId      String?
+  billId         String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?          @relation("BankTransactionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  account      BankAccount    @relation("BankTransactionAccount", fields: [accountId], references: [id], onDelete: Cascade)
+  invoice      SalesDocument? @relation("BankTransactionInvoice", fields: [invoiceId], references: [id], onDelete: SetNull)
+  bill         Bill?          @relation("BankTransactionBill", fields: [billId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("bank_transaction")
+}
+
+model Document {
+  id             String    @id @default(cuid())
+  organizationId String
+  title          String
+  folder         String?
+  category       String?
+  expiresAt      DateTime?
+  description    String?
+  companyId      String?
+  projectId      String?
+  employeeId     String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  company      Company?     @relation("DocumentCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  project      Project?     @relation("DocumentProject", fields: [projectId], references: [id], onDelete: SetNull)
+  employee     Employee?    @relation("DocumentEmployee", fields: [employeeId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("document")
 }

@@ -229,3 +229,16 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
 74. **Faux service Claude pour les tests** (`scripts/fake-anthropic.ts`), au format réel du flux
     SSE : les tests et la CI n'ont besoin ni de clé ni de réseau, et les parcours restent
     déterministes.
+
+## 2026-09-28 — Phase 8
+
+75. **Modules complémentaires décrits dans le registre des entités** : listes, fiches,
+    Kanban, calendrier, Gantt, import/export, droits, recherche, rapports et assistant viennent
+    du moteur générique ; seules les règles propres (stock, soldes, dates automatiques) sont
+    écrites à part.
+76. **Valeurs calculées recalculées après chaque écriture** (`afterRecordChange`) plutôt
+    qu'incrémentées : le stock et le solde restent justes après modification, corbeille ou
+    restauration d'un mouvement ou d'une opération.
+77. **Le stock est porté par l'article du catalogue** (un seul référentiel pour vendre et
+    stocker), les mouvements précisent l'entrepôt.
+78. **Montants des nouveaux modules en centimes** (comme les ventes), saisis en euros.

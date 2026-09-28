@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.8.0] — 2026-09-28 — Phase 8 : modules complémentaires
+
+### Ajouté
+
+- **Achats** : fournisseurs, commandes fournisseurs (Kanban, calendrier des livraisons),
+  factures fournisseurs (à payer, payées — date de paiement automatique), notes de frais.
+  Création d'une facture fournisseur en un clic depuis un document lu par l'assistant.
+- **Stocks** : entrepôts, mouvements (entrées, sorties, ajustements), stock de chaque article
+  recalculé à chaque mouvement (corbeille comprise), seuil d'alerte avec notification.
+- **Agenda** : événements (rendez-vous, appels, interventions) en calendrier, liés aux clients,
+  contacts et projets.
+- **Support** : tickets (Kanban par statut, priorité, canal, échéance, date de résolution
+  automatique), fil de commentaires et pièces jointes.
+- **RH** : salariés, congés et absences (jours ouvrés calculés, calendrier, Gantt, validation).
+- **Trésorerie** : comptes bancaires avec solde tenu à jour, opérations (import CSV,
+  rapprochement, lien vers factures clients et fournisseurs).
+- **Documents** : bibliothèque (dossiers, catégories, échéances, versions de fichiers).
+- 5 modèles de rapports (flux de trésorerie, factures à payer, achats par fournisseur,
+  tickets par statut, absences) ; l'assistant connaît les nouveaux modules.
+- Données de démonstration sur 12 mois pour chaque module, tests d'intégration et E2E.
+
 ## [0.7.0] — 2026-09-28 — Phase 7 : assistant IA
 
 ### Ajouté
