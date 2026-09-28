@@ -1,0 +1,15 @@
+# Déploiement Netlify de l'application web (le worker s'héberge ailleurs : voir README).
+[build]
+  command = "pnpm --filter @quercy/db generate && pnpm --filter @quercy/web build"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[functions]
+  # Moteur Prisma pour l'environnement d'exécution de Netlify (Amazon Linux).
+  included_files = [
+    "node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client/libquery_engine-rhel-openssl-3.0.x.so.node",
+    "node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client/schema.prisma",
+  ]

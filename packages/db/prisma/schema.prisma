@@ -3,7 +3,10 @@
 // `createdAt`, `updatedAt` et `deletedAt` (corbeille de 30 jours).
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  /// « native » pour le développement et Docker ; « rhel-openssl-3.0.x » pour les fonctions
+  /// serverless (Netlify, Vercel, AWS Lambda).
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
