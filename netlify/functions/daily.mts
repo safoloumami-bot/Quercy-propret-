@@ -2,10 +2,11 @@ import { createHmac } from "node:crypto";
 
 /**
  * Fonction planifiée Netlify : chaque matin, déclenche les tâches quotidiennes de Quercy
- * (corbeille, factures récurrentes et relances, rapports programmés) via /api/cron/<tâche>.
+ * (planning des contrats d'entretien, factures récurrentes et relances, rapports
+ * programmés, corbeille) via /api/cron/<tâche>.
  * Remplace le worker quand l'application est hébergée seulement sur Netlify.
  */
-const JOBS = ["sales-daily", "reports-daily", "purge-trash"];
+const JOBS = ["cleaning-daily", "sales-daily", "reports-daily", "purge-trash"];
 
 export default async function daily() {
   const secret = process.env.CRON_SECRET || process.env.BETTER_AUTH_SECRET;

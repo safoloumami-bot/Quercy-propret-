@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@quercy/core": "workspace:*",
     "@quercy/db": "workspace:*",
     "@quercy/documents": "workspace:*",
     "@quercy/mailer": "workspace:*",

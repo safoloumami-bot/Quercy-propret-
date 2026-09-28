@@ -29,6 +29,21 @@ await queue.upsertJobScheduler(
   },
 );
 
+// Nettoyage : interventions des contrats d'entretien (3 semaines d'avance), chaque nuit.
+await queue.upsertJobScheduler(
+  "cleaning-daily",
+  { pattern: "0 4 * * *", tz: "Europe/Paris" },
+  {
+    name: "cleaning-daily",
+    opts: {
+      removeOnComplete: 100,
+      removeOnFail: 500,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 60_000 },
+    },
+  },
+);
+
 // Ventes : factures récurrentes, retards, expiration des devis et relances, chaque matin.
 await queue.upsertJobScheduler(
   "sales-daily",

@@ -10,3 +10,5 @@ export * from "./sales";
 export * from "./analytics";
 export * from "./ai";
 export * from "./automations";
+export * from "./cleaning";
+export * from "./fec";

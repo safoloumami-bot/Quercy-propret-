@@ -12,7 +12,7 @@ import { CommandPalette } from "./command-palette";
 import { OfflineStatus } from "./offline-status";
 import { RecordTabsBar, RecordTabsProvider } from "./record-tabs";
 import { AccessProvider } from "./access-context";
-import { ShellProvider } from "./shell-context";
+import { ShellProvider, useShell } from "./shell-context";
 import { ShortcutsDialog } from "./shortcuts-dialog";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
@@ -41,6 +41,20 @@ export interface AppShellProps {
   /** Propriétaire du SaaS : accès à l'administration de la plateforme. */
   platformAdmin?: boolean;
   children: React.ReactNode;
+}
+
+/** Voile sous la barre latérale ouverte sur téléphone (un appui la referme). */
+function MobileNavBackdrop() {
+  const { mobileNavOpen, setMobileNavOpen } = useShell();
+  if (!mobileNavOpen) return null;
+  return (
+    <button
+      type="button"
+      aria-label="Fermer le menu"
+      className="fixed inset-0 z-40 bg-black/40 md:hidden"
+      onClick={() => setMobileNavOpen(false)}
+    />
+  );
 }
 
 /** Cadre de l'application : barre latérale, barre supérieure, palette et raccourcis. */
@@ -79,6 +93,7 @@ export function AppShell({
                 modules={modules}
                 platformAdmin={platformAdmin}
               />
+              <MobileNavBackdrop />
               <div className="flex min-w-0 flex-1 flex-col">
                 <Topbar />
                 <OfflineStatus workspaceId={current.id} />

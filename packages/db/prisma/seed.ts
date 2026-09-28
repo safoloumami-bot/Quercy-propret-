@@ -4,6 +4,7 @@ import { prisma } from "../src/client";
 import { hashPassword } from "../src/password";
 import { SYSTEM_ROLE_SEEDS } from "../src/roles";
 import { seedBusiness } from "./seed-business";
+import { seedCleaning } from "./seed-cleaning";
 import { seedCrm } from "./seed-crm";
 import { seedExtras } from "./seed-extras";
 import { seedModules } from "./seed-modules";
@@ -107,6 +108,7 @@ async function main() {
     update: {
       logoUrl: "/brand/quercy-mark.png",
       industry: "cleaning",
+      modules: [...MODULE_KEYS],
       size: "11-50",
       ...DEMO_SUBSCRIPTION,
     },
@@ -194,6 +196,7 @@ async function main() {
   await seedCrm(prisma, org.id, sellers);
   await seedBusiness(prisma, org.id, sellers);
   await seedModules(prisma, org.id, sellers);
+  await seedCleaning(prisma, org.id, sellers);
   await seedExtras(prisma, org.id, sellers);
   await seedReports(prisma, org.id, users["demo@quercy.app"]!);
 

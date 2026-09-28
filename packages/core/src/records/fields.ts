@@ -93,6 +93,10 @@ export const ENTITY_KEYS = [
   "bankAccount",
   "bankTransaction",
   "document",
+  "site",
+  "cleaningContract",
+  "intervention",
+  "inspection",
 ] as const;
 export type EntityKey = (typeof ENTITY_KEYS)[number];
 
@@ -119,7 +123,11 @@ export type EntityModel =
   | "leave"
   | "bankAccount"
   | "bankTransaction"
-  | "document";
+  | "document"
+  | "site"
+  | "cleaningContract"
+  | "intervention"
+  | "inspection";
 
 /** Affichages possibles d'une liste, en plus du tableau. */
 export interface EntityLayouts {

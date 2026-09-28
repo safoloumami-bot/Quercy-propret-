@@ -74,6 +74,12 @@ model User {
   ownedBankTransactions BankTransaction[] @relation("BankTransactionOwner")
   ownedDocuments        Document[]        @relation("DocumentOwner")
 
+  ownedSites             Site[]             @relation("SiteOwner")
+  ownedCleaningContracts CleaningContract[] @relation("CleaningContractOwner")
+  agentContracts         CleaningContract[] @relation("CleaningContractAgent")
+  ownedInterventions     Intervention[]     @relation("InterventionOwner")
+  ownedInspections       Inspection[]       @relation("InspectionOwner")
+
   apiKeys ApiKey[] @relation("ApiKeyUser")
 
   @@map("user")
@@ -246,6 +252,11 @@ model Organization {
   bankAccounts     BankAccount[]
   bankTransactions BankTransaction[]
   documents        Document[]
+
+  sites             Site[]
+  cleaningContracts CleaningContract[]
+  interventions     Intervention[]
+  inspections       Inspection[]
 
   automations Automation[]
   apiKeys     ApiKey[]
@@ -496,6 +507,10 @@ model Company {
   eventCompanys    Event[]    @relation("EventCompany")
   ticketCompanys   Ticket[]   @relation("TicketCompany")
   documentCompanys Document[] @relation("DocumentCompany")
+
+  sites             Site[]             @relation("SiteCompany")
+  cleaningContracts CleaningContract[] @relation("CleaningContractCompany")
+  interventions     Intervention[]     @relation("InterventionCompany")
 
   @@index([organizationId, deletedAt, name])
   @@index([organizationId, ownerId])
@@ -1560,4 +1575,143 @@ model WebhookDelivery {
 
   @@index([webhookId, createdAt(sort: Desc)])
   @@map("webhook_delivery")
+}
+
+// ─────────────────────────── Nettoyage & interventions ───────────────────────────
+
+/// Site client : lieu d'intervention (adresse, accès, consignes).
+model Site {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  companyId      String?
+  address        String?
+  postalCode     String?
+  city           String?
+  surfaceM2      Float?
+  openingHours   String?
+  accessCode     String?
+  keys           String?
+  instructions   String?
+  status         String    @default("active")
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner         User?              @relation("SiteOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  company       Company?           @relation("SiteCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  contracts     CleaningContract[] @relation("CleaningContractSite")
+  interventions Intervention[]     @relation("InterventionSite")
+  inspections   Inspection[]       @relation("InspectionSite")
+
+  @@index([organizationId, deletedAt])
+  @@map("site")
+}
+
+/// Contrat d'entretien récurrent : jours, horaire et durée ; génère les interventions.
+model CleaningContract {
+  id                String    @id @default(cuid())
+  organizationId    String
+  name              String
+  companyId         String?
+  siteId            String
+  status            String    @default("active")
+  weekdays          String[]  @default([])
+  startTime         String?
+  durationMinutes   Int?
+  agentId           String?
+  monthlyPriceCents Int?
+  startDate         DateTime?
+  endDate           DateTime?
+  generatedUntil    DateTime?
+  description       String?
+  ownerId           String?
+  tags              String[]  @default([])
+  customFields      Json      @default("{}")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner         User?          @relation("CleaningContractOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  agent         User?          @relation("CleaningContractAgent", fields: [agentId], references: [id], onDelete: SetNull)
+  company       Company?       @relation("CleaningContractCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  site          Site           @relation("CleaningContractSite", fields: [siteId], references: [id], onDelete: Cascade)
+  interventions Intervention[] @relation("InterventionContract")
+
+  @@index([organizationId, deletedAt])
+  @@map("cleaning_contract")
+}
+
+/// Intervention planifiée chez un client : agent (ownerId), horaire, pointage et signature.
+model Intervention {
+  id              String    @id @default(cuid())
+  organizationId  String
+  title           String
+  siteId          String?
+  contractId      String?
+  companyId       String?
+  ownerId         String?
+  date            DateTime
+  startTime       String?
+  durationMinutes Int?
+  status          String    @default("planned")
+  checkInAt       DateTime?
+  checkOutAt      DateTime?
+  workedMinutes   Int?
+  signatureUrl    String?
+  signedBy        String?
+  photoUrl        String?
+  notes           String?
+  tags            String[]  @default([])
+  customFields    Json      @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?             @relation("InterventionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  site         Site?             @relation("InterventionSite", fields: [siteId], references: [id], onDelete: SetNull)
+  contract     CleaningContract? @relation("InterventionContract", fields: [contractId], references: [id], onDelete: SetNull)
+  company      Company?          @relation("InterventionCompany", fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@unique([contractId, date])
+  @@index([organizationId, deletedAt, date])
+  @@index([organizationId, ownerId, date])
+  @@map("intervention")
+}
+
+/// Contrôle qualité d'un site : grille notée, résultat et photo.
+model Inspection {
+  id             String    @id @default(cuid())
+  organizationId String
+  title          String
+  siteId         String?
+  date           DateTime
+  floors         Boolean   @default(false)
+  sanitary       Boolean   @default(false)
+  dusting        Boolean   @default(false)
+  windows        Boolean   @default(false)
+  bins           Boolean   @default(false)
+  score          Int?
+  result         String?
+  photoUrl       String?
+  comments       String?
+  ownerId        String?
+  tags           String[]  @default([])
+  customFields   Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("InspectionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  site         Site?        @relation("InspectionSite", fields: [siteId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@map("inspection")
 }

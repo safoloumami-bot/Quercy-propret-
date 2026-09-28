@@ -10,6 +10,7 @@ export const MODULE_KEYS = [
   "purchases",
   "inventory",
   "projects",
+  "cleaning",
   "calendar",
   "support",
   "hr",
@@ -75,6 +76,15 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     description: "Projets, tâches, Kanban, Gantt et suivi du temps.",
     category: "operations",
     pairsWith: ["calendar", "sales"],
+  },
+  cleaning: {
+    key: "cleaning",
+    slug: "nettoyage",
+    name: "Nettoyage & interventions",
+    description:
+      "Sites clients, contrats d'entretien, planning des agents, pointage, signatures et contrôles qualité.",
+    category: "operations",
+    pairsWith: ["crm", "sales", "hr"],
   },
   calendar: {
     key: "calendar",

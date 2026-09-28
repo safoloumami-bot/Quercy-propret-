@@ -1,6 +1,11 @@
 import "server-only";
 
-import { type EntityKey, stageProbability } from "@quercy/core";
+import {
+  type EntityKey,
+  INSPECTION_CHECKS,
+  inspectionOutcome,
+  stageProbability,
+} from "@quercy/core";
 import { TRPCError } from "@trpc/server";
 
 /** Champs encore modifiables sur une facture ou un avoir émis (document légalement figé). */
@@ -92,6 +97,35 @@ export function applyBusinessRules(
           code: "BAD_REQUEST",
           message: "La fin de l'absence précède son début.",
         });
+      break;
+    }
+    case "intervention": {
+      const merged = { ...current, ...next };
+      const inAt = merged.checkInAt instanceof Date ? merged.checkInAt : null;
+      const outAt = merged.checkOutAt instanceof Date ? merged.checkOutAt : null;
+      if ("checkInAt" in next || "checkOutAt" in next) {
+        if (inAt && outAt && outAt < inAt)
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Le départ précède l'arrivée." });
+        next.workedMinutes =
+          inAt && outAt ? Math.round((outAt.getTime() - inAt.getTime()) / 60_000) : null;
+        // Le pointage fait avancer le statut, sauf choix explicite dans la même saisie.
+        if (
+          !("status" in data) &&
+          ["planned", "in_progress", "missed"].includes(String(merged.status))
+        )
+          next.status = outAt ? "done" : inAt ? "in_progress" : merged.status;
+      }
+      break;
+    }
+    case "inspection": {
+      const touched = !current || INSPECTION_CHECKS.some((c) => c.key in next);
+      if (touched) {
+        const merged = { ...current, ...next };
+        Object.assign(
+          next,
+          inspectionOutcome(INSPECTION_CHECKS.map((c) => merged[c.key] === true)),
+        );
+      }
       break;
     }
     case "timeEntry": {

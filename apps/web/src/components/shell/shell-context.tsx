@@ -13,6 +13,9 @@ interface ShellState {
   toggleSidebar: () => void;
   assistantOpen: boolean;
   setAssistantOpen: (open: boolean) => void;
+  /** Téléphone : barre latérale ouverte par-dessus le contenu. */
+  mobileNavOpen: boolean;
+  setMobileNavOpen: (open: boolean) => void;
 }
 
 const ShellContext = React.createContext<ShellState | null>(null);
@@ -28,6 +31,7 @@ export function ShellProvider({
   const [helpOpen, setHelpOpen] = React.useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(initialCollapsed);
   const [assistantOpen, setAssistantOpen] = React.useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
 
   const toggleSidebar = React.useCallback(() => {
     setSidebarCollapsed((collapsed) => {
@@ -47,8 +51,10 @@ export function ShellProvider({
       toggleSidebar,
       assistantOpen,
       setAssistantOpen,
+      mobileNavOpen,
+      setMobileNavOpen,
     }),
-    [paletteOpen, helpOpen, sidebarCollapsed, toggleSidebar, assistantOpen],
+    [paletteOpen, helpOpen, sidebarCollapsed, toggleSidebar, assistantOpen, mobileNavOpen],
   );
 
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>;

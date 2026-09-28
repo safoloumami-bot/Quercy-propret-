@@ -352,6 +352,9 @@ importers:
 
   packages/jobs:
     dependencies:
+      '@quercy/core':
+        specifier: workspace:*
+        version: link:../core
       '@quercy/db':
         specifier: workspace:*
         version: link:../db

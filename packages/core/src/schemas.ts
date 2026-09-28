@@ -21,7 +21,7 @@ export const INDUSTRIES = [
   {
     value: "cleaning",
     label: "Propreté et entretien",
-    modules: ["crm", "sales", "calendar", "hr"],
+    modules: ["crm", "sales", "cleaning", "calendar", "hr"],
   },
   {
     value: "construction",

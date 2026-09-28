@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@quercy/ui/components/t
 import {
   ChevronRightIcon,
   KeyboardIcon,
+  MenuIcon,
   MoonIcon,
   SearchIcon,
   SparklesIcon,
@@ -26,7 +27,8 @@ import { useShell } from "./shell-context";
 export function Topbar() {
   const pathname = usePathname();
   const crumbs = breadcrumbFor(pathname);
-  const { setPaletteOpen, setHelpOpen, assistantOpen, setAssistantOpen } = useShell();
+  const { setPaletteOpen, setHelpOpen, assistantOpen, setAssistantOpen, setMobileNavOpen } =
+    useShell();
   const { resolvedTheme, setTheme } = useThemePreference();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -35,8 +37,17 @@ export function Topbar() {
   return (
     <header
       data-tauri-drag-region
-      className="flex h-12 shrink-0 items-center gap-4 border-b border-border bg-background px-4 [.mac-desktop_&]:pl-20"
+      className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-2 sm:gap-4 sm:px-4 [.mac-desktop_&]:pl-20"
     >
+      <Button
+        variant="ghost"
+        size="icon"
+        className="md:hidden"
+        aria-label="Ouvrir le menu"
+        onClick={() => setMobileNavOpen(true)}
+      >
+        <MenuIcon />
+      </Button>
       <nav aria-label="Fil d'Ariane" className="min-w-0 flex-1">
         <ol className="flex items-center gap-1.5 text-sm">
           {crumbs.map((crumb, index) => {
@@ -70,13 +81,16 @@ export function Topbar() {
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
-        className="flex h-8 w-80 items-center gap-2 rounded-md border border-border bg-card px-2.5 text-sm text-muted-foreground shadow-xs transition-colors outline-none hover:border-input hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40 2xl:w-96"
+        aria-label="Rechercher ou lancer une action"
+        className="flex h-8 w-80 items-center gap-2 rounded-md border border-border bg-card px-2.5 text-sm text-muted-foreground shadow-xs transition-colors outline-none hover:border-input hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40 max-md:w-8 max-md:justify-center max-md:px-0 2xl:w-96"
       >
         <SearchIcon className="size-4" aria-hidden />
-        <span className="flex-1 truncate text-left whitespace-nowrap">
+        <span className="flex-1 truncate text-left whitespace-nowrap max-md:hidden">
           Rechercher ou lancer une action…
         </span>
-        <KeyCombo keys={["mod", "K"]} />
+        <span className="max-md:hidden">
+          <KeyCombo keys={["mod", "K"]} />
+        </span>
       </button>
 
       <div className="flex items-center gap-1">
@@ -90,7 +104,7 @@ export function Topbar() {
               aria-keyshortcuts="Control+J"
             >
               <SparklesIcon />
-              Assistant
+              <span className="max-sm:hidden">Assistant</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>

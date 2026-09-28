@@ -39,6 +39,10 @@ export const TENANT_MODELS = [
   "BankAccount",
   "BankTransaction",
   "Document",
+  "Site",
+  "CleaningContract",
+  "Intervention",
+  "Inspection",
   "DuplicateDismissal",
   "Dashboard",
   "Report",
@@ -78,6 +82,10 @@ export const SOFT_DELETE_MODELS = [
   "BankAccount",
   "BankTransaction",
   "Document",
+  "Site",
+  "CleaningContract",
+  "Intervention",
+  "Inspection",
   "Report",
 ] as const;
 

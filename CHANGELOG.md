@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.1.0] — 2026-09-28 — Module Nettoyage et hébergement Netlify complet
+
+### Ajouté
+
+- **Module « Nettoyage & interventions »** : sites clients (adresse, codes d'accès, clés,
+  consignes, surface), contrats d'entretien récurrents (jours, horaire, durée, agent attitré,
+  forfait mensuel) qui remplissent seuls le planning trois semaines à l'avance, interventions
+  (agent, statut, pointage, temps réel, photo, compte rendu, signature du client), contrôles
+  qualité notés (grille de 5 points, note et résultat calculés).
+- **Planning des agents** : semaine par agent, réaffectation en un clic (remplacement d'un
+  absent), mise à jour depuis les contrats.
+- **Ma journée** (écran téléphone de l'agent) : itinéraire, codes d'accès, consignes,
+  pointage d'arrivée et de départ, photo, compte rendu et signature au doigt.
+- **Heures et paie** : heures du mois par agent, dont nuit (21 h–6 h), dimanche et jours
+  fériés ; export CSV pour le cabinet de paie.
+- **Export comptable FEC** (Ventes › Export comptable) : ventes, avoirs, achats et
+  encaissements au format réglementaire.
+- Catégorie de document « Sécurité (FDS, prévention) » ; indicateurs d'accueil
+  « Interventions par statut » et « Note qualité moyenne par site ».
+- Catalogue de démonstration en **vraies photos au fond retiré** (Open Images, CC BY 2.0,
+  crédits dans `apps/web/public/catalogue/credits.txt`).
+- Menu mobile : l'application s'utilise sur téléphone.
+
+### Hébergement Netlify
+
+- Les **migrations** de la base s'appliquent à chaque déploiement (`scripts/netlify-build.sh`).
+- Les **tâches quotidiennes** (planning des contrats, factures récurrentes, relances,
+  rapports programmés, corbeille) tournent sans worker grâce à une fonction planifiée
+  (`netlify/functions/daily.mts` → `/api/cron/<tâche>`), code partagé dans `@quercy/jobs`.
+- Webhooks livrés immédiatement quand Redis n'est pas configuré.
+- En production sans service d'e-mail, l'interface dit clairement qu'aucun e-mail n'est
+  parti (invitations avec lien à copier, avertissement « mot de passe oublié »).
+
 ## [1.0.0] — 2026-09-28 — Phase 11 : finition
 
 ### Ajouté

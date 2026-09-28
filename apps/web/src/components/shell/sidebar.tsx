@@ -7,7 +7,7 @@ import { PanelLeftCloseIcon, PanelLeftOpenIcon, SearchIcon } from "lucide-react"
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ModuleKey, PermissionMatrix } from "@quercy/core";
-import type * as React from "react";
+import * as React from "react";
 
 import {
   SETTINGS_ENTRY,
@@ -64,7 +64,11 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const active = activeNavItem(pathname);
-  const { sidebarCollapsed: collapsed, toggleSidebar, setPaletteOpen } = useShell();
+  const { sidebarCollapsed, toggleSidebar, setPaletteOpen, mobileNavOpen, setMobileNavOpen } =
+    useShell();
+  // Sur téléphone, la barre s'ouvre par-dessus le contenu, toujours dépliée.
+  const collapsed = sidebarCollapsed && !mobileNavOpen;
+  React.useEffect(() => setMobileNavOpen(false), [pathname, setMobileNavOpen]);
 
   return (
     <aside
@@ -73,6 +77,9 @@ export function Sidebar({
       className={cn(
         "flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 ease-out-quick",
         collapsed ? "w-14" : "w-60",
+        mobileNavOpen
+          ? "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:w-72 max-md:shadow-xl"
+          : "max-md:hidden",
       )}
     >
       <div className={cn("flex items-center gap-1 p-2", collapsed && "flex-col")}>

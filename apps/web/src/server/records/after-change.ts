@@ -1,6 +1,7 @@
 import "server-only";
 
 import { type EntityKey, recordPath } from "@quercy/core";
+import { generateInterventions } from "@quercy/jobs";
 
 import { runAutomations } from "../automations/engine";
 import { enqueueDeliveries, webhookEvent } from "../automations/webhooks";
@@ -27,6 +28,9 @@ export async function afterRecordChange(
   if (entity === "stockMovement") await syncStock(ctx, ids);
   if (entity === "bankTransaction" || entity === "bankAccount")
     await syncBalances(ctx, entity, ids);
+  // Un contrat d'entretien créé ou modifié remplit aussitôt le planning.
+  if (entity === "cleaningContract" && ids.length > 0 && action !== "deleted")
+    await generateInterventions({ organizationId: ctx.organizationId, contractIds: ids });
   // L'import (sans identifiants) ne déclenche ni automatisation ni webhook.
   if (ids.length === 0) return;
   const trigger = action === "restored" ? "created" : action;
