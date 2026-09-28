@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.0.0] — 2026-09-28 — Phase 11 : finition
+
+### Ajouté
+
+- **Parcours complet E2E** de la définition de « terminé » dans un espace neuf : inscription,
+  accueil, invitation, client, devis envoyé, facture émise, paiement, tableau de bord,
+  question à l'assistant.
+- **Audit d'accessibilité automatisé** (axe, WCAG 2.1 A/AA) sur les écrans principaux,
+  exécuté à chaque intégration.
+- **Images Docker de production** (`Dockerfile` : web, worker, migrate) et
+  `docker-compose.prod.yml` (PostgreSQL, Redis, migrations, application, worker).
+
+### Corrigé
+
+- Contraste insuffisant des pastilles de statut colorées (nouvelles teintes de texte AA).
+- Structure ARIA du tableau : en-tête de sélection et ligne « Chargement… » annoncés
+  correctement ; les vues enregistrées deviennent un groupe de boutons (et non des onglets).
+- Les écrans de l'application ne sont plus pré-rendus à la construction (la construction
+  échouait sans secrets de production).
+
 ## [0.10.0] — 2026-09-28 — Phase 10 : application de bureau
 
 ### Ajouté

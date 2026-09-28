@@ -85,13 +85,12 @@ export function ViewsBar({
   return (
     <div
       className="flex items-center gap-1 overflow-x-auto"
-      role="tablist"
+      role="group"
       aria-label="Vues enregistrées"
     >
       <button
         type="button"
-        role="tab"
-        aria-selected={viewId === null}
+        aria-pressed={viewId === null}
         className={tabClass(viewId === null)}
         onClick={onReset}
       >
@@ -101,8 +100,7 @@ export function ViewsBar({
         <div key={v.id} className="flex items-center">
           <button
             type="button"
-            role="tab"
-            aria-selected={v.id === viewId}
+            aria-pressed={v.id === viewId}
             className={tabClass(v.id === viewId)}
             onClick={() => v.config && onApply(v.config, v.id)}
             title={v.shared ? `Partagée par ${v.ownerName}` : "Vue personnelle"}

@@ -4,7 +4,7 @@ Logiciel de gestion tout-en-un et modulaire pour les PME, TPE et indépendants :
 commun et des modules que chaque entreprise active selon ses besoins. Il sera disponible dans
 le navigateur (optimisé pour ordinateur) et en application Windows/macOS (Tauri).
 
-> **État actuel : phases 1 à 10 terminées** : fondations, comptes et multi-entreprises,
+> **État actuel : les 11 phases sont terminées (version 1.0.0)** : fondations, comptes et multi-entreprises,
 > abonnements, moteur générique (tableau, Kanban, calendrier, Gantt, fiches, champs
 > personnalisés, vues, import/export, historique, commentaires, fichiers, recherche, temps réel)
 > et modules cœur : CRM (contacts, entreprises, pipeline d'opportunités, activités, doublons),
@@ -171,11 +171,30 @@ assistant,
 ## Déploiement
 
 La CI (GitHub Actions, `.github/workflows/ci.yml`) vérifie le formatage, le lint, les types,
-les tests unitaires, le build et les parcours E2E sur PostgreSQL et Redis réels.
-En production : `pnpm db:deploy` puis `pnpm build` et `pnpm --filter @quercy/web start`, avec
-les variables de `.env.example` — en particulier un `BETTER_AUTH_SECRET` généré
-(`openssl rand -base64 32`), `RESEND_API_KEY`, `ENABLE_DEV_MAILBOX="false"` et
-`AUTH_RATE_LIMIT="on"`. Les cibles Vercel et Railway/Fly, et les installeurs desktop,
-sont documentés dans les phases correspondantes.
+les tests unitaires et d'intégration, le build, les parcours E2E (dont le parcours complet et
+l'audit d'accessibilité axe) sur PostgreSQL et Redis réels, et la compilation de
+l'application de bureau.
+
+### Docker (autonome)
+
+```bash
+cp .env.example .env.production   # renseigner les secrets (voir ci-dessous)
+POSTGRES_PASSWORD=… docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+```
+
+`Dockerfile` produit trois images à partir d'une seule construction : `web` (Next.js, port
+3000, contrôle de santé sur `/api/health`), `worker` (tâches planifiées, webhooks) et
+`migrate` (migrations Prisma, lancée avant les deux autres par `docker-compose.prod.yml`).
+Variables indispensables : `BETTER_AUTH_SECRET` (`openssl rand -base64 32`),
+`BETTER_AUTH_URL`/`NEXT_PUBLIC_APP_URL` (adresse publique), `RESEND_API_KEY` et `EMAIL_FROM`,
+`ENABLE_DEV_MAILBOX="false"`, `AUTH_RATE_LIMIT="on"` ; facultatives : Stripe, stockage S3,
+`ANTHROPIC_API_KEY`, `ENCRYPTION_KEY`.
+
+### Sans Docker
+
+`pnpm db:deploy`, `pnpm build`, puis `pnpm --filter @quercy/web start` et
+`pnpm --filter @quercy/worker start` (le worker est indispensable : relances, factures
+récurrentes, rapports programmés, webhooks, corbeille). Application de bureau :
+[`docs/DESKTOP.md`](docs/DESKTOP.md).
 
 Voir aussi [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) et [`docs/DECISIONS.md`](docs/DECISIONS.md).

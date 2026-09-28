@@ -8,12 +8,12 @@ export const badgeVariants = cva(
   {
     variants: {
       variant: {
-        neutral: "border-border bg-muted text-muted-foreground",
+        neutral: "border-border bg-muted text-secondary-foreground",
         primary: "border-transparent bg-primary/12 text-primary",
-        success: "border-transparent bg-success/14 text-success",
-        warning: "border-transparent bg-warning/16 text-warning",
-        danger: "border-transparent bg-destructive/12 text-destructive",
-        info: "border-transparent bg-info/12 text-info",
+        success: "border-transparent bg-success/14 text-success-text",
+        warning: "border-transparent bg-warning/16 text-warning-text",
+        danger: "border-transparent bg-destructive/12 text-destructive-text",
+        info: "border-transparent bg-info/12 text-info-text",
         outline: "border-border text-foreground",
       },
     },

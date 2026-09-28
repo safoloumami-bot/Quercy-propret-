@@ -279,3 +279,14 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
     sans mise à jour automatique.
 90. **Raccourci global Ctrl+Maj+Espace** (et non Ctrl+Maj+Q, souvent réservé) ; s'il est déjà
     pris par une autre application, l'application démarre quand même.
+
+## 2026-09-28 — Phase 11
+
+91. **Une seule construction Docker, trois cibles** (web, worker, migrate) : mêmes
+    dépendances et même code partout ; les migrations tournent une fois avant le démarrage.
+    L'image de base est paramétrable (`NODE_IMAGE`) ; OpenSSL n'est installé que s'il manque.
+92. **L'accessibilité est testée comme une fonctionnalité** : toute violation grave ou
+    critique d'axe sur les écrans principaux fait échouer la CI.
+93. **Teintes de texte dédiées aux pastilles** (`--*-text`) plutôt que d'assombrir les
+    couleurs de statut : les boutons et graphiques gardent leurs couleurs, le texte sur fond
+    teinté atteint le contraste AA dans les deux thèmes.

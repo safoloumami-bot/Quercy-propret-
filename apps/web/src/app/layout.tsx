@@ -33,3 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+
+// Pages rendues à la demande : la construction ne dépend d'aucun secret de production
+// (session, configuration), et chaque écran reflète les données du moment.
+export const dynamic = "force-dynamic";

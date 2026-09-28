@@ -460,6 +460,8 @@ export function DataTable({
       style={{ width: totalWidth }}
     >
       <div
+        role="columnheader"
+        aria-label="Sélection"
         className="sticky left-0 z-20 flex shrink-0 items-center justify-center bg-muted"
         style={{ width: SELECT_COLUMN_WIDTH }}
       >
@@ -729,6 +731,8 @@ export function DataTable({
                     return (
                       <div
                         key="loader"
+                        role="row"
+                        aria-busy="true"
                         className="absolute left-0 flex items-center px-4 text-sm text-muted-foreground"
                         style={{
                           top: 0,
@@ -736,7 +740,7 @@ export function DataTable({
                           height: rowHeight,
                         }}
                       >
-                        Chargement…
+                        <span role="gridcell">Chargement…</span>
                       </div>
                     );
                   }

@@ -48,6 +48,11 @@
   --warning-foreground: oklch(0.2 0.03 70);
   --info: oklch(0.53 0.14 250);
   --info-foreground: oklch(0.99 0 0);
+  /* Texte coloré sur fond teinté (pastilles) : contraste AA à petite taille. */
+  --success-text: oklch(0.44 0.11 160);
+  --warning-text: oklch(0.46 0.11 65);
+  --info-text: oklch(0.45 0.14 250);
+  --destructive-text: oklch(0.47 0.19 27);
   --border: oklch(0.915 0.006 170);
   --input: oklch(0.88 0.008 170);
   --ring: var(--primary);
@@ -103,6 +108,10 @@
   --warning-foreground: oklch(0.2 0.03 70);
   --info: oklch(0.72 0.12 250);
   --info-foreground: oklch(0.18 0.03 250);
+  --success-text: var(--success);
+  --warning-text: var(--warning);
+  --info-text: var(--info);
+  --destructive-text: var(--destructive);
   --border: oklch(0.28 0.01 190);
   --input: oklch(0.33 0.012 190);
   --selection: color-mix(in oklch, var(--primary) 28%, transparent);
@@ -152,6 +161,10 @@
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
+  --color-success-text: var(--success-text);
+  --color-warning-text: var(--warning-text);
+  --color-info-text: var(--info-text);
+  --color-destructive-text: var(--destructive-text);
   --color-info-foreground: var(--info-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
