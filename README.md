@@ -4,7 +4,7 @@ Logiciel de gestion tout-en-un et modulaire pour les PME, TPE et indépendants :
 commun et des modules que chaque entreprise active selon ses besoins. Il sera disponible dans
 le navigateur (optimisé pour ordinateur) et en application Windows/macOS (Tauri).
 
-> **État actuel : phases 1 à 9 terminées** : fondations, comptes et multi-entreprises,
+> **État actuel : phases 1 à 10 terminées** : fondations, comptes et multi-entreprises,
 > abonnements, moteur générique (tableau, Kanban, calendrier, Gantt, fiches, champs
 > personnalisés, vues, import/export, historique, commentaires, fichiers, recherche, temps réel)
 > et modules cœur : CRM (contacts, entreprises, pipeline d'opportunités, activités, doublons),
@@ -15,7 +15,8 @@ le navigateur (optimisé pour ordinateur) et en application Windows/macOS (Tauri
 > programmés), assistant IA (Ctrl+J : questions sur les données avec tableaux et graphiques,
 > actions soumises à confirmation, rédaction, résumés, lecture de factures fournisseurs),
 > achats, stocks, agenda, support, RH, trésorerie et documents, automatisations, API REST
-> publique (OpenAPI), webhooks et abonnement d'agenda.
+> publique (OpenAPI), webhooks et abonnement d'agenda, application de bureau Tauri 2
+> (Windows, macOS, Linux) et mode hors ligne partiel — voir [`docs/DESKTOP.md`](docs/DESKTOP.md).
 > Authentification complète (mot de passe, lien magique, Google, Microsoft, double
 > authentification), espaces multiples, invitations, rôles et permissions personnalisables,
 > équipes, assistant d'accueil, journal d'audit, export RGPD et isolation des données testée ;

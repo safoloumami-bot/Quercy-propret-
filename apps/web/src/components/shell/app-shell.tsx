@@ -9,6 +9,7 @@ import { AssistantProvider } from "../assistant/assistant-context";
 import { AssistantPanel } from "../assistant/assistant-panel";
 import { RealtimeListener } from "../realtime-listener";
 import { CommandPalette } from "./command-palette";
+import { OfflineStatus } from "./offline-status";
 import { RecordTabsBar, RecordTabsProvider } from "./record-tabs";
 import { AccessProvider } from "./access-context";
 import { ShellProvider } from "./shell-context";
@@ -80,6 +81,7 @@ export function AppShell({
               />
               <div className="flex min-w-0 flex-1 flex-col">
                 <Topbar />
+                <OfflineStatus workspaceId={current.id} />
                 {banner}
                 <RecordTabsBar />
                 <main id="contenu" tabIndex={-1} className="flex-1 overflow-y-auto outline-none">

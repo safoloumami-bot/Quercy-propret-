@@ -1,6 +1,6 @@
 "use client";
 
-import type { EntityKey, FieldDef } from "@quercy/core";
+import { ENTITIES, type EntityKey, type FieldDef } from "@quercy/core";
 import { Button } from "@quercy/ui/components/button";
 import { Callout } from "@quercy/ui/components/callout";
 import {
@@ -14,6 +14,8 @@ import {
 import { Label } from "@quercy/ui/components/label";
 import { toast } from "@quercy/ui/components/toaster";
 import * as React from "react";
+
+import { enqueueCreate, isOffline } from "@/lib/offline-queue";
 
 import { errorMessage, isPlanLimitError } from "@/lib/trpc";
 
@@ -79,6 +81,13 @@ export function CreateRecordDialog({
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (isOffline()) {
+      const label = String(values[ENTITIES[entity].titleFields[0]!] ?? labels.singular);
+      enqueueCreate({ entity, values, label });
+      onOpenChange(false);
+      toast.info(`Hors ligne : « ${label} » sera créé au retour de la connexion.`);
+      return;
+    }
     create.mutate(
       { entity, values },
       {

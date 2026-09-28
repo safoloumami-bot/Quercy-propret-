@@ -20,6 +20,7 @@ import { breadcrumbFor } from "@/lib/navigation";
 import { KeyCombo } from "./key-combo";
 import { NotificationsBell } from "./notifications-bell";
 import { TimerWidget } from "./timer-widget";
+import { WindowControls } from "./window-controls";
 import { useShell } from "./shell-context";
 
 export function Topbar() {
@@ -32,7 +33,10 @@ export function Topbar() {
   const isDark = mounted && resolvedTheme === "dark";
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-4 border-b border-border bg-background px-4">
+    <header
+      data-tauri-drag-region
+      className="flex h-12 shrink-0 items-center gap-4 border-b border-border bg-background px-4 [.mac-desktop_&]:pl-20"
+    >
       <nav aria-label="Fil d'Ariane" className="min-w-0 flex-1">
         <ol className="flex items-center gap-1.5 text-sm">
           {crumbs.map((crumb, index) => {
@@ -124,6 +128,7 @@ export function Topbar() {
           </TooltipContent>
         </Tooltip>
       </div>
+      <WindowControls />
     </header>
   );
 }

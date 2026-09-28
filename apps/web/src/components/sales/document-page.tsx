@@ -59,6 +59,7 @@ import { FieldRow } from "@/components/records/record-view";
 import type { EntityPermissions } from "@/components/records/types";
 import { useRecordTabs } from "@/components/shell/record-tabs";
 import { useAssistantFocus } from "@/components/assistant/assistant-context";
+import { OpenInWindowButton, PrintPdfButton } from "@/components/desktop-actions";
 import { toastError } from "@/components/toast-error";
 import { errorMessage, useTRPC } from "@/lib/trpc";
 
@@ -486,6 +487,8 @@ export function DocumentPage({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {primary}
+          <PrintPdfButton href={`/api/ventes/documents/${id}/pdf`} />
+          <OpenInWindowButton path={recordPath(entity, id)} />
           <Button variant="secondary" asChild>
             <a href={`/api/ventes/documents/${id}/pdf`} target="_blank" rel="noreferrer">
               <FileDownIcon />

@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.10.0] — 2026-09-28 — Phase 10 : application de bureau
+
+### Ajouté
+
+- Application **Tauri 2** (`apps/desktop`) pour Windows, macOS et Linux, qui embarque
+  l'application hébergée : barre de titre intégrée, taille et position mémorisées,
+  multi-fenêtres (« Ouvrir dans une nouvelle fenêtre » sur les fiches et documents), icône
+  dans la zone de notification avec badge des notifications non lues, notifications du
+  système, lancement au démarrage (optionnel), menu natif avec zoom, raccourci global
+  Ctrl+Maj+Espace, une seule instance, mises à jour automatiques signées.
+- **Impression native** des devis et factures (bouton « Imprimer », aussi dans le navigateur).
+- **Mode hors ligne partiel** (navigateur et bureau) : écrans et données déjà consultés
+  lisibles hors ligne (service worker), créations mises en file d'attente puis envoyées au
+  retour de la connexion (refus signalés), caches effacés à la déconnexion.
+- Installeurs par la CI (`desktop-v*` : .msi/.exe, .dmg universel, .AppImage/.deb) avec
+  fichiers de mise à jour ; compilation Rust et Clippy contrôlées à chaque intégration.
+- Documentation `docs/DESKTOP.md`.
+
 ## [0.9.0] — 2026-09-28 — Phase 9 : automatisations et intégrations
 
 ### Ajouté

@@ -22,6 +22,7 @@ import * as React from "react";
 
 import { useAssistantFocus } from "@/components/assistant/assistant-context";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { OpenInWindowButton } from "@/components/desktop-actions";
 import { useRecordTabs } from "@/components/shell/record-tabs";
 import { errorMessage, useTRPC } from "@/lib/trpc";
 
@@ -242,6 +243,7 @@ export function RecordView({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <EntityActions entity={entity} id={id} />
+          <OpenInWindowButton path={url} />
           <span
             className="mr-2 flex items-center gap-1 text-xs text-muted-foreground"
             aria-live="polite"

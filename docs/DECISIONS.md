@@ -262,3 +262,20 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
 85. **Connecteurs** : API + webhooks couvrent Zapier, Make et n8n sans connecteur dédié ;
     l'abonnement iCalendar couvre les agendas. La clé est dans l'URL du flux car les agendas
     ne savent pas envoyer d'en-tête (clé en lecture seule, révocable).
+
+## 2026-09-28 — Phase 10
+
+86. **L'application de bureau charge le site hébergé** plutôt qu'une copie embarquée : une
+    seule interface à maintenir, mises à jour immédiates, mêmes droits ; le binaire ne sert
+    qu'aux fonctions natives. Seules les adresses déclarées (`remote.urls`) peuvent les appeler.
+87. **Hors ligne partiel commun au navigateur et au bureau** : service worker « réseau
+    d'abord » pour la lecture, file d'attente limitée aux **créations** (pas de conflit
+    possible ; une création refusée est signalée). Les modifications hors ligne ne sont pas
+    proposées : elles exigeraient une fusion champ par champ, disproportionnée ici.
+88. **Impression par la boîte de dialogue du système** sur le PDF officiel (iframe masquée) :
+    même rendu que le document envoyé, dans le navigateur comme sur le bureau.
+89. **Mises à jour signées activées par la configuration de publication** (clé publique en
+    secret de CI) : aucune clé factice dans le dépôt ; sans clé, l'application fonctionne
+    sans mise à jour automatique.
+90. **Raccourci global Ctrl+Maj+Espace** (et non Ctrl+Maj+Q, souvent réservé) ; s'il est déjà
+    pris par une autre application, l'application démarre quand même.

@@ -4,6 +4,7 @@ import { Button } from "@quercy/ui/components/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@quercy/ui/components/popover";
 import { cn } from "@quercy/ui/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDesktopBadge } from "./desktop-badge";
 import { AtSignIcon, BellIcon, MessageSquareIcon, UserPlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -43,6 +44,7 @@ export function NotificationsBell() {
     trpc.notifications.markAllRead.mutationOptions({ onSuccess: () => void refresh() }),
   );
   const count = unread.data ?? 0;
+  useDesktopBadge(count, list.data);
 
   return (
     <Popover>
