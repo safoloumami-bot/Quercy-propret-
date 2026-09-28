@@ -20,7 +20,7 @@ const config: NextConfig = {
     "@quercy/documents",
     "@quercy/reports",
   ],
-  serverExternalPackages: ["@prisma/client", "ioredis", "@node-rs/argon2"],
+  serverExternalPackages: ["@prisma/client", "ioredis"],
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

@@ -8,6 +8,8 @@ import {
   storageUsage,
 } from "@/server/files/access";
 import { publish } from "@/server/realtime";
+import { StorageUnavailableError } from "@quercy/storage";
+
 import { checkFile, newStorageKey, putObject, signedFileUrl } from "@/server/storage";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +58,13 @@ export async function POST(request: Request) {
   }
 
   const key = newStorageKey(ctx.organizationId, file.name);
-  await putObject(key, new Uint8Array(await file.arrayBuffer()), file.type);
+  try {
+    await putObject(key, new Uint8Array(await file.arrayBuffer()), file.type);
+  } catch (error) {
+    if (error instanceof StorageUnavailableError)
+      return NextResponse.json({ error: error.message }, { status: 503 });
+    throw error;
+  }
   const stored = await ctx.db.storedFile.create({
     data: {
       organizationId: ctx.organizationId,

@@ -1,5 +1,5 @@
 import { fileRequestContext } from "@/server/files/access";
-import { type RealtimeEvent, orgChannel, subscriber } from "@/server/realtime";
+import { type RealtimeEvent, orgChannel, realtimeEnabled, subscriber } from "@/server/realtime";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +10,8 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const ctx = await fileRequestContext();
   if (!ctx) return new Response("Non connecté.", { status: 401 });
+  // 204 : le navigateur cesse de se reconnecter (temps réel désactivé sans Redis).
+  if (!realtimeEnabled()) return new Response(null, { status: 204 });
   const userId = ctx.user.id;
   const sub = subscriber();
   const encoder = new TextEncoder();

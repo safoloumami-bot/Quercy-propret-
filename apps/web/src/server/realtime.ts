@@ -15,7 +15,17 @@ export function orgChannel(organizationId: string) {
 }
 
 /** Publie un événement (au mieux : l'absence de Redis ne bloque jamais l'action). */
+/**
+ * Temps réel actif si Redis est configuré (toujours en développement). Sans Redis en
+ * production (hébergement serverless minimal), l'application fonctionne sans mises à jour en
+ * direct : les écrans se rafraîchissent à la navigation.
+ */
+export function realtimeEnabled(): boolean {
+  return Boolean(process.env.REDIS_URL) || process.env.NODE_ENV !== "production";
+}
+
 export async function publish(organizationId: string, event: RealtimeEvent): Promise<void> {
+  if (!realtimeEnabled()) return;
   try {
     if (redis.status === "wait" || redis.status === "end") await redis.connect();
     await redis.publish(orgChannel(organizationId), JSON.stringify(event));

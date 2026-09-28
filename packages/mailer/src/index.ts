@@ -32,7 +32,10 @@ let resend: Resend | null = null;
 let redis: Redis | null = null;
 
 function devMailboxEnabled(): boolean {
-  return process.env.ENABLE_DEV_MAILBOX === "true" && !process.env.RESEND_API_KEY;
+  // La boîte de développement vit dans Redis : sans Redis en production, les emails sont
+  // seulement journalisés.
+  const redisAvailable = Boolean(process.env.REDIS_URL) || process.env.NODE_ENV !== "production";
+  return process.env.ENABLE_DEV_MAILBOX === "true" && !process.env.RESEND_API_KEY && redisAvailable;
 }
 
 async function mailbox(): Promise<Redis> {

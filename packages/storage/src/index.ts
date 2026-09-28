@@ -94,7 +94,21 @@ export function s3Client(): S3Client {
   return s3;
 }
 
+/** Stockage indisponible sur cet hébergement (message présenté tel quel à la personne). */
+export class StorageUnavailableError extends Error {
+  override readonly name = "StorageUnavailableError";
+}
+
+/** Fonctions serverless (Netlify, Vercel, AWS Lambda) : disque en lecture seule et éphémère. */
+function serverless(): boolean {
+  return Boolean(process.env.NETLIFY || process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+}
+
 function localPath(key: string): string {
+  if (serverless())
+    throw new StorageUnavailableError(
+      "Le stockage des fichiers n'est pas configuré sur cet hébergement : l'administrateur doit renseigner STORAGE_DRIVER=s3 et les variables S3.",
+    );
   const root = path.resolve(storageConfig().localDir);
   const full = path.resolve(root, key);
   if (!full.startsWith(root + path.sep)) throw new Error("Clé de stockage invalide.");

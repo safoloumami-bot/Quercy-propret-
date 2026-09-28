@@ -19,7 +19,6 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.9.1",
-    "@node-rs/argon2": "^2.2.1",
     "@quercy/core": "workspace:*",
     "@quercy/db": "workspace:*",
     "@quercy/documents": "workspace:*",
