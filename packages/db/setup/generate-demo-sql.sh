@@ -52,13 +52,14 @@ SQL
   cat "$TMP"
   cat <<SQL
 
--- Votre compte : propriétaire de l'espace, qui devient l'espace ouvert à la prochaine page.
+-- Tous les comptes du site : propriétaires de l'espace, qui devient l'espace ouvert à la prochaine page.
 INSERT INTO membership (id, "organizationId", "userId", "roleId", "createdAt", "updatedAt")
 SELECT 'demo_owner_' || u.id, r."organizationId", u.id, r.id, now(), now()
 FROM "user" u JOIN role r ON r."organizationId" = '$ORG' AND r."systemKey" = 'owner'
-WHERE u.email = '$OWNER_EMAIL';
+WHERE u.email NOT LIKE '%@quercy.app'
+ON CONFLICT ("organizationId", "userId") DO UPDATE SET "deletedAt" = NULL, "roleId" = EXCLUDED."roleId";
 UPDATE session SET "activeOrganizationId" = '$ORG'
-WHERE "userId" IN (SELECT id FROM "user" WHERE email = '$OWNER_EMAIL');
+WHERE "userId" IN (SELECT id FROM "user" WHERE email NOT LIKE '%@quercy.app');
 -- Une partie du travail vous est attribuée (widgets « Mes tâches », « Mes activités »…).
 UPDATE task SET "ownerId" = (SELECT id FROM "user" WHERE email = '$OWNER_EMAIL')
 WHERE id IN (SELECT id FROM task WHERE "organizationId" = '$ORG' ORDER BY id LIMIT 30);

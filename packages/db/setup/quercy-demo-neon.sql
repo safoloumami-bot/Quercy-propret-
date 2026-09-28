@@ -2846,13 +2846,14 @@ INSERT INTO public.time_entry (id, "organizationId", description, "projectId", "
 	('cmul6m1nw02lm7dc05zbc4itf', 'quercy_demo_org', 'Préparation', 'cmul6m1mp02kg7dc0qfs38oak', 'cmul6m1nu02li7dc0ive4gjkg', 'cmul6lznw000n7dc0dpw5nzu0', '2026-05-28 00:00:00', NULL, 60, true, NULL, '{}', '{}', '2026-05-28 00:00:00', '2026-09-28 11:46:16.173', NULL),
 	('cmul6m1nw02ln7dc0uuf7sznu', 'quercy_demo_org', 'Préparation', 'cmul6m1mp02kg7dc0qfs38oak', 'cmul6m1nu02li7dc0ive4gjkg', 'cmul6lznw000n7dc0dpw5nzu0', '2026-05-31 00:00:00', NULL, 90, true, NULL, '{}', '{}', '2026-05-31 00:00:00', '2026-09-28 11:46:16.173', NULL);
 
--- Votre compte : propriétaire de l'espace, qui devient l'espace ouvert à la prochaine page.
+-- Tous les comptes du site : propriétaires de l'espace, qui devient l'espace ouvert à la prochaine page.
 INSERT INTO membership (id, "organizationId", "userId", "roleId", "createdAt", "updatedAt")
 SELECT 'demo_owner_' || u.id, r."organizationId", u.id, r.id, now(), now()
 FROM "user" u JOIN role r ON r."organizationId" = 'quercy_demo_org' AND r."systemKey" = 'owner'
-WHERE u.email = 'safoloumami@gmail.com';
+WHERE u.email NOT LIKE '%@quercy.app'
+ON CONFLICT ("organizationId", "userId") DO UPDATE SET "deletedAt" = NULL, "roleId" = EXCLUDED."roleId";
 UPDATE session SET "activeOrganizationId" = 'quercy_demo_org'
-WHERE "userId" IN (SELECT id FROM "user" WHERE email = 'safoloumami@gmail.com');
+WHERE "userId" IN (SELECT id FROM "user" WHERE email NOT LIKE '%@quercy.app');
 -- Une partie du travail vous est attribuée (widgets « Mes tâches », « Mes activités »…).
 UPDATE task SET "ownerId" = (SELECT id FROM "user" WHERE email = 'safoloumami@gmail.com')
 WHERE id IN (SELECT id FROM task WHERE "organizationId" = 'quercy_demo_org' ORDER BY id LIMIT 30);
