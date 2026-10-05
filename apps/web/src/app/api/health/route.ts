@@ -18,7 +18,7 @@ export async function GET() {
       time: new Date().toISOString(),
       checks: {
         database: { ok: database.ok, latencyMs: database.latencyMs },
-        redis: { ok: redis.ok, latencyMs: redis.latencyMs },
+        redis: { ok: redis.ok, latencyMs: redis.latencyMs, configured: redis.configured ?? true },
       },
     },
     { status: ok ? 200 : 503 },

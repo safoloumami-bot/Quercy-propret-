@@ -17,8 +17,18 @@ function createClient(): Redis {
 export const redis = globalForRedis.redis ?? createClient();
 if (process.env.NODE_ENV !== "production") globalForRedis.redis = redis;
 
-/** Vérifie la connexion Redis et renvoie la latence en millisecondes. */
-export async function checkRedis(): Promise<{ ok: boolean; latencyMs: number; error?: string }> {
+/**
+ * Vérifie la connexion Redis et renvoie la latence en millisecondes. Redis est facultatif
+ * (hébergement serverless) : sans REDIS_URL en production, rien à vérifier.
+ */
+export async function checkRedis(): Promise<{
+  ok: boolean;
+  latencyMs: number;
+  configured?: boolean;
+  error?: string;
+}> {
+  if (!process.env.REDIS_URL && process.env.NODE_ENV === "production")
+    return { ok: true, latencyMs: 0, configured: false };
   const start = performance.now();
   try {
     if (redis.status === "wait" || redis.status === "end") await redis.connect();
