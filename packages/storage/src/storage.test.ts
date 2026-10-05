@@ -56,3 +56,24 @@ describe("stockage local", () => {
     );
   });
 });
+
+describe("choix du pilote", () => {
+  it("prend le stockage intégré de Netlify sans réglage, sinon ce qui est demandé", async () => {
+    const { storageConfig } = await import("./index");
+    const saved = { driver: process.env.STORAGE_DRIVER, netlify: process.env.NETLIFY };
+    try {
+      delete process.env.STORAGE_DRIVER;
+      process.env.NETLIFY = "true";
+      expect(storageConfig().driver).toBe("netlify");
+      process.env.STORAGE_DRIVER = "s3";
+      expect(storageConfig().driver).toBe("s3");
+      delete process.env.STORAGE_DRIVER;
+      delete process.env.NETLIFY;
+      expect(storageConfig().driver).toBe(process.env.NETLIFY_BLOBS_CONTEXT ? "netlify" : "local");
+    } finally {
+      process.env.STORAGE_DRIVER = saved.driver;
+      if (saved.netlify === undefined) delete process.env.NETLIFY;
+      else process.env.NETLIFY = saved.netlify;
+    }
+  });
+});

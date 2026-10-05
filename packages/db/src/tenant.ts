@@ -43,6 +43,7 @@ export const TENANT_MODELS = [
   "CleaningContract",
   "Intervention",
   "Inspection",
+  "FieldAccess",
   "DuplicateDismissal",
   "Dashboard",
   "Report",

@@ -9,6 +9,8 @@ const PUBLIC_PREFIXES = [
   "/invitation",
   "/document",
   "/api",
+  // Application terrain des agents : sa propre connexion (identifiant + code).
+  "/terrain",
 ];
 
 /** Cookie de session Better Auth (préfixé « __Secure- » en HTTPS). */

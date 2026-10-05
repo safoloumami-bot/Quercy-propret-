@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.0] — 2026-10-05 — Application terrain reliée au logiciel
+
+### Ajouté
+
+- **Application terrain** (dossier `apps/terrain`, servie à `/terrain/<espace>`) : l'application
+  de pointage des agents, à l'écran inchangé, branchée sur le logiciel. Les chantiers sont les
+  interventions du module Nettoyage, les agents sont les membres de l'espace (identifiant et
+  code à 6 chiffres), les photos deviennent des pièces jointes, la clôture numérote le bon
+  (BI-AAAA-NNNN), enregistre un contrôle qualité et envoie le bon au client.
+- **Marque convertible** : nom, initiales, icône, couleur et ville de l'application viennent
+  des réglages de l'entreprise ; la même application sert toute entreprise cliente.
+- **Grilles de contrôle** selon la prestation : logement meublé, bureaux, parties communes,
+  remise en état.
+- Page **Nettoyage › Application terrain** : lien, QR code à scanner, accès créés.
+- **Stockage des fichiers sur Netlify** (Netlify Blobs), sans réglage : pièces jointes et
+  photos fonctionnent désormais sur l'hébergement Netlify.
+
 ## [1.1.0] — 2026-09-28 — Module Nettoyage et hébergement Netlify complet
 
 ### Ajouté

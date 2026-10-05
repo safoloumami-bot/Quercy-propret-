@@ -79,6 +79,7 @@ model User {
   agentContracts         CleaningContract[] @relation("CleaningContractAgent")
   ownedInterventions     Intervention[]     @relation("InterventionOwner")
   ownedInspections       Inspection[]       @relation("InspectionOwner")
+  fieldAccesses          FieldAccess[]
 
   apiKeys ApiKey[] @relation("ApiKeyUser")
 
@@ -257,6 +258,7 @@ model Organization {
   cleaningContracts CleaningContract[]
   interventions     Intervention[]
   inspections       Inspection[]
+  fieldAccesses     FieldAccess[]
 
   automations Automation[]
   apiKeys     ApiKey[]
@@ -1667,6 +1669,11 @@ model Intervention {
   signedBy        String?
   photoUrl        String?
   notes           String?
+  /// Numéro du bon d'intervention, attribué à la clôture depuis l'application terrain.
+  reportNumber    String?
+  /// Relevé de l'application terrain : contrôle pièce par pièce, consommables, photos,
+  /// journal, coordonnées du client, clôture.
+  fieldData       Json?
   tags            String[]  @default([])
   customFields    Json      @default("{}")
   createdAt       DateTime  @default(now())
@@ -1714,4 +1721,27 @@ model Inspection {
 
   @@index([organizationId, deletedAt])
   @@map("inspection")
+}
+
+/// Accès à l'application terrain : identifiant et code à 6 chiffres d'un membre.
+model FieldAccess {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  /// Identifiant saisi sur le téléphone (minuscules, unique dans l'espace).
+  code           String
+  pinHash        String
+  pinSalt        String
+  /// patron (responsable : agents et chantiers) ou agent.
+  role           String   @default("agent")
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, userId])
+  @@map("field_access")
 }

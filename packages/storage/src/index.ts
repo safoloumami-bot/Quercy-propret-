@@ -9,6 +9,7 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getStore } from "@netlify/blobs";
 
 /** Taille maximale d'un fichier envoyé. */
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -68,7 +69,7 @@ export function newStorageKey(organizationId: string, name: string): string {
 /** Configuration lue dans l'environnement (partagée par l'application web et le worker). */
 export function storageConfig() {
   return {
-    driver: process.env.STORAGE_DRIVER === "s3" ? ("s3" as const) : ("local" as const),
+    driver: storageDriver(),
     localDir: process.env.STORAGE_LOCAL_DIR || ".storage",
     bucket: process.env.S3_BUCKET,
     region: process.env.S3_REGION || "auto",
@@ -78,6 +79,18 @@ export function storageConfig() {
     forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
   };
 }
+
+/**
+ * Pilote de stockage : S3 si demandé ; sur Netlify, son stockage intégré (Netlify Blobs),
+ * sans aucun réglage ; sinon le disque local.
+ */
+function storageDriver(): "s3" | "netlify" | "local" {
+  const asked = process.env.STORAGE_DRIVER;
+  if (asked === "s3" || asked === "netlify" || asked === "local") return asked;
+  return process.env.NETLIFY_BLOBS_CONTEXT || process.env.NETLIFY ? "netlify" : "local";
+}
+
+const blobs = () => getStore({ name: "quercy-files", consistency: "strong" });
 
 let s3: S3Client | null = null;
 export function s3Client(): S3Client {
@@ -127,18 +140,32 @@ export async function putObject(key: string, body: Uint8Array, mimeType: string)
     );
     return;
   }
+  if (storageConfig().driver === "netlify") {
+    const bytes = new Uint8Array(body);
+    await blobs().set(key, bytes.buffer, { metadata: { mimeType } });
+    return;
+  }
   const file = localPath(key);
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, body);
 }
 
 export async function readObject(key: string): Promise<Uint8Array> {
+  if (storageConfig().driver === "netlify") {
+    const data = await blobs().get(key, { type: "arrayBuffer" });
+    if (!data) throw Object.assign(new Error("Fichier introuvable."), { code: "ENOENT" });
+    return new Uint8Array(data);
+  }
   return readFile(localPath(key));
 }
 
 export async function deleteObject(key: string): Promise<void> {
   if (storageConfig().driver === "s3") {
     await s3Client().send(new DeleteObjectCommand({ Bucket: storageConfig().bucket, Key: key }));
+    return;
+  }
+  if (storageConfig().driver === "netlify") {
+    await blobs().delete(key);
     return;
   }
   await rm(localPath(key), { force: true });

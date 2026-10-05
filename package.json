@@ -22,7 +22,8 @@
     "desktop": "pnpm --filter @quercy/desktop dev",
     "prepare": "husky",
     "stripe:setup": "pnpm --filter @quercy/web stripe:setup",
-    "worker": "pnpm --filter @quercy/worker dev"
+    "worker": "pnpm --filter @quercy/worker dev",
+    "terrain:generer": "node apps/terrain/generer.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
