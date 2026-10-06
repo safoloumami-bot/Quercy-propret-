@@ -113,6 +113,7 @@ export async function clientReport(ctx: RecordsCtx, period: ClientReportPeriod) 
   const rate = due.length ? Math.round((done / due.length) * 100) : null;
   const visitedSites = new Set(interventions.map((i) => i.siteId));
 
+  // Ordre du rapport : date, puis résidence (code), puis heure.
   const passages = interventions.map((i) => {
     const photos = i.proofs.filter((p) => p.type.startsWith("photo")).length;
     const proof = [
@@ -135,6 +136,12 @@ export async function clientReport(ctx: RecordsCtx, period: ClientReportPeriod) 
       anomalies: anomaliesOf.get(i.id) ?? [],
     };
   });
+  passages.sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
+      a.site.localeCompare(b.site, "fr", { numeric: true }) ||
+      (a.time ?? "").localeCompare(b.time ?? ""),
+  );
 
   return {
     company,
