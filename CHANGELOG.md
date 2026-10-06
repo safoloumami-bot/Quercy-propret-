@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.8.0] — 2026-10-07 — Intervenants, absences, remplacements et tournées (lot 6)
+
+### Ajouté
+
+- **Nettoyage › Intervenants** : statut (salarié, sous-traitant, dirigeant), activités, zone,
+  coût horaire, remplaçants n°1 et n°2, véhicule habituel, autorisation de conduire les
+  véhicules de l'entreprise ; pour les sous-traitants, raison sociale, SIRET et attestations
+  (URSSAF, assurance, Kbis) avec date d'expiration. Alerte aux responsables 30 jours avant
+  l'expiration, puis à l'expiration.
+- **Nettoyage › Absences** : congés, maladies, indisponibilités, formations. Demandées par
+  l'agent (application terrain ou logiciel), validées ou refusées par le chef, qui est prévenu.
+  Saisies par un responsable, elles sont validées d'office.
+- **Remplacements** : pour une absence validée, la liste des passages touchés et, pour chacun,
+  les remplaçants proposés dans l'ordre — n°1, n°2, agent qualifié (même activité ou
+  connaît le site), puis sous-traitant ; un agent déjà pris est signalé, et la même personne
+  n'est jamais proposée sur deux passages qui se chevauchent. Le chef confirme ; le remplaçant
+  est prévenu et reçoit la fiche du site et ses accès, et seulement eux.
+- **Planning** : un passage confié à un remplaçant apparaît sur sa ligne (« Remplace … ») ;
+  les jours d'absence sont grisés.
+- **Nettoyage › Tournées** : nom, zone, agent principal et remplaçant, véhicule, jours
+  habituels, heures de départ et de fin, point de départ, sites dans l'ordre avec temps et
+  distance de trajet, totaux ; active ou non.
+- **Application terrain** : bloc « Mes absences » sous la tournée (demande et suivi).
+
 ## [1.7.0] — 2026-10-06 — Rapport syndic et fiches mission (lot 5)
 
 ### Ajouté

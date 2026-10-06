@@ -174,7 +174,7 @@ textarea.obs{min-height:86px;resize:vertical}
 input.f{border-radius:15px;padding:12px 14px}
 .champ{margin-bottom:11px}
 .champ label{font-size:12.5px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:5px}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 10px}
 
 .sigbox{border:1px solid var(--edge-2);border-radius:20px;background:var(--glass-2);position:relative;overflow:hidden}
 .sigbox canvas{display:block;width:100%;height:178px;touch-action:none}
@@ -414,7 +414,8 @@ document.getElementById("sortir").addEventListener("click", function(){
 /* ------------------------------------------------------------- chargement */
 function chargerTournee(){
   api("tournee?d="+S.date).then(function(d){
-    S.tournee=d.chantiers; S.vue="tournee"; S.ch=null; rendre();
+    S.tournee=d.chantiers; S.absences=d.absences||[]; S.typesAbsence=d.typesAbsence||[];
+    S.vue="tournee"; S.ch=null; rendre();
   }).catch(function(){ S.vue="tournee"; rendre(); });
 }
 function ouvrirChantier(id){
@@ -481,6 +482,7 @@ function vueTournee(){
       "</button>";
   }).join("");
   h+="</section>";
+  h+=blocAbsences();
   if(S.moi && S.moi.role==="patron")
     h+='<button class="cta gh" data-a="admin">Espace responsable</button>';
   h+='<p class="foot">'+e(T.pied)+'</p>';
@@ -638,6 +640,28 @@ function bandePhotos(piece){
        '<label class="phadd"><svg viewBox="0 0 24 24"><path d="M12 7v10M7 12h10"/></svg><span>Après</span>'+
        '<input type="file" accept="image/*" capture="environment" multiple hidden data-a="phadd" data-piece="'+e(piece)+'" data-slot="apres"></label>';
   return h+"</div>";
+}
+
+/* Mes absences : demandées ici, validées par le responsable dans le logiciel. */
+function blocAbsences(){
+  var liste=S.absences||[], f=S.abs;
+  var h='<section class="g pad"><h3 style="font-size:16px;font-weight:600;margin-bottom:8px">Mes absences</h3>';
+  h+=liste.length ? liste.map(function(a){
+    var cls = a.statut==="approved"?"" : a.statut==="rejected"?"n":"w";
+    return '<div class="cons"><span class="l">'+e(a.libelle)+'</span><span class="pill '+cls+'">'+e(a.statutLibelle)+"</span></div>";
+  }).join("") : '<p class="fine" style="margin:0">Aucune absence prévue.</p>';
+  if(!f) return h+'<button class="cta gh sm2" style="margin-top:10px" data-a="abs-ouvrir">Demander une absence</button></section>';
+  h+='<div class="sep" style="margin:12px -18px"></div>'+
+    '<div class="champ"><label for="ab_type">Type</label><select class="f" id="ab_type">'+
+      (S.typesAbsence||[]).map(function(t){ return '<option value="'+e(t.value)+'"'+(f.type===t.value?" selected":"")+">"+e(t.label)+"</option>"; }).join("")+
+    "</select></div>"+
+    '<div class="g2"><div class="champ"><label for="ab_debut">Du</label><input class="f" style="min-width:0;width:100%" id="ab_debut" type="date" value="'+e(f.debut||"")+'"></div>'+
+    '<div class="champ"><label for="ab_fin">Au</label><input class="f" style="min-width:0;width:100%" id="ab_fin" type="date" value="'+e(f.fin||"")+'"></div></div>'+
+    '<div class="champ"><label for="ab_com">Commentaire (facultatif)</label><input class="f" id="ab_com" value="'+e(f.com||"")+'"></div>'+
+    '<div class="g2"><button class="cta gh sm2" data-a="abs-annuler">Annuler</button>'+
+    '<button class="cta sm2" data-a="abs-envoyer">Envoyer la demande</button></div>'+
+    '<p class="fine">Votre responsable valide la demande et organise votre remplacement.</p>';
+  return h+"</section>";
 }
 
 /* Fiche mission : procédure, produits, matériel, consignes et informations du site. */
@@ -830,6 +854,10 @@ function brancher(){
     var el=document.getElementById(k[0]);
     if(el) el.addEventListener("input", function(){ if(S.an) S.an[k[1]]=this.value; });
   });
+  [["ab_type","type"],["ab_debut","debut"],["ab_fin","fin"],["ab_com","com"]].forEach(function(k){
+    var el=document.getElementById(k[0]);
+    if(el) el.addEventListener("input", function(){ if(S.abs) S.abs[k[1]]=this.value; });
+  });
   var anp=document.querySelector('[data-a="an-photo"]');
   if(anp) anp.addEventListener("change", function(){
     var f=(this.files||[])[0]; if(!f) return;
@@ -890,6 +918,15 @@ document.addEventListener("click", function(ev){
     var pid=el.dataset.pid;
     c.photos=(c.photos||[]).filter(function(p){ return p.id!==pid; });
     rendre(); return envoyer("photo-suppr",{id:c.id, pid:pid});
+  }
+  if(a==="abs-ouvrir"){ S.abs={type:((S.typesAbsence||[])[0]||{}).value||"leave", debut:jour(), fin:jour()}; return rendre(); }
+  if(a==="abs-annuler"){ S.abs=null; return rendre(); }
+  if(a==="abs-envoyer"){
+    var ab=S.abs; if(!ab) return;
+    if(!ab.debut) return toast("Indiquez la date de début.");
+    return api("absence",{type:ab.type, debut:ab.debut, fin:ab.fin||ab.debut, commentaire:ab.com||""}).then(function(d){
+      S.abs=null; S.absences=d.absences||S.absences; rendre(); toast("Demande envoyée au responsable.");
+    }).catch(function(x){ toast(x.message||"Envoi impossible : réessayez avec du réseau."); });
   }
   if(a==="plier-mission"){ S.mission=!(el.getAttribute("aria-expanded")==="true"); return rendre(); }
   if(a==="an-ouvrir"){ S.an={type:((c.typesAnomalie||[])[0]||{}).value||"other"}; return rendre(); }

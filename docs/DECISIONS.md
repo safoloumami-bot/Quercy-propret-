@@ -367,3 +367,17 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
       l'agent).
 116.  **Correction après clôture tracée deux fois** : au journal de l'intervention (lisible
       par tous) et dans l'historique (avant / après).
+
+## 2026-10-07 — Lot 6 de la feuille de route (intervenants, absences, tournées)
+
+117.  **Un intervenant est un membre de l'espace** (rôle Intervenant pour un agent ou un
+      sous-traitant), complété d'une fiche : un seul annuaire, les mêmes droits partout.
+118.  **Le remplacement passe par `replacementAgentId`**, jamais en changeant l'agent prévu :
+      l'historique garde qui devait venir, et l'accès au site suit le passage.
+119.  **Agent qualifié = même activité, ou a déjà travaillé sur le site** (120 derniers jours) ;
+      sans activité renseignée, un agent est généraliste.
+120.  **Les propositions ne bloquent rien** : un agent déjà pris reste proposé (signalé), le
+      chef tranche, comme pour les chevauchements du planning.
+121.  **L'écran « Accueil » séparé de la tournée** dans l'application viendra avec les finitions
+      PWA (lot 9) ; en attendant, « Mes absences » s'ajoute sous la tournée, dans le style
+      existant.

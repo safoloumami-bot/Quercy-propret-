@@ -3,11 +3,14 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 
 import {
+  ABSENCE_KINDS,
+  ABSENCE_STATUSES,
   FIELD_ANOMALY_TYPES,
   type InterventionEventType,
   dayKey,
   detectPointageAnomalies,
   inspectionOutcome,
+  labelOf,
   siteInfoVisible,
   utcDay,
 } from "@quercy/core";
@@ -29,6 +32,7 @@ import { loadBillingState } from "../billing/state";
 import { publish } from "../realtime";
 import { applyBusinessRules } from "../records/hooks";
 import { deleteObject, newStorageKey, putObject, readObject } from "../storage";
+import { absenceSummary, recordAbsence } from "../cleaning/absences";
 import { dueMissionTasks, missionSheetFor } from "../cleaning/missions";
 import { CHECKLISTS } from "./checklists";
 import {
@@ -424,6 +428,31 @@ async function sendReport(
   }
 }
 
+/* ------------------------------------------------------------- absences */
+
+/** Absences de l'agent (à venir ou en attente), et les types proposés. */
+async function myAbsences(org: TerrainOrgRow, me: Me) {
+  const rows = await prisma.absence.findMany({
+    where: {
+      organizationId: org.id,
+      userId: me.id,
+      status: { in: ["requested", "approved", "rejected"] },
+      endDate: { gte: utcDay(new Date(Date.now() - 86_400_000)) },
+    },
+    orderBy: { startDate: "asc" },
+    take: 20,
+  });
+  return {
+    absences: rows.map((a) => ({
+      id: a.id,
+      libelle: absenceSummary(a),
+      statut: a.status,
+      statutLibelle: labelOf(ABSENCE_STATUSES, a.status),
+    })),
+    typesAbsence: ABSENCE_KINDS,
+  };
+}
+
 /* --------------------------------------------------------------- routes */
 
 const READ_ROUTES = new Set([
@@ -566,7 +595,7 @@ export async function handleTerrainApi(
         include: STOP_INCLUDE,
       })) as StopRow[];
       const stops = rows.map(toStop).sort((a, b) => a.heure.localeCompare(b.heure));
-      return json({ date: d, chantiers: stops });
+      return json({ date: d, chantiers: stops, ...(await myAbsences(org, me)) });
     }
 
     if (route === "chantier") {
@@ -753,6 +782,40 @@ export async function handleTerrainApi(
             },
       );
       return json({ ok: true, signatureTs: data.signatureTs ?? null });
+    }
+
+    /* ---------- absence : demandée depuis l'application, validée par le chef ---------- */
+    if (route === "absence" && request.method === "POST") {
+      const kind = String(body.type ?? "");
+      if (!ABSENCE_KINDS.some((k) => k.value === kind)) return fail("Type d'absence inconnu.", 400);
+      const start = String(body.debut ?? "");
+      const end = String(body.fin ?? "") || start;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end))
+        return fail("Indiquez les dates.", 400);
+      if (end < start) return fail("La date de fin précède le début.", 400);
+      const { absence, notified } = await recordAbsence({
+        organizationId: org.id,
+        userId: me.id,
+        kind,
+        start,
+        end,
+        comment: str(body.commentaire, 500),
+        source: "app",
+        requestedById: me.id,
+        approved: me.role === "patron",
+      });
+      for (const userId of notified) await publish(org.id, { type: "notification", userId });
+      await prisma.auditLog.create({
+        data: {
+          organizationId: org.id,
+          actorId: me.id,
+          action: "absence.requested",
+          entityType: "absence",
+          entityId: absence.id,
+          metadata: { summary: absenceSummary(absence), source: "application terrain" },
+        },
+      });
+      return json({ ok: true, ...(await myAbsences(org, me)) });
     }
 
     /* ---------- photos : preuves de l'intervention ---------- */

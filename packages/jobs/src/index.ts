@@ -29,6 +29,7 @@ export {
   type AnomalyInput,
   type ReportedAnomaly,
 } from "./anomalies";
+export { alertWorkerDocuments } from "./workforce";
 export { WEBHOOK_QUEUE, decryptSecret, deliverWebhook, signPayload } from "./webhooks";
 
 /** Tâches quotidiennes : lancées par le worker (BullMQ) ou par la route planifiée (Netlify). */

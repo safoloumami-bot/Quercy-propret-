@@ -17,3 +17,4 @@ export * from "./recurrence-engine";
 export * from "./sites";
 export * from "./anomalies";
 export * from "./missions";
+export * from "./workforce";

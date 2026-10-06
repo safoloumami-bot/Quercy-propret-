@@ -119,6 +119,16 @@ d'un passage, l'application reçoit ces tâches et les enregistre comme points d
 passages à venir intacts après une modification. `fieldRecord.correctTask` corrige un point
 après clôture (évènement `record_corrected`).
 
+**Intervenants, absences, tournées** (lot 6) : `WorkerProfile` (une fiche par membre :
+statut, activités, coût, remplaçants n°1 et n°2), `WorkerDocument` (attestations, alerte par
+`alertWorkerDocuments()` dans la tâche quotidienne), `Absence` (requested → approved / rejected
+/ cancelled), `Route` et `RouteStop`. `rankReplacements()` (`packages/core/src/workforce.ts`)
+ordonne les remplaçants d'un passage ; `absenceImpact()` (`apps/web/src/server/cleaning`)
+l'applique passage par passage en tenant pour occupé le remplaçant déjà retenu. Confirmer pose
+`Intervention.replacementAgentId` : la fiche de site, « Ma journée » et l'application terrain
+s'ouvrent alors au remplaçant pour ce passage seulement. Routeurs tRPC `workers`, `absences`,
+`routes` ; route `absence` de l'application terrain.
+
 ## Authentification
 
 Better Auth (`apps/web/src/server/auth.ts`), avec l'adaptateur Prisma :

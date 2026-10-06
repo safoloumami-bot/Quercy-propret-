@@ -96,6 +96,14 @@ model User {
   missionSheetsCreated MissionSheet[]          @relation("MissionSheetCreator")
   missionSheetsUpdated MissionSheet[]          @relation("MissionSheetUpdater")
   missionSheetVersions MissionSheetVersion[]   @relation("MissionSheetVersionAuthor")
+  workerProfiles       WorkerProfile[]         @relation("WorkerProfileUser")
+  replacing1           WorkerProfile[]         @relation("WorkerReplacement1")
+  replacing2           WorkerProfile[]         @relation("WorkerReplacement2")
+  absences             Absence[]               @relation("AbsenceUser")
+  absencesRequested    Absence[]               @relation("AbsenceRequester")
+  absencesDecided      Absence[]               @relation("AbsenceDecider")
+  routesMain           Route[]                 @relation("RouteMainAgent")
+  routesReplacement    Route[]                 @relation("RouteReplacementAgent")
   replacementsDone     Intervention[]          @relation("InterventionReplacement")
   interventionsActual  Intervention[]          @relation("InterventionActual")
 
@@ -290,6 +298,11 @@ model Organization {
   missionSheets           MissionSheet[]
   missionTasks            MissionTask[]
   missionSheetVersions    MissionSheetVersion[]
+  workerProfiles          WorkerProfile[]
+  workerDocuments         WorkerDocument[]
+  absences                Absence[]
+  routes                  Route[]
+  routeStops              RouteStop[]
 
   automations Automation[]
   apiKeys     ApiKey[]
@@ -626,10 +639,11 @@ model StoredFile {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  organization  Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  uploadedBy    User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
-  proofs        InterventionProof[]
-  anomalyPhotos Anomaly[]
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedBy      User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  proofs          InterventionProof[]
+  anomalyPhotos   Anomaly[]
+  workerDocuments WorkerDocument[]
 
   @@index([organizationId, entityType, entityId])
   @@map("stored_file")
@@ -1654,6 +1668,7 @@ model Site {
   children      Site[]              @relation("SiteParent")
   infos         SiteInfo[]
   missionSheets MissionSheet[]
+  routeStops    RouteStop[]
 
   @@unique([organizationId, code])
   @@index([organizationId, deletedAt])
@@ -2181,4 +2196,141 @@ model MissionSheetVersion {
 
   @@unique([sheetId, version])
   @@map("mission_sheet_version")
+}
+
+/// Fiche intervenant d'un membre : statut, activités, zone, coût, remplaçants, véhicule.
+model WorkerProfile {
+  id                      String   @id @default(cuid())
+  organizationId          String
+  userId                  String
+  /// employee (salarié), subcontractor (sous-traitant), manager (dirigeant)
+  kind                    String   @default("employee")
+  activities              String[] @default([])
+  zone                    String?
+  /// Coût horaire chargé, en centimes.
+  hourlyCostCents         Int?
+  replacement1Id          String?
+  replacement2Id          String?
+  usualVehicle            String?
+  canDriveCompanyVehicles Boolean  @default(false)
+  phone                   String?
+  /// Sous-traitant : raison sociale et SIRET.
+  companyName             String?
+  siret                   String?
+  notes                   String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User             @relation("WorkerProfileUser", fields: [userId], references: [id], onDelete: Cascade)
+  replacement1 User?            @relation("WorkerReplacement1", fields: [replacement1Id], references: [id], onDelete: SetNull)
+  replacement2 User?            @relation("WorkerReplacement2", fields: [replacement2Id], references: [id], onDelete: SetNull)
+  documents    WorkerDocument[]
+
+  @@unique([organizationId, userId])
+  @@map("worker_profile")
+}
+
+/// Attestation d'un intervenant (URSSAF, assurance…) avec date d'expiration.
+model WorkerDocument {
+  id             String    @id @default(cuid())
+  organizationId String
+  profileId      String
+  /// urssaf, insurance, kbis, other
+  kind           String
+  label          String?
+  expiresAt      DateTime?
+  fileId         String?
+  /// Dernière alerte envoyée : soon (30 jours avant) ou expired.
+  alertLevel     String?
+  alertedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  profile      WorkerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  file         StoredFile?   @relation(fields: [fileId], references: [id], onDelete: NoAction)
+
+  @@index([organizationId, expiresAt])
+  @@map("worker_document")
+}
+
+/// Absence, congé ou indisponibilité d'un intervenant, demandée puis validée par le chef.
+model Absence {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  /// leave (congé), sick (maladie), unavailable (indisponibilité), training, other
+  kind           String    @default("leave")
+  /// Jours inclus (minuit UTC comme support, comme les interventions).
+  startDate      DateTime
+  endDate        DateTime
+  comment        String?
+  /// requested, approved, rejected, cancelled
+  status         String    @default("requested")
+  /// app (application terrain) ou software (logiciel)
+  source         String    @default("software")
+  requestedById  String?
+  decidedById    String?
+  decidedAt      DateTime?
+  decisionNote   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation("AbsenceUser", fields: [userId], references: [id], onDelete: Cascade)
+  requestedBy  User?        @relation("AbsenceRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  decidedBy    User?        @relation("AbsenceDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([organizationId, userId, startDate])
+  @@map("absence")
+}
+
+/// Tournée : suite ordonnée de sites, agent principal et remplaçant, horaires, véhicule.
+model Route {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  name               String
+  zone               String?
+  mainAgentId        String?
+  replacementAgentId String?
+  vehicle            String?
+  /// Jours habituels (1 = lundi … 7 = dimanche).
+  weekdays           Int[]     @default([])
+  startTime          String?
+  endTime            String?
+  startPoint         String?
+  active             Boolean   @default(true)
+  notes              String?
+  archivedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mainAgent        User?        @relation("RouteMainAgent", fields: [mainAgentId], references: [id], onDelete: SetNull)
+  replacementAgent User?        @relation("RouteReplacementAgent", fields: [replacementAgentId], references: [id], onDelete: SetNull)
+  stops            RouteStop[]
+
+  @@index([organizationId, active])
+  @@map("route")
+}
+
+/// Étape d'une tournée : site, ordre, trajet depuis l'étape précédente.
+model RouteStop {
+  id             String @id @default(cuid())
+  organizationId String
+  routeId        String
+  siteId         String
+  sortOrder      Int    @default(0)
+  travelMinutes  Int?
+  /// Distance depuis l'étape précédente, en mètres.
+  travelMeters   Int?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  route        Route        @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: NoAction)
+
+  @@index([routeId, sortOrder])
+  @@map("route_stop")
 }

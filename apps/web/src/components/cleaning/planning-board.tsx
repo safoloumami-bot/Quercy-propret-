@@ -1,6 +1,6 @@
 "use client";
 
-import { INTERVENTION_STATUSES, recordPath } from "@quercy/core";
+import { ABSENCE_KINDS, INTERVENTION_STATUSES, recordPath } from "@quercy/core";
 import { Badge } from "@quercy/ui/components/badge";
 import { Button } from "@quercy/ui/components/button";
 import { Callout } from "@quercy/ui/components/callout";
@@ -38,6 +38,10 @@ const TONE: Record<string, "info" | "primary" | "success" | "danger" | "neutral"
   cancelled: "neutral",
 };
 const STATUS_LABEL = Object.fromEntries(INTERVENTION_STATUSES.map((s) => [s.value, s.label]));
+
+const ABSENCE_LABEL: Record<string, string> = Object.fromEntries(
+  ABSENCE_KINDS.map((k) => [k.value, k.label]),
+);
 
 function todayKey(): string {
   const now = new Date();
@@ -116,6 +120,10 @@ export function PlanningBoard({ canManage }: { canManage: boolean }) {
         (row.id === null || data.interventions.some((i) => i.agentId === row.id)),
     );
   }, [data, agentFilter]);
+  const absentOn = React.useMemo(
+    () => new Map((data?.absences ?? []).map((a) => [`${a.agentId}:${a.day}`, a.kind])),
+    [data],
+  );
   const inConflict = React.useMemo(
     () => new Set((data?.conflicts ?? []).flatMap((c) => c.ids)),
     [data],
@@ -260,9 +268,14 @@ export function PlanningBoard({ canManage }: { canManage: boolean }) {
                   {data.days.map((day) => (
                     <td
                       key={day}
-                      className={`border-b border-l border-border p-1.5 ${day === today ? "bg-primary/5" : ""}`}
+                      className={`border-b border-l border-border p-1.5 ${absentOn.has(`${row.id}:${day}`) ? "bg-muted [background-image:repeating-linear-gradient(135deg,transparent_0_6px,var(--color-border)_6px_7px)]" : day === today ? "bg-primary/5" : ""}`}
                     >
                       <div className="space-y-1.5">
+                        {absentOn.has(`${row.id}:${day}`) ? (
+                          <Badge variant="neutral" className="w-full justify-center">
+                            {ABSENCE_LABEL[absentOn.get(`${row.id}:${day}`)!] ?? "Absent"}
+                          </Badge>
+                        ) : null}
                         {data.interventions
                           .filter((i) => i.day === day && i.agentId === row.id)
                           .map((i) => (
@@ -277,6 +290,7 @@ export function PlanningBoard({ canManage }: { canManage: boolean }) {
                                 >
                                   {i.siteName ?? i.title}
                                 </Link>
+
                                 {canManage ? (
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -313,6 +327,11 @@ export function PlanningBoard({ canManage }: { canManage: boolean }) {
                                   .filter(Boolean)
                                   .join(" · ")}
                               </div>
+                              {i.replacing ? (
+                                <div className="mt-0.5 text-xs text-info-text">
+                                  Remplace {i.replacing}
+                                </div>
+                              ) : null}
                               <Badge variant={TONE[i.status] ?? "neutral"} className="mt-1">
                                 {STATUS_LABEL[i.status] ?? i.status}
                               </Badge>

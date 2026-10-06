@@ -98,8 +98,13 @@ export const cleaningRouter = createTRPCRouter({
       include: {
         site: { select: { id: true, name: true, city: true } },
         company: { select: { name: true } },
+        owner: { select: { name: true } },
       },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
+    });
+    const absences = await ctx.db.absence.findMany({
+      where: { status: "approved", startDate: { lte: sunday }, endDate: { gte: monday } },
+      select: { userId: true, kind: true, startDate: true, endDate: true },
     });
     const interventions = rows.map((r) => ({
       id: r.id,
@@ -108,7 +113,9 @@ export const cleaningRouter = createTRPCRouter({
       startTime: r.startTime,
       durationMinutes: r.durationMinutes,
       status: r.status,
-      agentId: r.ownerId,
+      // Un remplaçant prend le passage sur sa ligne ; l'agent prévu reste indiqué.
+      agentId: r.replacementAgentId ?? r.ownerId,
+      replacing: r.replacementAgentId ? (r.owner?.name ?? null) : null,
       siteName: r.site?.name ?? null,
       city: r.site?.city ?? null,
       companyName: r.company?.name ?? null,
@@ -118,6 +125,12 @@ export const cleaningRouter = createTRPCRouter({
       days: Array.from({ length: 7 }, (_, i) => dayKey(addDays(monday, i))),
       agents: await workspaceAgents(ctx),
       interventions,
+      // Jours d'absence validée, par agent.
+      absences: absences.flatMap((a) =>
+        Array.from({ length: 7 }, (_, i) => addDays(monday, i))
+          .filter((d) => d >= a.startDate && d <= a.endDate)
+          .map((d) => ({ agentId: a.userId, day: dayKey(d), kind: a.kind })),
+      ),
       // Un même intervenant prévu à deux endroits en même temps : alerte, jamais blocage.
       conflicts: findConflicts(
         interventions
@@ -158,7 +171,13 @@ export const cleaningRouter = createTRPCRouter({
         if (!member)
           throw new TRPCError({ code: "BAD_REQUEST", message: "Cet agent n'est pas membre." });
       }
-      await saveIntervention(ctx, current, { ownerId: input.agentId }, "intervention.reassign");
+      // Nouvel agent prévu : un éventuel remplacement en cours n'a plus lieu d'être.
+      await saveIntervention(
+        ctx,
+        current,
+        { ownerId: input.agentId, replacementAgentId: null },
+        "intervention.reassign",
+      );
       await recordInterventionEvent({
         organizationId: ctx.organizationId,
         interventionId: current.id,
