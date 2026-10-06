@@ -1,13 +1,36 @@
 "use client";
 
 import { Badge } from "@quercy/ui/components/badge";
+import { Button } from "@quercy/ui/components/button";
 import { Callout } from "@quercy/ui/components/callout";
+import { Checkbox } from "@quercy/ui/components/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@quercy/ui/components/dialog";
+import { Input } from "@quercy/ui/components/input";
 import { Skeleton } from "@quercy/ui/components/skeleton";
-import { useQuery } from "@tanstack/react-query";
-import { CheckIcon, CircleAlertIcon, XIcon } from "lucide-react";
+import { Textarea } from "@quercy/ui/components/textarea";
+import { toast } from "@quercy/ui/components/toaster";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckIcon, CircleAlertIcon, PencilIcon, XIcon } from "lucide-react";
 import Link from "next/link";
+import * as React from "react";
 
+import { FormField } from "@/components/form-field";
 import { errorMessage, useTRPC } from "@/lib/trpc";
+
+interface Correction {
+  taskId: string;
+  title: string;
+  done: boolean;
+  reason: string;
+  note: string;
+}
 
 const time = (d: Date | string) =>
   new Date(d).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -25,10 +48,24 @@ const dayTime = (d: Date | string) =>
  */
 export function FieldRecord({ interventionId }: { interventionId: string }) {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const record = useQuery(trpc.fieldRecord.get.queryOptions({ interventionId }));
+  const [correcting, setCorrecting] = React.useState<Correction | null>(null);
+  const correct = useMutation(
+    trpc.fieldRecord.correctTask.mutationOptions({
+      onSuccess: () => {
+        toast.success("Relevé corrigé, correction inscrite au journal.");
+        setCorrecting(null);
+        void queryClient.invalidateQueries({
+          queryKey: trpc.fieldRecord.get.queryKey({ interventionId }),
+        });
+      },
+      onError: (e) => toast.error(errorMessage(e)),
+    }),
+  );
   if (record.isPending) return <Skeleton className="h-48" />;
   if (record.error) return <Callout variant="warning">{errorMessage(record.error)}</Callout>;
-  const { agents, areas, consumables, photos, journal, anomalies } = record.data;
+  const { agents, areas, consumables, photos, journal, anomalies, canCorrect } = record.data;
   const done = areas.flatMap((a) => a.tasks).filter((t) => t.done).length;
   const total = areas.flatMap((a) => a.tasks).length;
   const empty = total === 0 && photos.length === 0 && journal.length === 0;
@@ -111,6 +148,24 @@ export function FieldRecord({ interventionId }: { interventionId: string }) {
                         </p>
                         {t.reason ? <p className="text-muted-foreground">{t.reason}</p> : null}
                       </div>
+                      {canCorrect ? (
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label={`Corriger « ${t.label} »`}
+                          onClick={() =>
+                            setCorrecting({
+                              taskId: t.id,
+                              title: `${area.area} — ${t.label}`,
+                              done: t.done,
+                              reason: t.reason ?? "",
+                              note: "",
+                            })
+                          }
+                        >
+                          <PencilIcon />
+                        </Button>
+                      ) : null}
                       {t.doneAt ? (
                         <span className="text-xs text-muted-foreground tabular-nums">
                           {time(t.doneAt)}
@@ -185,6 +240,60 @@ export function FieldRecord({ interventionId }: { interventionId: string }) {
           </ol>
         </section>
       ) : null}
+      <Dialog open={correcting !== null} onOpenChange={(o) => (!o ? setCorrecting(null) : null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Corriger le relevé</DialogTitle>
+            <DialogDescription>{correcting?.title}</DialogDescription>
+          </DialogHeader>
+          {correcting ? (
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={correcting.done}
+                  onCheckedChange={(v) => setCorrecting({ ...correcting, done: v === true })}
+                />
+                Point fait
+              </label>
+              <FormField id="correct-reason" label="Motif ou réserve">
+                <Textarea
+                  id="correct-reason"
+                  rows={2}
+                  value={correcting.reason}
+                  onChange={(e) => setCorrecting({ ...correcting, reason: e.target.value })}
+                />
+              </FormField>
+              <FormField id="correct-note" label="Pourquoi cette correction">
+                <Input
+                  id="correct-note"
+                  value={correcting.note}
+                  placeholder="Ex. vérifié sur place le lendemain"
+                  onChange={(e) => setCorrecting({ ...correcting, note: e.target.value })}
+                />
+              </FormField>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setCorrecting(null)}>
+              Annuler
+            </Button>
+            <Button
+              disabled={correct.isPending}
+              onClick={() =>
+                correcting &&
+                correct.mutate({
+                  taskId: correcting.taskId,
+                  done: correcting.done,
+                  reason: correcting.reason,
+                  note: correcting.note || undefined,
+                })
+              }
+            >
+              Enregistrer la correction
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

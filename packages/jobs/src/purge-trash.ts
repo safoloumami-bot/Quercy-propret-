@@ -110,6 +110,7 @@ export async function purgeTrash(now: Date = new Date()): Promise<PurgeResult> {
         inspections: { none: {} },
         children: { none: {} },
         infos: { none: {} },
+        missionSheets: { none: {} },
       },
     }),
     prisma.stockMovement.deleteMany({ where: expired }),

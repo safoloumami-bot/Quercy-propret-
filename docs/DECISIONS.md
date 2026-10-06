@@ -349,3 +349,21 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
       anormale » (à vérifier avant d'en parler).
 110.  **Une anomalie saisie par un responsable est validée d'office** ; une anomalie rejetée
       ou rouverte perd sa visibilité client.
+
+## 2026-10-06 — Lot 5 de la feuille de route (rapport syndic, fiches mission)
+
+111.  **Le rapport client ne montre que les anomalies cochées « visible par le client »** (et
+      donc validées) : un clic de plus pour le chef, aucune surprise pour le syndic. La vue d'ensemble
+      du client signale celles qui sont validées mais pas cochées.
+112.  **Taux de réalisation sur les passages dus** (jusqu'à aujourd'hui) : un rapport du mois
+      en cours ne pénalise pas les passages encore à venir.
+113.  **« Due » = première visite de la période** (semaine ISO, mois, trimestre) pour la même
+      prestation : pas de jour fixe à choisir, et un passage décalé n'oublie pas la tâche.
+114.  **Une fiche par prestation ou une fiche générale par site** ; la fiche de la prestation
+      l'emporte. Les points sont figés à la première saisie : la version utilisée reste notée
+      sur l'intervention.
+115.  **Nouvelle version : seuls les passages à venir, pas commencés et intacts** sont mis à
+      jour ; un passage commencé garde sa fiche (on ne change pas la liste sous les yeux de
+      l'agent).
+116.  **Correction après clôture tracée deux fois** : au journal de l'intervention (lisible
+      par tous) et dans l'historique (avant / après).

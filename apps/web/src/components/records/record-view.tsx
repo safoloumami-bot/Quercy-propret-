@@ -195,7 +195,7 @@ export function RecordView({
         (related[0] ? `lie-${related[0].entity}` : "commentaires")
       }
     >
-      <TabsList className="flex-wrap">
+      <TabsList className="h-auto flex-wrap">
         {extraTabs.map((t) => (
           <TabsTrigger key={t.value} value={t.value}>
             {t.label}

@@ -81,20 +81,23 @@ model User {
   ownedInspections       Inspection[]       @relation("InspectionOwner")
   fieldAccesses          FieldAccess[]
 
-  serviceLinesAsAgent ServiceLine[]           @relation("ServiceLineAgent")
-  seriesValidated     RecurrenceSeries[]      @relation("SeriesValidator")
-  ruleVersionsAsAgent RecurrenceRuleVersion[] @relation("RuleVersionAgent")
-  ruleVersionsCreated RecurrenceRuleVersion[] @relation("RuleVersionCreator")
-  interventionEvents  InterventionEvent[]     @relation("InterventionEventUser")
-  proofsAuthored      InterventionProof[]     @relation("ProofAuthor")
-  anomaliesReported   Anomaly[]               @relation("AnomalyReporter")
-  anomaliesValidated  Anomaly[]               @relation("AnomalyValidator")
-  anomaliesResolved   Anomaly[]               @relation("AnomalyResolver")
-  siteInfosForAgent   SiteInfo[]              @relation("SiteInfoAgent")
-  siteInfosCreated    SiteInfo[]              @relation("SiteInfoCreator")
-  interventionTasks   InterventionTask[]      @relation("InterventionTaskDoneBy")
-  replacementsDone    Intervention[]          @relation("InterventionReplacement")
-  interventionsActual Intervention[]          @relation("InterventionActual")
+  serviceLinesAsAgent  ServiceLine[]           @relation("ServiceLineAgent")
+  seriesValidated      RecurrenceSeries[]      @relation("SeriesValidator")
+  ruleVersionsAsAgent  RecurrenceRuleVersion[] @relation("RuleVersionAgent")
+  ruleVersionsCreated  RecurrenceRuleVersion[] @relation("RuleVersionCreator")
+  interventionEvents   InterventionEvent[]     @relation("InterventionEventUser")
+  proofsAuthored       InterventionProof[]     @relation("ProofAuthor")
+  anomaliesReported    Anomaly[]               @relation("AnomalyReporter")
+  anomaliesValidated   Anomaly[]               @relation("AnomalyValidator")
+  anomaliesResolved    Anomaly[]               @relation("AnomalyResolver")
+  siteInfosForAgent    SiteInfo[]              @relation("SiteInfoAgent")
+  siteInfosCreated     SiteInfo[]              @relation("SiteInfoCreator")
+  interventionTasks    InterventionTask[]      @relation("InterventionTaskDoneBy")
+  missionSheetsCreated MissionSheet[]          @relation("MissionSheetCreator")
+  missionSheetsUpdated MissionSheet[]          @relation("MissionSheetUpdater")
+  missionSheetVersions MissionSheetVersion[]   @relation("MissionSheetVersionAuthor")
+  replacementsDone     Intervention[]          @relation("InterventionReplacement")
+  interventionsActual  Intervention[]          @relation("InterventionActual")
 
   apiKeys ApiKey[] @relation("ApiKeyUser")
 
@@ -284,6 +287,9 @@ model Organization {
   siteInfos               SiteInfo[]
   interventionTasks       InterventionTask[]
   interventionConsumables InterventionConsumable[]
+  missionSheets           MissionSheet[]
+  missionTasks            MissionTask[]
+  missionSheetVersions    MissionSheetVersion[]
 
   automations Automation[]
   apiKeys     ApiKey[]
@@ -1647,6 +1653,7 @@ model Site {
   parent        Site?               @relation("SiteParent", fields: [parentId], references: [id], onDelete: NoAction)
   children      Site[]              @relation("SiteParent")
   infos         SiteInfo[]
+  missionSheets MissionSheet[]
 
   @@unique([organizationId, code])
   @@index([organizationId, deletedAt])
@@ -1728,6 +1735,9 @@ model Intervention {
   /// pointages hors réseau, clôture. Le relevé lui-même (points de contrôle, consommables,
   /// photos, journal) est rangé dans ses propres tables.
   fieldData           Json?
+  /// Fiche mission (et sa version) d'où viennent les points de contrôle.
+  missionSheetId      String?
+  missionVersion      Int?
   tags                String[]  @default([])
   customFields        Json      @default("{}")
   createdAt           DateTime  @default(now())
@@ -1749,6 +1759,7 @@ model Intervention {
   anomalies        Anomaly[]
   tasks            InterventionTask[]
   consumables      InterventionConsumable[]
+  missionSheet     MissionSheet?            @relation(fields: [missionSheetId], references: [id], onDelete: NoAction)
 
   @@unique([organizationId, slotKey])
   @@index([contractId, date])
@@ -1839,6 +1850,7 @@ model ServiceLine {
   site          Site               @relation(fields: [siteId], references: [id], onDelete: NoAction)
   plannedAgent  User?              @relation("ServiceLineAgent", fields: [plannedAgentId], references: [id], onDelete: SetNull)
   series        RecurrenceSeries[]
+  missionSheets MissionSheet[]
   interventions Intervention[]
 
   @@unique([organizationId, externalRef])
@@ -2034,6 +2046,9 @@ model InterventionTask {
   doneById       String?
   /// Motif ou réserve quand le point n'est pas fait.
   reason         String?
+  /// Repris de la fiche mission : fréquence et photo obligatoire.
+  frequency      String?
+  photoRequired  Boolean   @default(false)
   sortOrder      Int       @default(0)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -2093,4 +2108,77 @@ model SiteInfo {
 
   @@index([organizationId, siteId])
   @@map("site_info")
+}
+
+/// Fiche mission d'un site (toutes prestations, ou une prestation précise) : tâches à cocher,
+/// procédure, produits, matériel, consignes. Chaque modification crée une version.
+model MissionSheet {
+  id              String    @id @default(cuid())
+  organizationId  String
+  siteId          String
+  /// Prestation concernée ; vide = toutes les prestations du site.
+  serviceLineId   String?
+  title           String
+  version         Int       @default(1)
+  procedure       String?
+  products        String?
+  equipment       String?
+  instructions    String?
+  durationMinutes Int?
+  createdById     String?
+  updatedById     String?
+  archivedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization  Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site          Site                  @relation(fields: [siteId], references: [id], onDelete: NoAction)
+  serviceLine   ServiceLine?          @relation(fields: [serviceLineId], references: [id], onDelete: NoAction)
+  createdBy     User?                 @relation("MissionSheetCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy     User?                 @relation("MissionSheetUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  tasks         MissionTask[]
+  versions      MissionSheetVersion[]
+  interventions Intervention[]
+
+  @@index([organizationId, siteId])
+  @@map("mission_sheet")
+}
+
+/// Tâche d'une fiche mission (zone, fréquence, critique, photo obligatoire).
+model MissionTask {
+  id             String  @id @default(cuid())
+  organizationId String
+  sheetId        String
+  zone           String
+  label          String
+  /// each_visit, weekly, monthly, quarterly
+  frequency      String  @default("each_visit")
+  critical       Boolean @default(false)
+  photoRequired  Boolean @default(false)
+  sortOrder      Int     @default(0)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sheet        MissionSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+
+  @@index([sheetId, sortOrder])
+  @@map("mission_task")
+}
+
+/// Version enregistrée d'une fiche mission (instantané complet), pour l'historique.
+model MissionSheetVersion {
+  id             String   @id @default(cuid())
+  organizationId String
+  sheetId        String
+  version        Int
+  snapshot       Json
+  note           String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sheet        MissionSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation("MissionSheetVersionAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([sheetId, version])
+  @@map("mission_sheet_version")
 }

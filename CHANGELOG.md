@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.7.0] — 2026-10-06 — Rapport syndic et fiches mission (lot 5)
+
+### Ajouté
+
+- **Rapport client (syndic) en PDF**, depuis la vue d'ensemble du client : un seul rapport
+  pour toutes ses résidences et cages ; chiffres clés (passages prévus et réalisés, taux de
+  réalisation, anomalies, sites), détail des passages (résidence, date, prestation,
+  intervenant, statut, preuve, observation, anomalie) et section anomalies avec photos. Seules
+  les anomalies validées et marquées « visible par le client » y figurent. Au nom et aux
+  couleurs de l'entreprise.
+- **Fiches mission** (onglet « Fiche de site ») : par site ou par prestation, tâches par zone
+  avec fréquence (à chaque passage, semaine, mois, trimestre), point critique et photo
+  obligatoire ; consignes, produits, matériel, durée et procédure (méthode « du haut vers le
+  bas »). **Bibliothèque** de tâches pour 15 zones (bureaux, ateliers, cuisine, sanitaires,
+  vestiaires, escaliers, halls, ascenseurs, parkings, vitres, locaux poubelles, extérieurs,
+  salles de réunion, chambres, remise en état).
+- **Seules les tâches dues ce jour-là** s'affichent dans l'application terrain (hebdomadaires
+  au premier passage de la semaine, mensuelles au premier du mois…), avec la fiche mission et
+  les informations du site destinées à l'agent.
+- **Versions** : chaque modification crée une version (historique, note) ; les passages à
+  venir pas encore commencés reçoivent la nouvelle version, les autres gardent la leur.
+- **Import et export Excel** des tâches d'une fiche.
+- **Feuille de passage** par site et par mois en PDF imprimable (date, heures, statut,
+  intervenant réel, conformité, observation, bon).
+- **Correction du relevé par le chef**, même après clôture, inscrite au journal de
+  l'intervention avec l'avant / après.
+- Anomalie automatique « photo obligatoire manquante » à la clôture.
+
+### Corrigé
+
+- Les onglets d'une fiche passent à la ligne sans chevaucher le contenu.
+
 ## [1.6.0] — 2026-10-06 — Application terrain sur le nouveau modèle et anomalies (lot 4)
 
 ### Ajouté

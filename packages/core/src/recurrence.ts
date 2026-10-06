@@ -129,5 +129,6 @@ export const INTERVENTION_EVENT_TYPES = {
   status_changed: "Statut changé",
   missed: "Passage non réalisé",
   note: "Note",
+  record_corrected: "Relevé corrigé",
 } as const;
 export type InterventionEventType = keyof typeof INTERVENTION_EVENT_TYPES;

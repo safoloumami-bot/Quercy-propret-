@@ -1,16 +1,20 @@
 import {
   FIELD_ANOMALY_TYPES,
+  SITE_INFO_CATEGORIES,
   INTERVENTION_EVENT_TYPES,
   anomalyTypeLabel,
   dayKey,
 } from "@quercy/core";
 
+import type { PlannedTask } from "../cleaning/missions";
 import { CHECKLISTS, type Checklist, checklistFor } from "./checklists";
 
 /** Point de contrôle tel que l'application terrain l'affiche. */
 export interface FieldItem {
   l: string;
   crit: boolean;
+  /** Photo obligatoire (fiche mission). */
+  photo?: boolean;
   ok: boolean;
   nc: string;
   ts: number;
@@ -51,6 +55,10 @@ export interface FieldData {
   cloture?: FieldClosure;
 }
 
+const SITE_INFO_LABEL: Record<string, string> = Object.fromEntries(
+  SITE_INFO_CATEGORIES.map((c) => [c.value, c.label]),
+);
+
 interface ContactRow {
   name: string;
   email: string | null;
@@ -75,7 +83,25 @@ export interface StopRow {
   company: ContactRow | null;
 }
 
+/** Fiche mission affichée à l'agent (procédure, produits, consignes, infos du site). */
+export interface MissionInfo {
+  id: string;
+  title: string;
+  version: number;
+  procedure: string | null;
+  products: string | null;
+  equipment: string | null;
+  instructions: string | null;
+  durationMinutes: number | null;
+}
+
 export interface InterventionRow extends StopRow {
+  serviceLineId: string | null;
+  missionSheetId: string | null;
+  /** Ajoutés au chargement : fiche mission, tâches dues (si pas encore de points), infos. */
+  mission?: MissionInfo | null;
+  planned?: PlannedTask[];
+  siteInfos?: { category: string; label: string; content: string }[];
   signatureUrl: string | null;
   signedBy: string | null;
   notes: string | null;
@@ -96,6 +122,7 @@ export interface InterventionRow extends StopRow {
     done: boolean;
     doneAt: Date | null;
     reason: string | null;
+    photoRequired: boolean;
     sortOrder: number;
   }[];
   consumables: {
@@ -187,16 +214,20 @@ export function freshTasks(list: Checklist) {
 
 /** Points de contrôle regroupés par pièce, au format de l'application. */
 export function roomsOf(
-  row: Pick<InterventionRow, "title" | "site" | "tasks">,
+  row: Pick<InterventionRow, "title" | "site" | "tasks" | "planned">,
   data: FieldData,
 ): FieldRoom[] {
-  if (row.tasks.length === 0)
+  // Pas encore de points enregistrés : tâches dues de la fiche mission, sinon grille type.
+  const tasks = row.tasks.length
+    ? row.tasks
+    : row.planned?.map((t) => ({ ...t, done: false, reason: null, doneAt: null }));
+  if (!tasks)
     return checklistOf(row, data).pieces.map((p) => ({
       n: p.n,
       items: p.items.map((i) => ({ ...i, ok: false, nc: "", ts: 0 })),
     }));
   const rooms: FieldRoom[] = [];
-  for (const t of row.tasks) {
+  for (const t of tasks) {
     let room = rooms.at(-1);
     if (!room || room.n !== t.area) {
       room = { n: t.area, items: [] };
@@ -205,6 +236,7 @@ export function roomsOf(
     room.items.push({
       l: t.label,
       crit: t.critical,
+      ...(t.photoRequired ? { photo: true } : {}),
       ok: t.done,
       nc: t.reason ?? "",
       ts: t.doneAt?.getTime() ?? 0,
@@ -348,6 +380,22 @@ export function toChantier(row: InterventionRow) {
     journal: journalOf(row),
     anomalies: row.anomalies.map(toAnomalyLine),
     typesAnomalie: FIELD_ANOMALY_TYPES,
+    mission: row.mission
+      ? {
+          titre: row.mission.title,
+          version: row.mission.version,
+          procedure: row.mission.procedure ?? "",
+          produits: row.mission.products ?? "",
+          materiel: row.mission.equipment ?? "",
+          consignes: row.mission.instructions ?? "",
+          duree: row.mission.durationMinutes,
+        }
+      : null,
+    infos: (row.siteInfos ?? []).map((i) => ({
+      categorie: SITE_INFO_LABEL[i.category] ?? i.category,
+      titre: i.label,
+      contenu: i.content,
+    })),
     arrivee: row.checkInAt?.getTime() ?? null,
     depart: row.checkOutAt?.getTime() ?? null,
     arriveeDifferee: data.arriveeDifferee ?? false,

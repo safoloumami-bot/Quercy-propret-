@@ -106,6 +106,19 @@ au format d'origine. Les anomalies passent par `reportAnomalies()` (`packages/jo
 `detectPointageAnomalies()` au pointage (application et logiciel) et `detectAnomalies()` dans
 la tâche quotidienne (rattrapage sur trois jours, passages manqués, contrôles non conformes).
 
+**Rapports et fiches mission** (lot 5) : `renderReportPdf()` (`packages/documents`) produit
+les rapports tabulaires en A4 paysage (chiffres clés, tableaux paginés, vignettes). Le rapport
+client (`apps/web/src/server/cleaning/client-report.ts`, route
+`/api/nettoyage/rapport-client`) réunit les sites du client et leurs sous-sites
+(`clientSiteIds`) ; la feuille de passage (`passage-sheet.ts`, `/api/nettoyage/feuille-passage`)
+couvre un site. Les fiches mission (`MissionSheet`, `MissionTask`, `MissionSheetVersion`) se
+choisissent par prestation puis par site (`missionSheetFor`) ; `taskDue()` (core) ne garde
+que les tâches dues (première visite de la semaine, du mois, du trimestre) ; à l'ouverture
+d'un passage, l'application reçoit ces tâches et les enregistre comme points de contrôle
+(`Intervention.missionSheetId/missionVersion`). `refreshUpcomingVisits()` remet à jour les
+passages à venir intacts après une modification. `fieldRecord.correctTask` corrige un point
+après clôture (évènement `record_corrected`).
+
 ## Authentification
 
 Better Auth (`apps/web/src/server/auth.ts`), avec l'adaptateur Prisma :

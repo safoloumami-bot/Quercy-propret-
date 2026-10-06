@@ -103,6 +103,21 @@ export async function visibleSiteInfos(
     }));
 }
 
+/** Sites d'un client et leurs sous-sites (même sans client renseigné sur le sous-site). */
+export async function clientSiteIds(ctx: Ctx, companyId: string): Promise<Set<string>> {
+  const direct = await ctx.db.site.findMany({ where: { companyId }, select: { id: true } });
+  const ids = new Set(direct.map((s) => s.id));
+  for (let frontier = [...ids]; frontier.length;) {
+    const children = await ctx.db.site.findMany({
+      where: { parentId: { in: frontier } },
+      select: { id: true },
+    });
+    frontier = children.map((c) => c.id).filter((id) => !ids.has(id));
+    frontier.forEach((id) => ids.add(id));
+  }
+  return ids;
+}
+
 function ruleText(rule: unknown): string {
   const parsed = recurrenceRuleSchema.safeParse(rule);
   return parsed.success ? describeRule(parsed.data) : "Règle à définir";
@@ -276,20 +291,7 @@ export const sitesRouter = createTRPCRouter({
         select: { id: true, name: true },
       });
       if (!company) throw new TRPCError({ code: "NOT_FOUND", message: "Client introuvable." });
-      const direct = await ctx.db.site.findMany({
-        where: { companyId: company.id },
-        select: { id: true },
-      });
-      // Sous-sites rattachés à un site du client, même sans client renseigné.
-      const ids = new Set(direct.map((s) => s.id));
-      for (let frontier = [...ids]; frontier.length;) {
-        const children = await ctx.db.site.findMany({
-          where: { parentId: { in: frontier } },
-          select: { id: true },
-        });
-        frontier = children.map((c) => c.id).filter((id) => !ids.has(id));
-        frontier.forEach((id) => ids.add(id));
-      }
+      const ids = await clientSiteIds(ctx, company.id);
       const from = parseDay(`${input.month}-01`);
       const to = addDays(new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + 1, 1)), -1);
       const today = parseDay(todayIn());
@@ -386,6 +388,24 @@ export const sitesRouter = createTRPCRouter({
             ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
             : null,
         },
+      };
+    }),
+
+  /** Aperçu du rapport client (même contenu que le PDF, sans les photos). */
+  clientReport: orgProcedure
+    .input(
+      z.object({
+        companyId: z.string().min(1),
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const { clientReport } = await import("../../cleaning/client-report");
+      const report = await clientReport(ctx, input);
+      return {
+        ...report,
+        anomalies: report.anomalies.map(({ photo, ...a }) => ({ ...a, hasPhoto: Boolean(photo) })),
       };
     }),
 });

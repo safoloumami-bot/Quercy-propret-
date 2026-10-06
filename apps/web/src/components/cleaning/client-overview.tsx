@@ -6,7 +6,7 @@ import { Button } from "@quercy/ui/components/button";
 import { Callout } from "@quercy/ui/components/callout";
 import { Skeleton } from "@quercy/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, FileDownIcon } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
@@ -31,6 +31,11 @@ function shiftMonth(month: string, delta: number): string {
 const monthLabel = (month: string) =>
   new Date(`${month}-15T12:00:00Z`).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
+function monthEnd(month: string): string {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+}
+
 function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2">
@@ -49,6 +54,10 @@ export function ClientOverview({ companyId }: { companyId: string }) {
   const trpc = useTRPC();
   const [month, setMonth] = React.useState(currentMonth);
   const overview = useQuery(trpc.sites.clientOverview.queryOptions({ companyId, month }));
+  const report = useQuery(
+    trpc.sites.clientReport.queryOptions({ companyId, from: `${month}-01`, to: monthEnd(month) }),
+  );
+  const withheld = report.data?.withheldAnomalies ?? 0;
 
   if (overview.isPending) return <Skeleton className="h-48" />;
   if (overview.error) return <Callout variant="warning">{errorMessage(overview.error)}</Callout>;
@@ -96,7 +105,29 @@ export function ClientOverview({ companyId }: { companyId: string }) {
         >
           <ChevronRightIcon />
         </Button>
+        <Button asChild size="sm" variant="secondary" className="ml-auto">
+          <a
+            href={`/api/nettoyage/rapport-client?${new URLSearchParams({
+              companyId,
+              from: `${month}-01`,
+              to: monthEnd(month),
+            })}`}
+            title="Un seul rapport pour tous les sites et sous-sites du client. Seules les anomalies validées et marquées « visible par le client » y figurent."
+          >
+            <FileDownIcon aria-hidden /> Rapport PDF du mois
+          </a>
+        </Button>
       </div>
+      {withheld ? (
+        <Callout variant="info">
+          {withheld} anomalie{withheld > 1 ? "s" : ""} validée{withheld > 1 ? "s" : ""} ce mois-ci{" "}
+          {withheld > 1 ? "ne sont pas cochées" : "n'est pas cochée"} « visible par le client » :{" "}
+          {withheld > 1 ? "elles n'apparaîtront pas" : "elle n'apparaîtra pas"} dans le rapport.{" "}
+          <Link href="/nettoyage/anomalies" className="underline">
+            Voir les anomalies
+          </Link>
+        </Callout>
+      ) : null}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <Tile label="Sites" value={String(totals.sites)} />
         <Tile label="Passages prévus" value={String(totals.planned)} />

@@ -3,6 +3,13 @@ export { FACTURX_FILENAME, FACTURX_PROFILE, buildFacturXml, countryCode } from "
 export { documentEmailHtml, emailDocument, publicDocumentUrl } from "./mail";
 export { renderDocumentPdf, wrap } from "./pdf";
 export {
+  renderReportPdf,
+  type ReportColumn,
+  type ReportData,
+  type ReportRow,
+  type ReportSection,
+} from "./report-pdf";
+export {
   type FullDocument,
   SalesError,
   addPayment,

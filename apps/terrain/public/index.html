@@ -419,7 +419,7 @@ function chargerTournee(){
 }
 function ouvrirChantier(id){
   api("chantier?id="+encodeURIComponent(id)).then(function(d){
-    S.ch=d.chantier; S.vue="fiche"; S.plie={}; S.an=null;
+    S.ch=d.chantier; S.vue="fiche"; S.plie={}; S.an=null; S.mission=undefined;
     ls("qp.cache",{moi:S.moi, ch:S.ch});
     rendre(); window.scrollTo(0,0);
   }).catch(function(){
@@ -505,6 +505,8 @@ function vueFiche(){
       (c.tel?'<a href="tel:'+e(c.tel)+'"><svg viewBox="0 0 24 24"><path d="M5 4h3l2 5-2.4 1.4a12 12 0 005.6 5.6L15 13.6l5 2v3a2 2 0 01-2.2 2A16.5 16.5 0 013 6.2 2 2 0 015 4z"/></svg>'+e(c.contact||"Appeler")+"</a>":"")+
     "</div></section>";
 
+  h+=blocMission(phase);
+
   if(anomalie())
     h+='<section class="alert"><span style="font-size:17px">⏱</span><div style="flex:1">'+
       "<b>Pointage anormalement long.</b> "+fh(el/3600000)+" alors que "+fh(c.devise)+" étaient prévues. Le départ a sans doute été oublié."+
@@ -546,7 +548,7 @@ function vueFiche(){
       var mauvais = it.crit && !it.ok;
       h+='<button class="it'+(mauvais?" ko":"")+'"'+(c.cloture?" disabled":"")+' data-a="cocher" data-p="'+pi+'" data-i="'+ii+'" aria-pressed="'+(it.ok?"true":"false")+'">'+
         '<span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>'+
-        '<span class="tx">'+e(it.l)+"</span>"+(it.crit?'<span class="cr">Critique</span>':"")+"</button>";
+        '<span class="tx">'+e(it.l)+"</span>"+(it.photo?'<span class="cr">Photo</span>':"")+(it.crit?'<span class="cr">Critique</span>':"")+"</button>";
       if(mauvais && c.arrivee && !c.cloture)
         h+='<div class="nc"><label for="nc'+pi+"-"+ii+'">Motif obligatoire</label>'+
           '<textarea id="nc'+pi+"-"+ii+'" data-a="motif" data-p="'+pi+'" data-i="'+ii+'" '+
@@ -636,6 +638,27 @@ function bandePhotos(piece){
        '<label class="phadd"><svg viewBox="0 0 24 24"><path d="M12 7v10M7 12h10"/></svg><span>Après</span>'+
        '<input type="file" accept="image/*" capture="environment" multiple hidden data-a="phadd" data-piece="'+e(piece)+'" data-slot="apres"></label>';
   return h+"</div>";
+}
+
+/* Fiche mission : procédure, produits, matériel, consignes et informations du site. */
+function blocMission(phase){
+  var c=S.ch, m=c.mission, infos=c.infos||[];
+  if(!m && !infos.length) return "";
+  var ouvert = S.mission===undefined ? phase==="idle" : S.mission;
+  var h='<section class="g"><button class="head" data-a="plier-mission" aria-expanded="'+ouvert+'">'+
+    '<h3>Fiche mission</h3>'+(m?'<span class="cnt num">v'+e(m.version)+"</span>":"")+
+    '<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>';
+  if(!ouvert) return h+"</section>";
+  var bloc=function(titre,texte){
+    return texte?'<div style="margin:0 0 12px"><div class="lab">'+e(titre)+'</div><p class="meta" style="margin:2px 0 0;white-space:pre-line">'+e(texte)+"</p></div>":"";
+  };
+  h+='<div class="body" style="padding:4px 18px 8px">';
+  if(m){
+    h+=bloc("Durée prévue", m.duree?fh(m.duree/60):"")+bloc("Consignes", m.consignes)+
+      bloc("Produits", m.produits)+bloc("Matériel", m.materiel)+bloc("Procédure", m.procedure);
+  }
+  infos.forEach(function(i){ h+=bloc(i.categorie+" · "+i.titre, i.contenu); });
+  return h+"</div></section>";
 }
 
 /* Anomalie sur le site : transmise au responsable, jamais au client. */
@@ -868,6 +891,7 @@ document.addEventListener("click", function(ev){
     c.photos=(c.photos||[]).filter(function(p){ return p.id!==pid; });
     rendre(); return envoyer("photo-suppr",{id:c.id, pid:pid});
   }
+  if(a==="plier-mission"){ S.mission=!(el.getAttribute("aria-expanded")==="true"); return rendre(); }
   if(a==="an-ouvrir"){ S.an={type:((c.typesAnomalie||[])[0]||{}).value||"other"}; return rendre(); }
   if(a==="an-annuler"){ S.an=null; return rendre(); }
   if(a==="an-phsup"){ if(S.an) S.an.photo=null; return rendre(); }

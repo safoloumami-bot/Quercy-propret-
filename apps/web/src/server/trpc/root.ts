@@ -8,6 +8,7 @@ import { recurrenceRouter } from "./routers/recurrence";
 import { sitesRouter } from "./routers/sites";
 import { anomaliesRouter } from "./routers/anomalies";
 import { fieldRecordRouter } from "./routers/field-record";
+import { missionsRouter } from "./routers/missions";
 import { auditRouter } from "./routers/audit";
 import { commentsRouter } from "./routers/comments";
 import { crmRouter } from "./routers/crm";
@@ -63,6 +64,7 @@ export const appRouter = createTRPCRouter({
   sites: sitesRouter,
   anomalies: anomaliesRouter,
   fieldRecord: fieldRecordRouter,
+  missions: missionsRouter,
 });
 
 export type AppRouter = typeof appRouter;

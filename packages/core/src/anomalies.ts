@@ -23,6 +23,7 @@ export const SYSTEM_ANOMALY_TYPES = [
   { value: "off_schedule", label: "Arrivée hors créneau" },
   { value: "abnormal_duration", label: "Durée anormale" },
   { value: "critical_point", label: "Point critique non fait" },
+  { value: "missing_proof", label: "Photo obligatoire manquante" },
   { value: "inspection_failed", label: "Contrôle qualité non conforme" },
 ] as const;
 

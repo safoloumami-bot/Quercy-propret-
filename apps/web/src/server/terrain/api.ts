@@ -8,6 +8,7 @@ import {
   dayKey,
   detectPointageAnomalies,
   inspectionOutcome,
+  siteInfoVisible,
   utcDay,
 } from "@quercy/core";
 import type { Prisma } from "@quercy/db";
@@ -28,6 +29,7 @@ import { loadBillingState } from "../billing/state";
 import { publish } from "../realtime";
 import { applyBusinessRules } from "../records/hooks";
 import { deleteObject, newStorageKey, putObject, readObject } from "../storage";
+import { dueMissionTasks, missionSheetFor } from "../cleaning/missions";
 import { CHECKLISTS } from "./checklists";
 import {
   type FieldData,
@@ -128,16 +130,64 @@ async function loadIntervention(org: TerrainOrgRow, me: Me, id: unknown) {
   if (!row) throw new HttpError("Chantier introuvable.", 404);
   if (me.role !== "patron" && row.ownerId !== me.id && row.replacementAgentId !== me.id)
     throw new HttpError("Ce chantier n'est pas le vôtre.", 403);
+  // Fiche mission en vigueur, tâches dues ce jour-là, informations du site visibles par l'agent.
+  const sheet = row.missionSheetId
+    ? await prisma.missionSheet.findFirst({
+        where: { id: row.missionSheetId, organizationId: org.id },
+        include: { tasks: { orderBy: { sortOrder: "asc" } } },
+      })
+    : await missionSheetFor(org.id, row);
+  row.mission = sheet;
+  if (!row.tasks.length && sheet?.tasks.length)
+    row.planned = await dueMissionTasks(org.id, sheet, row);
+  row.siteInfos = row.siteId
+    ? (
+        await prisma.siteInfo.findMany({
+          where: { organizationId: org.id, siteId: row.siteId, archivedAt: null },
+          orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
+        })
+      ).filter((i) =>
+        siteInfoVisible(i, { userId: me.id, manager: me.role === "patron", siteAgent: true }),
+      )
+    : [];
   return row;
 }
 
-/** Crée les points de contrôle de la grille si l'intervention n'en a pas encore. */
+/** Garde la fiche mission et les infos chargées sur la ligne mise à jour. */
+function keepExtras(updated: InterventionRow, row: InterventionRow): InterventionRow {
+  return Object.assign(updated, {
+    mission: row.mission,
+    planned: updated.tasks.length ? undefined : row.planned,
+    siteInfos: row.siteInfos,
+  });
+}
+
+/**
+ * Crée les points de contrôle s'il n'y en a pas encore : tâches dues de la fiche mission (dont
+ * la version est notée sur l'intervention), sinon la grille type de la prestation.
+ */
 async function ensureTasks(org: TerrainOrgRow, row: InterventionRow, data: FieldData) {
   if (row.tasks.length) return row.tasks;
-  const list = checklistOf(row, data);
-  data.grille ??= list.key;
+  let tasks: {
+    area: string;
+    label: string;
+    critical: boolean;
+    frequency?: string | null;
+    photoRequired?: boolean;
+  }[];
+  if (row.planned && row.mission) {
+    tasks = row.planned;
+    await prisma.intervention.update({
+      where: { id: row.id },
+      data: { missionSheetId: row.mission.id, missionVersion: row.mission.version },
+    });
+  } else {
+    const list = checklistOf(row, data);
+    data.grille ??= list.key;
+    tasks = freshTasks(list);
+  }
   await prisma.interventionTask.createMany({
-    data: freshTasks(list).map((t, i) => ({
+    data: tasks.map((t, i) => ({
       organizationId: org.id,
       interventionId: row.id,
       ...t,
@@ -229,11 +279,14 @@ async function saveIntervention(
     if (error instanceof TRPCError) throw new HttpError(error.message, 400);
     throw error;
   }
-  const updated = (await prisma.intervention.update({
-    where: { id: row.id },
-    data: next as Prisma.InterventionUncheckedUpdateInput,
-    include: INTERVENTION_INCLUDE,
-  })) as InterventionRow;
+  const updated = keepExtras(
+    (await prisma.intervention.update({
+      where: { id: row.id },
+      data: next as Prisma.InterventionUncheckedUpdateInput,
+      include: INTERVENTION_INCLUDE,
+    })) as InterventionRow,
+    row,
+  );
   await prisma.auditLog.create({
     data: {
       organizationId: org.id,
@@ -937,6 +990,20 @@ export async function handleTerrainApi(
           severity: "high",
           dedupeKey: `critique:${t.id}`,
         }));
+      // Fiche mission : une zone dont une tâche exige une photo, sans aucune photo prise.
+      const photographed = new Set(row.proofs.map((p) => p.area ?? ""));
+      for (const area of new Set(tasks.filter((t) => t.photoRequired).map((t) => t.area)))
+        if (!photographed.has(area))
+          detected.push({
+            organizationId: org.id,
+            type: "missing_proof",
+            source: "system",
+            siteId: row.siteId,
+            interventionId: row.id,
+            location: area,
+            comment: "Aucune photo pour une zone où la fiche mission en exige une.",
+            dedupeKey: `preuve:${row.id}:${area}`,
+          });
       if (outcome.result === "non_compliant")
         detected.push({
           organizationId: org.id,
@@ -957,7 +1024,7 @@ export async function handleTerrainApi(
         data: { fieldData: data as unknown as Prisma.InputJsonValue },
         include: INTERVENTION_INCLUDE,
       })) as InterventionRow;
-      return json({ chantier: toChantier(final), mail });
+      return json({ chantier: toChantier(keepExtras(final, row)), mail });
     }
 
     /* ---------- espace responsable ---------- */

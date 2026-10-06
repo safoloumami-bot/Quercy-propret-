@@ -30,11 +30,20 @@ import { Skeleton } from "@quercy/ui/components/skeleton";
 import { Textarea } from "@quercy/ui/components/textarea";
 import { toast } from "@quercy/ui/components/toaster";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { EyeIcon, KeyRoundIcon, LockIcon, PencilIcon, PlusIcon, UserIcon } from "lucide-react";
+import {
+  EyeIcon,
+  FileTextIcon,
+  KeyRoundIcon,
+  LockIcon,
+  PencilIcon,
+  PlusIcon,
+  UserIcon,
+} from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
 import { FormField } from "@/components/form-field";
+import { MissionSheets } from "@/components/cleaning/mission-sheets";
 import { errorMessage, useTRPC } from "@/lib/trpc";
 
 interface Draft {
@@ -77,6 +86,42 @@ function VisibilityBadge({
     <Badge variant="outline">
       <EyeIcon className="size-3" aria-hidden /> Agents du site
     </Badge>
+  );
+}
+
+/** Feuille de passage du mois (PDF imprimable). */
+function PassageSheetLink({ siteId }: { siteId: string }) {
+  const [month, setMonth] = React.useState(() =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Paris",
+      year: "numeric",
+      month: "2-digit",
+    })
+      .format(new Date())
+      .slice(0, 7),
+  );
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  return (
+    <section className="flex flex-wrap items-center gap-2 text-sm">
+      <span className="font-medium">Feuille de passage</span>
+      <Input
+        type="month"
+        aria-label="Mois de la feuille de passage"
+        value={month}
+        className="h-8 w-40"
+        onChange={(e) => e.target.value && setMonth(e.target.value)}
+      />
+      <Button asChild size="sm" variant="secondary">
+        <a
+          href={`/api/nettoyage/feuille-passage?siteId=${siteId}&from=${month}-01&to=${end}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <FileTextIcon aria-hidden /> Ouvrir le PDF
+        </a>
+      </Button>
+    </section>
   );
 }
 
@@ -206,6 +251,10 @@ export function SiteSheet({ siteId }: { siteId: string }) {
           </ul>
         </section>
       ) : null}
+
+      {canManage ? <PassageSheetLink siteId={siteId} /> : null}
+
+      <MissionSheets siteId={siteId} />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
