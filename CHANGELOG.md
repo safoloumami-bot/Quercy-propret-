@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.4.0] — 2026-10-06 — Moteur de récurrence et import du fichier V12 (lot 2)
+
+### Ajouté
+
+- **Moteur de récurrence** : chaque semaine ou toutes les N semaines, semaine(s) du mois
+  (1er lundi, semaines 1 et 3, dernier vendredi), jours fixes du mois, tous les N jours, dates
+  précises ; versions datées (le dimanche ce mois-ci, le mardi ensuite) ; jours fériés
+  (maintenir, ignorer, avancer, reporter ; France ou Alsace-Moselle) ; fermetures de site ;
+  calcul des jours dans le fuseau de l'entreprise.
+- **Génération sans doublon** sur trois mois glissants, chaque nuit et à chaque validation ;
+  une nouvelle version ou une pause recalcule les seuls passages futurs intacts.
+- **Nettoyage › Récurrences** : séries à valider, actives, en pause ; correction de la règle
+  avec aperçu des prochaines dates ; validation unitaire ou groupée ; changement de règle à
+  partir d'une date.
+- **Nettoyage › Import Excel** : lecture du fichier de pilotage V12 (sites, clients,
+  intervenants, tournées, passages réalisés), aperçu complet avant import, import sans
+  doublon. Les noms de sites viennent de « Nom du site » ; les règles sont proposées, jamais
+  déduites des dates de passage ; les passages réalisés sont repris sans heures inventées ; le
+  fichier n'est jamais conservé.
+- Code de site (C01, B01…) unique dans l'entreprise.
+
 ## [1.3.0] — 2026-10-06 — Socle de la plateforme (lot 1)
 
 ### Ajouté

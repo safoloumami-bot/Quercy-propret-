@@ -1606,6 +1606,8 @@ model WebhookDelivery {
 model Site {
   id             String    @id @default(cuid())
   organizationId String
+  /// Code interne du site (C01, B01…), unique dans l'entreprise.
+  code           String?
   name           String
   companyId      String?
   address        String?
@@ -1635,6 +1637,7 @@ model Site {
   proofs        InterventionProof[]
   anomalies     Anomaly[]
 
+  @@unique([organizationId, code])
   @@index([organizationId, deletedAt])
   @@map("site")
 }
@@ -1733,8 +1736,8 @@ model Intervention {
   proofs           InterventionProof[]
   anomalies        Anomaly[]
 
-  @@unique([contractId, date])
   @@unique([organizationId, slotKey])
+  @@index([contractId, date])
   @@index([organizationId, deletedAt, date])
   @@index([organizationId, ownerId, date])
   @@map("intervention")
@@ -1809,6 +1812,8 @@ model ServiceLine {
   startTime       String?
   durationMinutes Int?
   unitPriceCents  Int?
+  /// Référence d'import (ex. « v12:C01 ») : un second import ne crée pas de doublon.
+  externalRef     String?
   /// active ou archived (jamais supprimée : l'historique en dépend).
   status          String    @default("active")
   archivedAt      DateTime?
@@ -1822,6 +1827,7 @@ model ServiceLine {
   series        RecurrenceSeries[]
   interventions Intervention[]
 
+  @@unique([organizationId, externalRef])
   @@index([organizationId, contractId])
   @@index([organizationId, siteId])
   @@map("service_line")
@@ -1830,21 +1836,23 @@ model ServiceLine {
 /// Série de récurrence d'une prestation. Proposée (import), puis validée : elle génère alors
 /// les interventions futures selon la version de règle en vigueur.
 model RecurrenceSeries {
-  id             String    @id @default(cuid())
-  organizationId String
-  serviceLineId  String
+  id              String    @id @default(cuid())
+  organizationId  String
+  serviceLineId   String
   /// proposed, active, paused, ended
-  status         String    @default("proposed")
+  status          String    @default("proposed")
   /// Jour férié : keep (maintenir), skip (ignorer), before (veille ouvrée), after (lendemain ouvré).
-  holidayPolicy  String    @default("keep")
-  timezone       String    @default("Europe/Paris")
+  holidayPolicy   String    @default("keep")
+  timezone        String    @default("Europe/Paris")
+  /// Calendrier des jours fériés : fr, fr-alsace-moselle.
+  holidayCalendar String    @default("fr")
   /// Origine : manual, import_v12…
-  source         String    @default("manual")
-  generatedUntil DateTime?
-  validatedById  String?
-  validatedAt    DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  source          String    @default("manual")
+  generatedUntil  DateTime?
+  validatedById   String?
+  validatedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   organization  Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   serviceLine   ServiceLine             @relation(fields: [serviceLineId], references: [id], onDelete: NoAction)

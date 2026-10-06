@@ -307,3 +307,15 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
     avec la feuille de route (scheduled, completed) : aucune donnée à réécrire.
 98. **Rôle « Intervenant » (worker)** distinct de « Membre » : son planning et ses missions,
     sans aucune suppression. Les agents créés depuis l'application terrain le reçoivent.
+99. **Jours calendaires plutôt qu'instants** dans le moteur de récurrence : un jour est une
+    date « AAAA-MM-JJ » (minuit UTC comme simple support), et le jour courant se calcule dans
+    le fuseau de l'entreprise (`todayIn`). Le fuseau du serveur n'intervient jamais.
+100.  **Clé de créneau = série + jour prévu par la règle** (et non le jour effectif) : un
+      passage reporté pour jour férié garde sa clé ; une seconde génération ne crée rien. Les
+      contrats « simples » existants ont reçu la même clé (`contrat:<id>:<jour>`), ce qui
+      remplace l'ancienne unicité (contrat, jour) et permet plusieurs prestations par contrat.
+101.  **Une version de règle n'est jamais modifiée une fois validée** : la suivante prend le
+      relais à sa date d'effet. Seuls les passages futurs intacts (planifiés, jamais
+      commencés, sans journal) sont recalculés.
+102.  **Import V12 côté serveur, fichier jamais stocké** : le dépôt est public et le fichier
+      contient des données de clients. Les tests utilisent un classeur fictif au même format.

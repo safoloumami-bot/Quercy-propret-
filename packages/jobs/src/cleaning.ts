@@ -1,7 +1,8 @@
-import { addDays, contractOccurrences, utcDay } from "@quercy/core";
+import { addDays, contractOccurrences, contractSlotKey, utcDay } from "@quercy/core";
 import { prisma } from "@quercy/db";
 
 import { recordInterventionEvents } from "./events";
+import { generateSeriesInterventions } from "./recurrence";
 
 /** Horizon de planification : interventions créées pour les 3 prochaines semaines. */
 export const PLANNING_HORIZON_DAYS = 21;
@@ -30,6 +31,8 @@ export async function generateInterventions(
       ...(options.organizationId ? { organizationId: options.organizationId } : {}),
       ...(options.contractIds ? { id: { in: options.contractIds } } : {}),
       site: { deletedAt: null },
+      // Un contrat dont une prestation a une série active est planifié par ses séries.
+      serviceLines: { none: { series: { some: { status: "active" } } } },
     },
     include: { site: { select: { name: true, companyId: true } } },
   });
@@ -48,6 +51,7 @@ export async function generateInterventions(
           date,
           startTime: contract.startTime,
           durationMinutes: contract.durationMinutes,
+          slotKey: contractSlotKey(contract.id, date),
         })),
         skipDuplicates: true,
       });
@@ -63,7 +67,12 @@ export async function generateInterventions(
 
 /** Tâche quotidienne : planning des contrats et interventions oubliées. */
 export async function runCleaningDaily(now: Date = new Date()): Promise<CleaningDailyResult> {
-  const planned = await generateInterventions({ now });
+  const legacy = await generateInterventions({ now });
+  const fromSeries = await generateSeriesInterventions({ now });
+  const planned = {
+    contracts: legacy.contracts + fromSeries.series,
+    created: legacy.created + fromSeries.created,
+  };
   const forgotten = await prisma.intervention.findMany({
     where: {
       deletedAt: null,

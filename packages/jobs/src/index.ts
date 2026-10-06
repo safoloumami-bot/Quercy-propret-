@@ -12,6 +12,12 @@ export {
 } from "./cleaning";
 export { purgeTrash, TRASH_RETENTION_DAYS, type PurgeResult } from "./purge-trash";
 export {
+  SERIES_HORIZON_DAYS,
+  clearUntouchedFuture,
+  generateSeriesInterventions,
+  type SeriesGenerationResult,
+} from "./recurrence";
+export {
   recordInterventionEvent,
   recordInterventionEvents,
   type InterventionEventInput,

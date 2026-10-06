@@ -67,6 +67,21 @@ la tâche quotidienne. Photos et preuves (`InterventionProof`) et anomalies (`An
 des entités à part. Les règles de récurrence sont décrites par `recurrenceRuleSchema`
 (`packages/core/src/recurrence.ts`).
 
+**Moteur de récurrence** (`packages/core/src/recurrence-engine.ts`) : `occurrences()` calcule
+les passages d'une série entre deux jours à partir de ses versions, de la règle des jours
+fériés (`keep`, `skip`, `before`, `after` ; calendrier `fr` ou `fr-alsace-moselle`) et des
+fermetures du site. `generateSeriesInterventions()` (`packages/jobs`) crée les interventions
+des séries **actives** sur 92 jours (clé `serie:<série>:<jour prévu>`), chaque nuit et à la
+validation ; `clearUntouchedFuture()` retire les passages futurs intacts avant un recalcul.
+Routeur tRPC `recurrence` : liste, aperçu, correction d'une proposition, validation, nouvelle
+version, pause / reprise / fin.
+
+**Import V12** (`apps/web/src/server/imports`) : `analyzeV12()` (pur, testé sur un classeur
+fictif) lit les feuilles Sites, Intervenants, Tournées et Suivi interventions ; `importV12()`
+crée clients, sites (code unique), contrats, prestations (`externalRef` = `v12:<code>`) et
+séries **proposées**, puis les passages réalisés. Route : `POST /api/nettoyage/import-v12`
+(`?mode=preview|import`).
+
 ## Authentification
 
 Better Auth (`apps/web/src/server/auth.ts`), avec l'adaptateur Prisma :

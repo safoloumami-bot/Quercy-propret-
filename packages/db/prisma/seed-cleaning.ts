@@ -2,6 +2,7 @@ import {
   INSPECTION_CHECKS,
   addDays,
   contractOccurrences,
+  contractSlotKey,
   inspectionOutcome,
   parseClock,
   utcDay,
@@ -373,6 +374,7 @@ export async function seedCleaning(
           companyId: site.companyId,
           ownerId: agent,
           date,
+          slotKey: contractSlotKey(contract.id, date),
           startTime: c.start,
           durationMinutes: c.minutes,
         };

@@ -2,14 +2,7 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 
-import {
-  type InterventionEventType,
-  PLANS,
-  dayKey,
-  inspectionOutcome,
-  memberLimitError,
-  utcDay,
-} from "@quercy/core";
+import { type InterventionEventType, dayKey, inspectionOutcome, utcDay } from "@quercy/core";
 import type { Prisma } from "@quercy/db";
 import { prisma } from "@quercy/db";
 import { recordInterventionEvent } from "@quercy/jobs";
@@ -17,6 +10,7 @@ import { MailNotConfiguredError, mailConfigured, sendMail } from "@quercy/mailer
 import { TRPCError } from "@trpc/server";
 
 import { auth } from "../auth";
+import { AgentMemberError, ensureAgentMember } from "../cleaning/agents";
 import { loadBillingState } from "../billing/state";
 import { publish } from "../realtime";
 import { applyBusinessRules } from "../records/hooks";
@@ -748,7 +742,21 @@ export async function handleTerrainApi(
         });
         return json({ ok: true });
       }
-      const userId = await agentUser(org, name || code, code);
+      const withAccess = new Set(
+        (
+          await prisma.fieldAccess.findMany({
+            where: { organizationId: org.id },
+            select: { userId: true },
+          })
+        ).map((a) => a.userId),
+      );
+      let userId: string;
+      try {
+        ({ userId } = await ensureAgentMember(org, name || code, { code, exclude: withAccess }));
+      } catch (error) {
+        if (error instanceof AgentMemberError) return fail(error.message, error.status);
+        throw error;
+      }
       await prisma.fieldAccess.upsert({
         where: { organizationId_userId: { organizationId: org.id, userId } },
         create: { organizationId: org.id, userId, code, role: "agent", ...newPin(pin) },
@@ -855,50 +863,4 @@ export async function handleTerrainApi(
     );
     return json({ erreur: "Erreur serveur" }, 500);
   }
-}
-
-/**
- * Membre de l'espace correspondant à un nouvel agent : un membre existant du même nom
- * (sans accès terrain), sinon un compte créé pour l'occasion, sans mot de passe — il ne
- * sert qu'à l'application terrain et n'ouvre pas le logiciel.
- */
-async function agentUser(org: TerrainOrgRow, name: string, code: string): Promise<string> {
-  const members = await prisma.membership.findMany({
-    where: { organizationId: org.id, deletedAt: null },
-    include: { user: { select: { id: true, name: true } } },
-  });
-  const withAccess = new Set(
-    (
-      await prisma.fieldAccess.findMany({
-        where: { organizationId: org.id },
-        select: { userId: true },
-      })
-    ).map((a) => a.userId),
-  );
-  const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
-  const match = members.find(
-    (m) => !withAccess.has(m.user.id) && normalize(m.user.name) === normalize(name),
-  );
-  if (match) return match.user.id;
-
-  const billing = await loadBillingState(org);
-  const limit = memberLimitError(
-    billing.limits,
-    billing.memberCount + 1,
-    PLANS[billing.effectivePlan].name,
-  );
-  if (limit) throw new HttpError(limit, 403);
-  const role = await prisma.role.findFirst({
-    where: { organizationId: org.id, systemKey: { in: ["worker", "member"] }, deletedAt: null },
-    orderBy: { systemKey: "desc" },
-  });
-  if (!role) throw new HttpError("Rôle « Intervenant » introuvable dans l'espace.", 500);
-  const user = await prisma.user.create({
-    data: {
-      name,
-      email: `${code}.${randomBytes(4).toString("hex")}@terrain.${org.slug}.invalid`,
-      memberships: { create: { organizationId: org.id, roleId: role.id } },
-    },
-  });
-  return user.id;
 }
