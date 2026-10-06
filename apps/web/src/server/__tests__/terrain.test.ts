@@ -84,6 +84,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await prisma.interventionEvent.deleteMany({ where: { organizationId: orgId } });
   await prisma.user.deleteMany({ where: { email: { endsWith: `@terrain.${slug}.invalid` } } });
   await fx.cleanup();
   await prisma.$disconnect();
@@ -182,6 +183,10 @@ describe("mise en service et comptes", () => {
     expect(karim.user.name).toBe("Karim");
     expect(karim.user.memberships.map((m) => m.organizationId)).toEqual([orgId]);
     expect(karim.user.accounts).toHaveLength(0);
+    const karimRole = await prisma.role.findUniqueOrThrow({
+      where: { id: karim.user.memberships[0]!.roleId },
+    });
+    expect(karimRole.systemKey).toBe("worker");
 
     const agents = (await boss("agents")).data!.agents as { code: string }[];
     expect(agents.map((a) => a.code)).toEqual(["patron", "sandrine", "karim"]);
@@ -325,6 +330,16 @@ describe("chantier de bout en bout", () => {
     // Clôturé : plus rien ne bouge.
     expect((await agent("releve", { id: ch.id, obs: "x" })).status).toBe(409);
     expect((await agent("cloture", { id: ch.id })).status).toBe(409);
+    // Journal d'évènements : création, arrivée, photo, signature, départ, clôture.
+    const events = await prisma.interventionEvent.findMany({
+      where: { interventionId: ch.id },
+      orderBy: { at: "asc" },
+    });
+    const types = events.map((e) => e.type);
+    for (const t of ["created", "started", "photo_added", "signed", "finished", "completed"])
+      expect(types).toContain(t);
+    expect(events.find((e) => e.type === "finished")!.metadata).toMatchObject({ offline: true });
+    expect(saved.actualAgentId).toBe(memberId);
     const audit = await prisma.auditLog.count({
       where: { organizationId: orgId, entityId: ch.id, action: "intervention.closed" },
     });

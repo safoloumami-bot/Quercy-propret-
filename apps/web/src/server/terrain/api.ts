@@ -2,9 +2,17 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 
-import { PLANS, dayKey, inspectionOutcome, memberLimitError, utcDay } from "@quercy/core";
+import {
+  type InterventionEventType,
+  PLANS,
+  dayKey,
+  inspectionOutcome,
+  memberLimitError,
+  utcDay,
+} from "@quercy/core";
 import type { Prisma } from "@quercy/db";
 import { prisma } from "@quercy/db";
+import { recordInterventionEvent } from "@quercy/jobs";
 import { MailNotConfiguredError, mailConfigured, sendMail } from "@quercy/mailer";
 import { TRPCError } from "@trpc/server";
 
@@ -111,12 +119,26 @@ async function loadIntervention(org: TerrainOrgRow, me: Me, id: unknown) {
   return row;
 }
 
+/** Évènement du journal correspondant à chaque action de l'application terrain. */
+const EVENT_OF_ACTION: Record<string, InterventionEventType> = {
+  "intervention.check_in": "started",
+  "intervention.check_out": "finished",
+  "intervention.check_out_corrected": "time_corrected",
+  "intervention.field_report": "checklist_updated",
+  "intervention.signature": "signed",
+  "intervention.signature_cleared": "signature_cleared",
+  "intervention.photo": "photo_added",
+  "intervention.photo_deleted": "photo_removed",
+  "intervention.closed": "completed",
+};
+
 async function saveIntervention(
   org: TerrainOrgRow,
   me: Me,
   row: InterventionRow,
   data: Record<string, unknown>,
   action: string,
+  eventMetadata: Record<string, unknown> = {},
 ): Promise<InterventionRow> {
   let next: Record<string, unknown>;
   try {
@@ -140,6 +162,15 @@ async function saveIntervention(
       metadata: { name: row.title, source: "application terrain" },
     },
   });
+  const event = EVENT_OF_ACTION[action];
+  if (event)
+    await recordInterventionEvent({
+      organizationId: org.id,
+      interventionId: row.id,
+      userId: me.id,
+      type: event,
+      metadata: { source: "application terrain", ...eventMetadata },
+    });
   await publish(org.id, {
     type: "record.changed",
     entity: "intervention",
@@ -384,7 +415,8 @@ export async function handleTerrainApi(
         if (row.checkInAt) return fail("Arrivée déjà pointée.", 409);
         data.arriveeDifferee = offline;
         addJournal(data, "Arrivée sur site", note, me.nom);
-        changes = { checkInAt: at };
+        // Intervenant réel : celui qui pointe l'arrivée (il peut remplacer l'agent prévu).
+        changes = { checkInAt: at, actualAgentId: me.id };
         action = "intervention.check_in";
       } else if (body.type === "depart") {
         if (!row.checkInAt) return fail("Pointez d'abord l'arrivée.", 409);
@@ -403,7 +435,21 @@ export async function handleTerrainApi(
         changes = { checkOutAt: new Date(value) };
         action = "intervention.check_out_corrected";
       } else return fail("Type de pointage inconnu.", 400);
-      const updated = await saveIntervention(org, me, row, { ...changes, fieldData: data }, action);
+      // Hors réseau : l'heure déclarée et l'heure de réception sont gardées au journal.
+      const updated = await saveIntervention(
+        org,
+        me,
+        row,
+        { ...changes, fieldData: data },
+        action,
+        offline
+          ? {
+              offline: true,
+              declaredAt: at.toISOString(),
+              receivedAt: new Date(server).toISOString(),
+            }
+          : {},
+      );
       return json({ chantier: toChantier(updated) });
     }
 
@@ -487,7 +533,8 @@ export async function handleTerrainApi(
         me,
         row,
         { ...changes, fieldData: data },
-        "intervention.signature",
+        body.data === null ? "intervention.signature_cleared" : "intervention.signature",
+        body.data === null ? {} : { signedBy: data.signataire ?? null },
       );
       return json({ ok: true, signatureTs: data.signatureTs ?? null });
     }
@@ -541,7 +588,11 @@ export async function handleTerrainApi(
         `${piece} · ${slot === "apres" ? "après" : "avant"}`,
         me.nom,
       );
-      await saveIntervention(org, me, row, { fieldData: data }, "intervention.photo");
+      await saveIntervention(org, me, row, { fieldData: data }, "intervention.photo", {
+        area: piece,
+        slot,
+        fileId: file.id,
+      });
       return json({ ok: true, id: pid });
     }
 
@@ -620,6 +671,7 @@ export async function handleTerrainApi(
         row,
         { status: "done", reportNumber: bon, fieldData: data },
         "intervention.closed",
+        { reportNumber: bon, ok: data.cloture.ok, total: data.cloture.tot },
       );
       // Le contrôle qualité rejoint ceux du logiciel (note et résultat).
       const checks = inspectionChecks(data.pieces);
@@ -770,6 +822,13 @@ export async function handleTerrainApi(
           metadata: { name: created.title, source: "application terrain" },
         },
       });
+      await recordInterventionEvent({
+        organizationId: org.id,
+        interventionId: created.id,
+        userId: me.id,
+        type: "created",
+        metadata: { source: "application terrain", ref },
+      });
       return json({ chantier: toChantier(created) });
     }
 
@@ -830,9 +889,10 @@ async function agentUser(org: TerrainOrgRow, name: string, code: string): Promis
   );
   if (limit) throw new HttpError(limit, 403);
   const role = await prisma.role.findFirst({
-    where: { organizationId: org.id, systemKey: "member", deletedAt: null },
+    where: { organizationId: org.id, systemKey: { in: ["worker", "member"] }, deletedAt: null },
+    orderBy: { systemKey: "desc" },
   });
-  if (!role) throw new HttpError("Rôle « Membre » introuvable dans l'espace.", 500);
+  if (!role) throw new HttpError("Rôle « Intervenant » introuvable dans l'espace.", 500);
   const user = await prisma.user.create({
     data: {
       name,

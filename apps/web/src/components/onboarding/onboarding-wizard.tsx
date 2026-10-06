@@ -44,8 +44,8 @@ const ACCENTS = [
   "#D97706",
   "#475569",
 ];
-type InviteRole = "admin" | "manager" | "member" | "viewer" | "accountant";
-const INVITE_ROLES: InviteRole[] = ["admin", "manager", "member", "viewer", "accountant"];
+type InviteRole = "admin" | "manager" | "member" | "viewer" | "accountant" | "worker";
+const INVITE_ROLES: InviteRole[] = ["admin", "manager", "member", "worker", "viewer", "accountant"];
 
 export function OnboardingWizard({ firstName }: { firstName: string }) {
   const trpc = useTRPC();

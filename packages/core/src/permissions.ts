@@ -41,6 +41,7 @@ export const SYSTEM_ROLE_KEYS = [
   "member",
   "viewer",
   "accountant",
+  "worker",
 ] as const;
 export const systemRoleKeySchema = z.enum(SYSTEM_ROLE_KEYS);
 export type SystemRoleKey = z.infer<typeof systemRoleKeySchema>;
@@ -52,6 +53,7 @@ export const SYSTEM_ROLE_LABELS: Record<SystemRoleKey, string> = {
   member: "Membre",
   viewer: "Lecteur",
   accountant: "Comptable externe",
+  worker: "Intervenant",
 };
 
 function grantAll(actions: readonly Action[], scope: Scope): ResourceGrant {
@@ -94,6 +96,11 @@ export const SYSTEM_ROLES: Record<SystemRoleKey, PermissionMatrix> = {
   accountant: {
     ...matrix(FINANCE_MODULES, ["view", "export"], "all"),
     audit: { view: "all" },
+  },
+  // Agent de terrain : son planning et ses missions ; il démarre, termine, ajoute photos et
+  // anomalies. Jamais de suppression (ni client, ni site, ni contrat).
+  worker: {
+    cleaning: { view: "own", create: "own", update: "own" },
   },
 };
 

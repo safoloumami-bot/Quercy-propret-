@@ -12,3 +12,4 @@ export * from "./ai";
 export * from "./automations";
 export * from "./cleaning";
 export * from "./fec";
+export * from "./recurrence";

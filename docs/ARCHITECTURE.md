@@ -36,6 +36,36 @@ et utilisable côté serveur comme côté client.
   (`deletedAt`) sont masqués par défaut.
 - Les tests `apps/web/src/server/__tests__/isolation.test.ts` le prouvent sur une vraie base :
   deux espaces, et aucune procédure appelée depuis A ne lit ni ne modifie B.
+- **Défense en profondeur dans PostgreSQL** (migration `core_lot1`) :
+  - chaque requête de `forTenant` s'exécute dans une transaction sous le rôle
+    **`quercy_tenant`** (sans passe-droit RLS), avec `app.org_id` = l'espace. La politique RLS
+    `quercy_tenant_isolation` de chaque table à `organizationId` n'y laisse lire ni écrire
+    que les lignes de l'espace ;
+  - le trigger **`quercy_tenant_guard`** refuse qu'une ligne pointe vers une ligne d'une autre
+    entreprise (code 23503, vu par Prisma comme P2003), y compris pour les tâches système qui
+    travaillent hors de ce rôle ;
+  - `quercy_install_tenant_security()` (idempotente) pose RLS et triggers sur toutes les
+    tables concernées : **toute migration qui ajoute une table métier doit la rappeler**
+    (`SELECT quercy_install_tenant_security();`).
+  - Prouvé par `apps/web/src/server/__tests__/db-security.test.ts`.
+- **L'historique ne disparaît pas** : journal, preuves et anomalies empêchent l'effacement
+  de leur intervention (`ON DELETE NO ACTION`) ; la corbeille ne purge que ce qui n'a aucun
+  historique, le reste reste archivé.
+
+## Chaîne contractuelle (CORE)
+
+`Client → Site → Contrat → ServiceLine (prestation) → RecurrenceSeries → RecurrenceRuleVersion
+→ Intervention`. La fréquence n'est jamais dans le site. Une fréquence qui change crée une
+nouvelle version de règle (date d'effet) ; les interventions générées portent `seriesId`,
+`ruleVersionId` et un `slotKey` unique (`organizationId`, `slotKey`) qui interdit les doublons.
+Une intervention distingue l'intervenant prévu (`ownerId`), le remplaçant
+(`replacementAgentId`) et l'intervenant réel (`actualAgentId`). Statuts : `planned`
+(= scheduled), `in_progress`, `done` (= completed), `rescheduled`, `access_impossible`,
+`missed`, `to_rework`, `cancelled`. Le journal `InterventionEvent` (types dans
+`INTERVENTION_EVENT_TYPES`) est alimenté par l'application terrain, le pointage du logiciel et
+la tâche quotidienne. Photos et preuves (`InterventionProof`) et anomalies (`Anomaly`) sont
+des entités à part. Les règles de récurrence sont décrites par `recurrenceRuleSchema`
+(`packages/core/src/recurrence.ts`).
 
 ## Authentification
 

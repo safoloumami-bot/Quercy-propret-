@@ -278,7 +278,7 @@ describe("permissions côté serveur", () => {
     );
   });
 
-  it("les six rôles prédéfinis existent dans chaque espace", () => {
-    expect(SYSTEM_ROLE_KEYS.length).toBe(6);
+  it("les sept rôles prédéfinis existent dans chaque espace", () => {
+    expect(SYSTEM_ROLE_KEYS.length).toBe(7);
   });
 });

@@ -81,6 +81,18 @@ model User {
   ownedInspections       Inspection[]       @relation("InspectionOwner")
   fieldAccesses          FieldAccess[]
 
+  serviceLinesAsAgent ServiceLine[]           @relation("ServiceLineAgent")
+  seriesValidated     RecurrenceSeries[]      @relation("SeriesValidator")
+  ruleVersionsAsAgent RecurrenceRuleVersion[] @relation("RuleVersionAgent")
+  ruleVersionsCreated RecurrenceRuleVersion[] @relation("RuleVersionCreator")
+  interventionEvents  InterventionEvent[]     @relation("InterventionEventUser")
+  proofsAuthored      InterventionProof[]     @relation("ProofAuthor")
+  anomaliesReported   Anomaly[]               @relation("AnomalyReporter")
+  anomaliesValidated  Anomaly[]               @relation("AnomalyValidator")
+  anomaliesResolved   Anomaly[]               @relation("AnomalyResolver")
+  replacementsDone    Intervention[]          @relation("InterventionReplacement")
+  interventionsActual Intervention[]          @relation("InterventionActual")
+
   apiKeys ApiKey[] @relation("ApiKeyUser")
 
   @@map("user")
@@ -254,11 +266,18 @@ model Organization {
   bankTransactions BankTransaction[]
   documents        Document[]
 
-  sites             Site[]
-  cleaningContracts CleaningContract[]
-  interventions     Intervention[]
-  inspections       Inspection[]
-  fieldAccesses     FieldAccess[]
+  sites              Site[]
+  cleaningContracts  CleaningContract[]
+  interventions      Intervention[]
+  inspections        Inspection[]
+  fieldAccesses      FieldAccess[]
+  serviceLines       ServiceLine[]
+  recurrenceSeries   RecurrenceSeries[]
+  ruleVersions       RecurrenceRuleVersion[]
+  siteClosures       SiteClosure[]
+  interventionEvents InterventionEvent[]
+  interventionProofs InterventionProof[]
+  anomalies          Anomaly[]
 
   automations Automation[]
   apiKeys     ApiKey[]
@@ -595,8 +614,10 @@ model StoredFile {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  uploadedBy   User         @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  organization  Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedBy    User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  proofs        InterventionProof[]
+  anomalyPhotos Anomaly[]
 
   @@index([organizationId, entityType, entityId])
   @@map("stored_file")
@@ -1603,12 +1624,16 @@ model Site {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner         User?              @relation("SiteOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  company       Company?           @relation("SiteCompany", fields: [companyId], references: [id], onDelete: SetNull)
-  contracts     CleaningContract[] @relation("CleaningContractSite")
-  interventions Intervention[]     @relation("InterventionSite")
-  inspections   Inspection[]       @relation("InspectionSite")
+  organization  Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner         User?               @relation("SiteOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  company       Company?            @relation("SiteCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  contracts     CleaningContract[]  @relation("CleaningContractSite")
+  interventions Intervention[]      @relation("InterventionSite")
+  inspections   Inspection[]        @relation("InspectionSite")
+  serviceLines  ServiceLine[]
+  closures      SiteClosure[]
+  proofs        InterventionProof[]
+  anomalies     Anomaly[]
 
   @@index([organizationId, deletedAt])
   @@map("site")
@@ -1644,6 +1669,7 @@ model CleaningContract {
   company       Company?       @relation("CleaningContractCompany", fields: [companyId], references: [id], onDelete: SetNull)
   site          Site           @relation("CleaningContractSite", fields: [siteId], references: [id], onDelete: Cascade)
   interventions Intervention[] @relation("InterventionContract")
+  serviceLines  ServiceLine[]
 
   @@index([organizationId, deletedAt])
   @@map("cleaning_contract")
@@ -1651,42 +1677,64 @@ model CleaningContract {
 
 /// Intervention planifiée chez un client : agent (ownerId), horaire, pointage et signature.
 model Intervention {
-  id              String    @id @default(cuid())
-  organizationId  String
-  title           String
-  siteId          String?
-  contractId      String?
-  companyId       String?
-  ownerId         String?
-  date            DateTime
-  startTime       String?
-  durationMinutes Int?
-  status          String    @default("planned")
-  checkInAt       DateTime?
-  checkOutAt      DateTime?
-  workedMinutes   Int?
-  signatureUrl    String?
-  signedBy        String?
-  photoUrl        String?
-  notes           String?
+  id                  String    @id @default(cuid())
+  organizationId      String
+  title               String
+  siteId              String?
+  contractId          String?
+  companyId           String?
+  ownerId             String?
+  date                DateTime
+  startTime           String?
+  durationMinutes     Int?
+  status              String    @default("planned")
+  checkInAt           DateTime?
+  checkOutAt          DateTime?
+  workedMinutes       Int?
+  signatureUrl        String?
+  signedBy            String?
+  photoUrl            String?
+  notes               String?
   /// Numéro du bon d'intervention, attribué à la clôture depuis l'application terrain.
-  reportNumber    String?
+  reportNumber        String?
+  /// Prestation contractuelle, série de récurrence et version de règle qui l'ont générée.
+  serviceLineId       String?
+  seriesId            String?
+  ruleVersionId       String?
+  /// Clé d'unicité du créneau (série + date) : une intervention n'est jamais générée deux fois.
+  slotKey             String?
+  /// Date prévue à l'origine, gardée quand l'intervention est déplacée.
+  originalPlannedDate DateTime?
+  /// Intervenant prévu = ownerId ; remplaçant affecté ; intervenant ayant réellement exécuté.
+  replacementAgentId  String?
+  actualAgentId       String?
+  /// Notes saisies sur le terrain (distinctes du compte rendu).
+  fieldNotes          String?
   /// Relevé de l'application terrain : contrôle pièce par pièce, consommables, photos,
   /// journal, coordonnées du client, clôture.
-  fieldData       Json?
-  tags            String[]  @default([])
-  customFields    Json      @default("{}")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  fieldData           Json?
+  tags                String[]  @default([])
+  customFields        Json      @default("{}")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
 
-  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner        User?             @relation("InterventionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  site         Site?             @relation("InterventionSite", fields: [siteId], references: [id], onDelete: SetNull)
-  contract     CleaningContract? @relation("InterventionContract", fields: [contractId], references: [id], onDelete: SetNull)
-  company      Company?          @relation("InterventionCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner            User?                  @relation("InterventionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  site             Site?                  @relation("InterventionSite", fields: [siteId], references: [id], onDelete: SetNull)
+  contract         CleaningContract?      @relation("InterventionContract", fields: [contractId], references: [id], onDelete: SetNull)
+  company          Company?               @relation("InterventionCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  serviceLine      ServiceLine?           @relation(fields: [serviceLineId], references: [id], onDelete: NoAction)
+  series           RecurrenceSeries?      @relation(fields: [seriesId], references: [id], onDelete: NoAction)
+  ruleVersion      RecurrenceRuleVersion? @relation(fields: [ruleVersionId], references: [id], onDelete: NoAction)
+  replacementAgent User?                  @relation("InterventionReplacement", fields: [replacementAgentId], references: [id], onDelete: SetNull)
+  actualAgent      User?                  @relation("InterventionActual", fields: [actualAgentId], references: [id], onDelete: SetNull)
+  events           InterventionEvent[]
+  proofs           InterventionProof[]
+  anomalies        Anomaly[]
 
   @@unique([contractId, date])
+  @@unique([organizationId, slotKey])
   @@index([organizationId, deletedAt, date])
   @@index([organizationId, ownerId, date])
   @@map("intervention")
@@ -1744,4 +1792,202 @@ model FieldAccess {
   @@unique([organizationId, code])
   @@unique([organizationId, userId])
   @@map("field_access")
+}
+
+/// Prestation contractuelle : ce qui est vendu sur un site dans un contrat (escalier, hall, vitres…).
+/// Sa fréquence vit dans ses séries de récurrence, jamais dans le site.
+model ServiceLine {
+  id              String    @id @default(cuid())
+  organizationId  String
+  contractId      String
+  siteId          String
+  name            String
+  /// Activité (cage, vitre, bureau, ponctuel…) : libre, propre à chaque métier.
+  activity        String?
+  description     String?
+  plannedAgentId  String?
+  startTime       String?
+  durationMinutes Int?
+  unitPriceCents  Int?
+  /// active ou archived (jamais supprimée : l'historique en dépend).
+  status          String    @default("active")
+  archivedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contract      CleaningContract   @relation(fields: [contractId], references: [id], onDelete: NoAction)
+  site          Site               @relation(fields: [siteId], references: [id], onDelete: NoAction)
+  plannedAgent  User?              @relation("ServiceLineAgent", fields: [plannedAgentId], references: [id], onDelete: SetNull)
+  series        RecurrenceSeries[]
+  interventions Intervention[]
+
+  @@index([organizationId, contractId])
+  @@index([organizationId, siteId])
+  @@map("service_line")
+}
+
+/// Série de récurrence d'une prestation. Proposée (import), puis validée : elle génère alors
+/// les interventions futures selon la version de règle en vigueur.
+model RecurrenceSeries {
+  id             String    @id @default(cuid())
+  organizationId String
+  serviceLineId  String
+  /// proposed, active, paused, ended
+  status         String    @default("proposed")
+  /// Jour férié : keep (maintenir), skip (ignorer), before (veille ouvrée), after (lendemain ouvré).
+  holidayPolicy  String    @default("keep")
+  timezone       String    @default("Europe/Paris")
+  /// Origine : manual, import_v12…
+  source         String    @default("manual")
+  generatedUntil DateTime?
+  validatedById  String?
+  validatedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization  Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  serviceLine   ServiceLine             @relation(fields: [serviceLineId], references: [id], onDelete: NoAction)
+  validatedBy   User?                   @relation("SeriesValidator", fields: [validatedById], references: [id], onDelete: SetNull)
+  versions      RecurrenceRuleVersion[]
+  interventions Intervention[]
+
+  @@index([organizationId, status])
+  @@map("recurrence_series")
+}
+
+/// Version d'une règle de récurrence, en vigueur à partir d'une date. Une fréquence qui change
+/// crée une nouvelle version : les versions passées ne sont jamais modifiées.
+model RecurrenceRuleVersion {
+  id              String    @id @default(cuid())
+  organizationId  String
+  seriesId        String
+  version         Int
+  /// Jour d'effet (inclus) et jour de fin (inclus), dans le fuseau de la série.
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+  /// Règle (voir recurrenceRuleSchema dans @quercy/core).
+  rule            Json
+  startTime       String?
+  durationMinutes Int?
+  plannedAgentId  String?
+  note            String?
+  createdById     String?
+  createdAt       DateTime  @default(now())
+
+  organization  Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  series        RecurrenceSeries @relation(fields: [seriesId], references: [id], onDelete: NoAction)
+  plannedAgent  User?            @relation("RuleVersionAgent", fields: [plannedAgentId], references: [id], onDelete: SetNull)
+  createdBy     User?            @relation("RuleVersionCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  interventions Intervention[]
+
+  @@unique([seriesId, version])
+  @@index([organizationId, seriesId])
+  @@map("recurrence_rule_version")
+}
+
+/// Fermeture d'un site (vacances, travaux) : aucun passage n'est généré sur la période.
+model SiteClosure {
+  id             String   @id @default(cuid())
+  organizationId String
+  siteId         String
+  startDate      DateTime
+  endDate        DateTime
+  reason         String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: NoAction)
+
+  @@index([organizationId, siteId])
+  @@map("site_closure")
+}
+
+/// Journal fin d'une intervention (prévue, démarrée, photo, anomalie, terminée…) : audit,
+/// statistiques et, plus tard, IA.
+model InterventionEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  interventionId String
+  userId         String?
+  type           String
+  at             DateTime @default(now())
+  metadata       Json     @default("{}")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  intervention Intervention @relation(fields: [interventionId], references: [id], onDelete: NoAction)
+  user         User?        @relation("InterventionEventUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([interventionId, at])
+  @@index([organizationId, type, at])
+  @@map("intervention_event")
+}
+
+/// Photo ou preuve d'une intervention (avant, après, feuille de passage, signature…).
+model InterventionProof {
+  id             String   @id @default(cuid())
+  organizationId String
+  interventionId String
+  siteId         String?
+  /// photo_before, photo_after, photo, passage_sheet, signature, document
+  type           String
+  fileId         String?
+  /// Zone ou pièce concernée (hall, escalier, sanitaires…).
+  area           String?
+  caption        String?
+  authorId       String?
+  takenAt        DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  intervention Intervention @relation(fields: [interventionId], references: [id], onDelete: NoAction)
+  site         Site?        @relation(fields: [siteId], references: [id], onDelete: NoAction)
+  file         StoredFile?  @relation(fields: [fileId], references: [id], onDelete: NoAction)
+  author       User?        @relation("ProofAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, interventionId])
+  @@map("intervention_proof")
+}
+
+/// Anomalie signalée sur un site (éclairage, fuite, encombrants…). Elle part au chef et au
+/// patron, jamais au client : seule une anomalie validée peut figurer dans un rapport client.
+model Anomaly {
+  id              String    @id @default(cuid())
+  organizationId  String
+  siteId          String?
+  interventionId  String?
+  type            String
+  location        String?
+  comment         String?
+  photoFileId     String?
+  /// low, normal, high, critical
+  severity        String    @default("normal")
+  /// reported, validated, rejected, in_progress, resolved
+  status          String    @default("reported")
+  /// agent, system, inspection, client
+  source          String    @default("agent")
+  reportedById    String?
+  reportedAt      DateTime  @default(now())
+  validatedById   String?
+  validatedAt     DateTime?
+  resolution      String?
+  resolvedById    String?
+  resolvedAt      DateTime?
+  /// Peut apparaître dans un rapport client (seulement après validation).
+  visibleToClient Boolean   @default(false)
+  archivedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site?         @relation(fields: [siteId], references: [id], onDelete: NoAction)
+  intervention Intervention? @relation(fields: [interventionId], references: [id], onDelete: NoAction)
+  photo        StoredFile?   @relation(fields: [photoFileId], references: [id], onDelete: NoAction)
+  reportedBy   User?         @relation("AnomalyReporter", fields: [reportedById], references: [id], onDelete: SetNull)
+  validatedBy  User?         @relation("AnomalyValidator", fields: [validatedById], references: [id], onDelete: SetNull)
+  resolvedBy   User?         @relation("AnomalyResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([organizationId, siteId])
+  @@map("anomaly")
 }

@@ -11,6 +11,11 @@ export {
   type CleaningDailyResult,
 } from "./cleaning";
 export { purgeTrash, TRASH_RETENTION_DAYS, type PurgeResult } from "./purge-trash";
+export {
+  recordInterventionEvent,
+  recordInterventionEvents,
+  type InterventionEventInput,
+} from "./events";
 export { WEBHOOK_QUEUE, decryptSecret, deliverWebhook, signPayload } from "./webhooks";
 
 /** Tâches quotidiennes : lancées par le worker (BullMQ) ou par la route planifiée (Netlify). */

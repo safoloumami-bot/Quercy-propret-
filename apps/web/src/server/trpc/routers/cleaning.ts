@@ -1,5 +1,5 @@
 import { ENTITIES, addDays, dayKey, parseRecordInput, utcDay, weekStart } from "@quercy/core";
-import { generateInterventions } from "@quercy/jobs";
+import { generateInterventions, recordInterventionEvent } from "@quercy/jobs";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -113,6 +113,13 @@ export const cleaningRouter = createTRPCRouter({
           throw new TRPCError({ code: "BAD_REQUEST", message: "Cet agent n'est pas membre." });
       }
       await saveIntervention(ctx, current, { ownerId: input.agentId }, "intervention.reassign");
+      await recordInterventionEvent({
+        organizationId: ctx.organizationId,
+        interventionId: current.id,
+        userId: ctx.user.id,
+        type: "reassigned",
+        metadata: { from: current.ownerId, to: input.agentId },
+      });
       return { ok: true };
     }),
 
@@ -164,6 +171,13 @@ export const cleaningRouter = createTRPCRouter({
       if (current.checkInAt)
         throw new TRPCError({ code: "CONFLICT", message: "L'arrivée est déjà pointée." });
       await saveIntervention(ctx, current, { checkInAt: new Date() }, "intervention.check_in");
+      await recordInterventionEvent({
+        organizationId: ctx.organizationId,
+        interventionId: current.id,
+        userId: ctx.user.id,
+        type: "started",
+        metadata: { source: "logiciel" },
+      });
       return { ok: true };
     }),
 
@@ -200,6 +214,13 @@ export const cleaningRouter = createTRPCRouter({
         { ...parsed.value.data, checkInAt: current.checkInAt ?? now, checkOutAt: now },
         "intervention.check_out",
       );
+      await recordInterventionEvent({
+        organizationId: ctx.organizationId,
+        interventionId: current.id,
+        userId: ctx.user.id,
+        type: "finished",
+        metadata: { source: "logiciel", signed: Boolean(input.signatureUrl) },
+      });
       return { ok: true };
     }),
 

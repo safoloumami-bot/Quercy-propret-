@@ -1,6 +1,8 @@
 import { addDays, contractOccurrences, utcDay } from "@quercy/core";
 import { prisma } from "@quercy/db";
 
+import { recordInterventionEvents } from "./events";
+
 /** Horizon de planification : interventions créées pour les 3 prochaines semaines. */
 export const PLANNING_HORIZON_DAYS = 21;
 /** Une intervention encore « planifiée » 2 jours après sa date passe « non réalisée ». */
@@ -62,13 +64,25 @@ export async function generateInterventions(
 /** Tâche quotidienne : planning des contrats et interventions oubliées. */
 export async function runCleaningDaily(now: Date = new Date()): Promise<CleaningDailyResult> {
   const planned = await generateInterventions({ now });
-  const missed = await prisma.intervention.updateMany({
+  const forgotten = await prisma.intervention.findMany({
     where: {
       deletedAt: null,
       status: "planned",
       date: { lt: addDays(utcDay(now), -MISSED_AFTER_DAYS) },
     },
+    select: { id: true, organizationId: true },
+  });
+  const missed = await prisma.intervention.updateMany({
+    where: { id: { in: forgotten.map((i) => i.id) }, status: "planned" },
     data: { status: "missed" },
   });
+  await recordInterventionEvents(
+    forgotten.map((i) => ({
+      organizationId: i.organizationId,
+      interventionId: i.id,
+      type: "missed" as const,
+      metadata: { source: "tâche quotidienne" },
+    })),
+  );
   return { ...planned, missed: missed.count };
 }

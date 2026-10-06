@@ -290,3 +290,20 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
 93. **Teintes de texte dédiées aux pastilles** (`--*-text`) plutôt que d'assombrir les
     couleurs de statut : les boutons et graphiques gardent leurs couleurs, le texte sur fond
     teinté atteint le contraste AA dans les deux thèmes.
+
+## 2026-10-06 — Lot 1 de la feuille de route (CORE)
+
+94. **PostgreSQL chez Neon plutôt que Supabase** (choix du propriétaire) : on garde
+    l'existant et on apporte ce qu'on attendait de Supabase, c'est-à-dire la RLS, les tests
+    d'isolation et une base qui refuse les références entre entreprises.
+95. **Rôle de base dédié plutôt que FORCE RLS** : le propriétaire des tables (Neon) a le
+    passe-droit RLS. Les requêtes d'un espace passent donc sous `quercy_tenant`, et les
+    tâches système (planning de nuit, purge, authentification) restent hors RLS, mais sous la
+    garde « même entreprise ».
+96. **Garde par trigger plutôt que clés étrangères composites** : même garantie, sans
+    dupliquer `organizationId` dans chaque clé ni dériver du schéma Prisma (Prisma ignore les
+    triggers ; il supprimerait des contraintes qu'il ne connaît pas).
+97. **Statuts existants gardés sous leur nom** (`planned`, `done`) et mis en correspondance
+    avec la feuille de route (scheduled, completed) : aucune donnée à réécrire.
+98. **Rôle « Intervenant » (worker)** distinct de « Membre » : son planning et ses missions,
+    sans aucune suppression. Les agents créés depuis l'application terrain le reçoivent.

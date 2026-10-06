@@ -44,6 +44,13 @@ export const TENANT_MODELS = [
   "Intervention",
   "Inspection",
   "FieldAccess",
+  "ServiceLine",
+  "RecurrenceSeries",
+  "RecurrenceRuleVersion",
+  "SiteClosure",
+  "InterventionEvent",
+  "InterventionProof",
+  "Anomaly",
   "DuplicateDismissal",
   "Dashboard",
   "Report",
@@ -117,6 +124,15 @@ function withTenant(data: unknown, organizationId: string): Record<string, unkno
 }
 
 /**
+ * Rôle PostgreSQL sans passe-droit sous lequel s'exécutent les requêtes d'un espace : la RLS
+ * de la base n'y laisse voir et écrire que les lignes de l'espace (migration core_lot1).
+ * TENANT_DB_ROLE vide = seulement app.org_id (dépannage d'une base sans ce rôle).
+ */
+function tenantRole(): string {
+  return process.env.TENANT_DB_ROLE ?? "quercy_tenant";
+}
+
+/**
  * Client Prisma restreint à un espace. Chaque requête sur un modèle métier reçoit
  * `organizationId` : en filtre pour les lectures, mises à jour et suppressions, et en valeur
  * forcée pour les créations. Un identifiant appartenant à un autre espace est donc
@@ -124,6 +140,10 @@ function withTenant(data: unknown, organizationId: string): Record<string, unkno
  *
  * Les lectures masquent les éléments supprimés (`deletedAt`), sauf si la requête filtre
  * explicitement sur `deletedAt` (corbeille).
+ *
+ * Défense en profondeur : chaque requête passe aussi par la base sous le rôle restreint, avec
+ * `app.org_id` = l'espace. Même si un filtre manquait dans le code, PostgreSQL refuserait de
+ * montrer ou d'écrire une ligne d'une autre entreprise.
  */
 export function forTenant(organizationId: string) {
   if (!organizationId) throw new Error("forTenant : organizationId manquant.");
@@ -155,7 +175,14 @@ export function forTenant(organizationId: string) {
             a.where = { ...a.where, organizationId };
             a.create = withTenant(a.create, organizationId);
           }
-          return query(a as typeof args);
+          const role = tenantRole();
+          const [, result] = await prisma.$transaction([
+            role
+              ? prisma.$executeRaw`SELECT set_config('app.org_id', ${organizationId}, TRUE), set_config('role', ${role}, TRUE)`
+              : prisma.$executeRaw`SELECT set_config('app.org_id', ${organizationId}, TRUE)`,
+            query(a as typeof args),
+          ]);
+          return result;
         },
       },
     },

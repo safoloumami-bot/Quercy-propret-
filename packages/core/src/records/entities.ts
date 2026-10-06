@@ -413,11 +413,18 @@ export const WEEKDAYS: FieldOption[] = [
   { value: "0", label: "Dimanche" },
 ];
 
+/**
+ * Statuts d'une intervention. Correspondance avec la feuille de route : planned = scheduled,
+ * done = completed.
+ */
 export const INTERVENTION_STATUSES: FieldOption[] = [
   { value: "planned", label: "Planifiée", tone: "info" },
   { value: "in_progress", label: "En cours", tone: "primary" },
   { value: "done", label: "Réalisée", tone: "success" },
+  { value: "rescheduled", label: "Reportée", tone: "warning" },
+  { value: "access_impossible", label: "Accès impossible", tone: "danger" },
   { value: "missed", label: "Non réalisée", tone: "danger" },
+  { value: "to_rework", label: "À reprendre", tone: "warning" },
   { value: "cancelled", label: "Annulée", tone: "neutral" },
 ];
 

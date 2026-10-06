@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.3.0] — 2026-10-06 — Socle de la plateforme (lot 1)
+
+### Ajouté
+
+- **Chaîne contractuelle** : prestations contractuelles, séries de récurrence (proposées puis
+  validées, règle des jours fériés, fuseau), versions de règle datées, fermetures de site.
+- **Interventions enrichies** : intervenant prévu, remplaçant et intervenant réel, date
+  d'origine, clé de créneau anti-doublon, notes terrain, nouveaux statuts (reportée, accès
+  impossible, à reprendre).
+- **Journal d'évènements** des interventions (créée, arrivée, photo, signature, départ,
+  clôture, non réalisée, réaffectée), alimenté par l'application terrain et le logiciel.
+- **Photos et preuves**, **anomalies** : entités dédiées (le circuit de validation suit au lot 4).
+- Rôle prédéfini **Intervenant** : son planning et ses missions, jamais de suppression.
+
+### Sécurité
+
+- **Isolation garantie par PostgreSQL** : RLS sous un rôle restreint pour toutes les requêtes
+  d'un espace, et refus par la base de toute référence entre deux entreprises.
+- **L'historique ne s'efface plus** : une intervention pointée, documentée ou signalée, et le
+  site ou le contrat qui la porte, ne sont jamais purgés de la corbeille.
+
 ## [1.2.0] — 2026-10-05 — Application terrain reliée au logiciel
 
 ### Ajouté
