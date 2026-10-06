@@ -2,7 +2,7 @@ import "server-only";
 
 import { type Prisma, prisma } from "@quercy/db";
 import { recordInterventionEvents } from "@quercy/jobs";
-import { parseDay, seriesSlotKey, todayIn } from "@quercy/core";
+import { parseDay, seriesSlotKey, todayIn, v12InfoCategory } from "@quercy/core";
 
 import { ensureAgentMember, normalizeName } from "../cleaning/agents";
 import type { RecordsCtx } from "../records/context";
@@ -88,19 +88,33 @@ export async function importV12(ctx: RecordsCtx, analysis: V12Analysis): Promise
           openingHours: s.openingHours,
           status: s.active ? "active" : "paused",
           tags: [s.activityLabel, ...(s.tour ? [s.tour] : [])],
-          customFields: {
-            v12: {
-              ...s.details,
-              ...(s.replacement1 ? { "Remplaçant 1": s.replacement1 } : {}),
-              ...(s.replacement2 ? { "Remplaçant 2": s.replacement2 } : {}),
-              ...(s.frequency ? { "Fréquence (V12)": s.frequency } : {}),
-              ...(s.toComplete.length ? { "À compléter": s.toComplete.join(", ") } : {}),
-            },
-          } as Prisma.InputJsonValue,
           ownerId: ctx.user.id,
         },
       });
       summary.sites.created += 1;
+      // Fiche de site : chaque colonne renseignée devient une information, visible des
+      // agents du site ou des seuls responsables selon sa nature.
+      const infos: { label: string; content: string }[] = [
+        ...Object.entries(s.details).map(([label, content]) => ({ label, content })),
+        ...(s.replacement1 ? [{ label: "Remplaçant 1", content: s.replacement1 }] : []),
+        ...(s.replacement2 ? [{ label: "Remplaçant 2", content: s.replacement2 }] : []),
+        ...(s.frequency ? [{ label: "Fréquence (fichier V12)", content: s.frequency }] : []),
+        ...(s.toComplete.length
+          ? [{ label: "À compléter", content: s.toComplete.join(", ") }]
+          : []),
+      ];
+      if (infos.length)
+        await db.siteInfo.createMany({
+          data: infos.map((info, i) => ({
+            organizationId: ctx.organizationId,
+            siteId: site!.id,
+            label: info.label,
+            content: info.content,
+            sortOrder: i,
+            createdById: ctx.user.id,
+            ...v12InfoCategory(info.label),
+          })),
+        });
     }
 
     const externalRef = `v12:${s.code}`;

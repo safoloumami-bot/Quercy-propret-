@@ -3,6 +3,7 @@
 import { INTERVENTION_STATUSES, recordPath } from "@quercy/core";
 import { Badge } from "@quercy/ui/components/badge";
 import { Button } from "@quercy/ui/components/button";
+import { Callout } from "@quercy/ui/components/callout";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +17,7 @@ import { Skeleton } from "@quercy/ui/components/skeleton";
 import { toast } from "@quercy/ui/components/toaster";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangleIcon,
   CalendarRangeIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -72,6 +74,7 @@ export function PlanningBoard({ canManage }: { canManage: boolean }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [week, setWeek] = React.useState(todayKey);
+  const [agentFilter, setAgentFilter] = React.useState<string>("all");
   const planning = useQuery(trpc.cleaning.planning.queryOptions({ week }));
   const refresh = () =>
     Promise.all([
@@ -108,9 +111,20 @@ export function PlanningBoard({ canManage }: { canManage: boolean }) {
     const list = data.agents.map((a) => ({ id: a.id as string | null, name: a.name }));
     if (data.interventions.some((i) => !i.agentId)) list.push({ id: null, name: "Non affectées" });
     return list.filter(
-      (row) => row.id === null || data.interventions.some((i) => i.agentId === row.id),
+      (row) =>
+        (agentFilter === "all" || row.id === agentFilter) &&
+        (row.id === null || data.interventions.some((i) => i.agentId === row.id)),
     );
-  }, [data]);
+  }, [data, agentFilter]);
+  const inConflict = React.useMemo(
+    () => new Set((data?.conflicts ?? []).flatMap((c) => c.ids)),
+    [data],
+  );
+  const agentName = (id: string) => data?.agents.find((a) => a.id === id)?.name ?? "Un agent";
+  const byId = React.useMemo(
+    () => new Map((data?.interventions ?? []).map((i) => [i.id, i])),
+    [data],
+  );
 
   return (
     <div className="space-y-4">
@@ -141,6 +155,21 @@ export function PlanningBoard({ canManage }: { canManage: boolean }) {
             {data.interventions.length} intervention{data.interventions.length > 1 ? "s" : ""}
           </span>
         ) : null}
+        {data && data.agents.length > 1 ? (
+          <select
+            aria-label="Intervenant"
+            className="h-8 rounded-md border border-border bg-card px-2 text-sm"
+            value={agentFilter}
+            onChange={(e) => setAgentFilter(e.target.value)}
+          >
+            <option value="all">Tous les intervenants</option>
+            {data.agents.map((a) => (
+              <option key={a.id} value={a.id}>
+                Planning de {a.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
         <div className="ml-auto flex gap-2">
           {canManage ? (
             <Button
@@ -157,6 +186,29 @@ export function PlanningBoard({ canManage }: { canManage: boolean }) {
           </Button>
         </div>
       </div>
+
+      {data && data.conflicts.length ? (
+        <Callout variant="warning" icon={<AlertTriangleIcon />}>
+          <p className="font-medium">
+            {data.conflicts.length} chevauchement{data.conflicts.length > 1 ? "s" : ""} cette
+            semaine
+          </p>
+          <ul className="space-y-0.5">
+            {data.conflicts.map((c) => (
+              <li key={c.ids.join("-")}>
+                {agentName(c.agentId)} · {dayLabel.format(new Date(`${c.day}T00:00:00.000Z`))} :{" "}
+                {c.ids
+                  .map((id) => byId.get(id))
+                  .map((i) => (i ? `${i.startTime ?? ""} ${i.siteName ?? i.title}`.trim() : ""))
+                  .join(" et ")}
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted-foreground">
+            Simple alerte : certains horaires sont indicatifs. Réaffectez un passage si besoin.
+          </p>
+        </Callout>
+      ) : null}
 
       {planning.isPending ? (
         <Skeleton className="h-96" />
@@ -216,7 +268,7 @@ export function PlanningBoard({ canManage }: { canManage: boolean }) {
                           .map((i) => (
                             <div
                               key={i.id}
-                              className="group rounded-md border border-border bg-card p-2 shadow-xs"
+                              className={`group rounded-md border bg-card p-2 shadow-xs ${inConflict.has(i.id) ? "border-warning ring-1 ring-warning" : "border-border"}`}
                             >
                               <div className="flex items-start justify-between gap-1">
                                 <Link

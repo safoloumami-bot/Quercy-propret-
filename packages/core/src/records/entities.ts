@@ -1680,13 +1680,16 @@ export const ENTITIES: Record<EntityKey, EntityDef> = {
     defaultSort: { field: "name", direction: "asc" },
     layouts: { board: { field: "status" } },
     related: [
+      { entity: "site", field: "parentId", label: "Sous-sites" },
       { entity: "cleaningContract", field: "siteId", label: "Contrats" },
       { entity: "intervention", field: "siteId", label: "Interventions" },
       { entity: "inspection", field: "siteId", label: "Contrôles qualité" },
     ],
     fields: [
       text("name", "Nom du site", { required: true, defaultVisible: true, width: 240 }),
+      text("code", "Code", { defaultVisible: true, width: 90, maxLength: 20 }),
       relation("companyId", "Client", "company", { defaultVisible: true }),
+      relation("parentId", "Site parent (résidence)", "site", { width: 200 }),
       text("address", "Adresse", { defaultVisible: true, width: 240 }),
       text("postalCode", "Code postal", { width: 110, maxLength: 10 }),
       text("city", "Ville", { defaultVisible: true, groupable: true, width: 150 }),

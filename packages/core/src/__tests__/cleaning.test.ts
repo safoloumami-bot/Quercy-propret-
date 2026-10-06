@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  findConflicts,
   contractOccurrences,
   dayKey,
   frenchHolidays,
@@ -79,5 +80,32 @@ describe("contrôle qualité", () => {
       result: "to_improve",
     });
     expect(inspectionOutcome([true, false, false, false, false]).result).toBe("non_compliant");
+  });
+});
+
+describe("chevauchements du planning", () => {
+  it("signale un même agent sur deux passages qui se recouvrent, sans faux positif", () => {
+    const slot = (
+      id: string,
+      agentId: string | null,
+      startTime: string | null,
+      durationMinutes = 60,
+    ) => ({
+      id,
+      agentId,
+      day: "2026-10-12",
+      startTime,
+      durationMinutes,
+    });
+    expect(
+      findConflicts([
+        slot("a", "mus", "11:30", 90),
+        slot("b", "mus", "12:30", 30),
+        slot("c", "mus", "13:00", 30),
+        slot("d", "ikram", "11:30", 90),
+        slot("e", "mus", null),
+        slot("f", null, "11:30"),
+      ]),
+    ).toEqual([{ agentId: "mus", day: "2026-10-12", ids: ["a", "b"] }]);
   });
 });

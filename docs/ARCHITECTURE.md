@@ -82,6 +82,16 @@ crée clients, sites (code unique), contrats, prestations (`externalRef` = `v12:
 séries **proposées**, puis les passages réalisés. Route : `POST /api/nettoyage/import-v12`
 (`?mode=preview|import`).
 
+**Sites, sous-sites et fiche de site** (lot 3) : un site peut avoir un site parent
+(`Site.parentId`, une résidence et ses cages), sans suppression en cascade. La fiche de site
+(`SiteInfo`) regroupe des informations classées (`SITE_INFO_CATEGORIES`) avec une visibilité :
+`site_agents` (agents prévus sur le site), `agent` (un seul agent), `managers` (responsables).
+`siteInfoVisible()` (`packages/core/src/sites.ts`) décide ; le routeur tRPC `sites` (fiche,
+ajout, retrait, vue d'ensemble client) et `cleaning.myDay` filtrent avec elle. La vue
+d'ensemble client réunit les sites du client et leurs sous-sites (passages du mois, taux de
+réalisation, prochains passages, anomalies, qualité). `findConflicts()` signale au planning un
+intervenant prévu à deux endroits en même temps, sans bloquer.
+
 ## Authentification
 
 Better Auth (`apps/web/src/server/auth.ts`), avec l'adaptateur Prisma :

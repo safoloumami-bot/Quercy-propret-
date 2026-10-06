@@ -319,3 +319,15 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
       commencés, sans journal) sont recalculés.
 102.  **Import V12 côté serveur, fichier jamais stocké** : le dépôt est public et le fichier
       contient des données de clients. Les tests utilisent un classeur fictif au même format.
+
+## 2026-10-06 — Lot 3 de la feuille de route (clients, sites, fiches)
+
+103.  **Sous-site = site avec un parent** plutôt qu'une table à part : un sous-site a ses
+      propres prestations, passages et fiche ; la vue client remonte l'arbre. Supprimer un
+      parent ne supprime jamais ses sous-sites.
+104.  **Visibilité par information, décidée côté serveur** : un agent ne reçoit jamais une
+      information qui ne lui est pas destinée (codes, clés, tarifs). Les détails V12 deviennent
+      des informations de fiche visibles des agents du site ; les colonnes non reconnues et
+      les remplaçants restent réservés aux responsables.
+105.  **Chevauchement signalé, jamais bloquant** : un remplacement ou un renfort peut être
+      voulu ; le planning l'affiche, le responsable décide.

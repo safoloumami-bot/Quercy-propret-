@@ -90,6 +90,8 @@ model User {
   anomaliesReported   Anomaly[]               @relation("AnomalyReporter")
   anomaliesValidated  Anomaly[]               @relation("AnomalyValidator")
   anomaliesResolved   Anomaly[]               @relation("AnomalyResolver")
+  siteInfosForAgent   SiteInfo[]              @relation("SiteInfoAgent")
+  siteInfosCreated    SiteInfo[]              @relation("SiteInfoCreator")
   replacementsDone    Intervention[]          @relation("InterventionReplacement")
   interventionsActual Intervention[]          @relation("InterventionActual")
 
@@ -278,6 +280,7 @@ model Organization {
   interventionEvents InterventionEvent[]
   interventionProofs InterventionProof[]
   anomalies          Anomaly[]
+  siteInfos          SiteInfo[]
 
   automations Automation[]
   apiKeys     ApiKey[]
@@ -1609,6 +1612,8 @@ model Site {
   /// Code interne du site (C01, B01…), unique dans l'entreprise.
   code           String?
   name           String
+  /// Site parent : une cage d'escalier dans sa résidence, un bâtiment dans son ensemble.
+  parentId       String?
   companyId      String?
   address        String?
   postalCode     String?
@@ -1636,6 +1641,9 @@ model Site {
   closures      SiteClosure[]
   proofs        InterventionProof[]
   anomalies     Anomaly[]
+  parent        Site?               @relation("SiteParent", fields: [parentId], references: [id], onDelete: NoAction)
+  children      Site[]              @relation("SiteParent")
+  infos         SiteInfo[]
 
   @@unique([organizationId, code])
   @@index([organizationId, deletedAt])
@@ -1998,4 +2006,32 @@ model Anomaly {
   @@index([organizationId, status])
   @@index([organizationId, siteId])
   @@map("anomaly")
+}
+
+/// Information de la fiche d'un site (accès, consignes, produits, risques…), avec sa
+/// visibilité : chaque agent ne voit que ce qui le concerne.
+model SiteInfo {
+  id             String    @id @default(cuid())
+  organizationId String
+  siteId         String
+  /// access, keys, instructions, surfaces, products, equipment, safety, proof, contact, team, other
+  category       String    @default("other")
+  label          String
+  content        String
+  /// site_agents (agents du site), agent (un agent précis), managers (responsables seulement)
+  visibility     String    @default("site_agents")
+  agentId        String?
+  sortOrder      Int       @default(0)
+  createdById    String?
+  archivedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: NoAction)
+  agent        User?        @relation("SiteInfoAgent", fields: [agentId], references: [id], onDelete: SetNull)
+  createdBy    User?        @relation("SiteInfoCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, siteId])
+  @@map("site_info")
 }

@@ -300,6 +300,12 @@ const SITE_COLUMNS_USED = new Set([
   "Horaires / accès autorisés",
   "Date de début contrat",
   "Date de fin contrat",
+  // Lues pour proposer la règle de récurrence.
+  "Type récurrence",
+  "Passages / période",
+  "Jour(s) prévu(s)",
+  "Semaine(s) du mois",
+  "Intervalle (jours)",
   // Calculées par l'Excel : jamais reprises.
   "Date prochain passage",
   "Date suivante suggérée",

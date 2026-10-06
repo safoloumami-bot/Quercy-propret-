@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.5.0] — 2026-10-06 — Clients, sites et fiches de site (lot 3)
+
+### Ajouté
+
+- **Sous-sites** : une résidence et ses cages, un site et ses bâtiments ; code de site et site
+  parent sur la fiche, liste des sous-sites.
+- **Fiche de site** : accès, clés, consignes, sols, produits, risques… chaque information
+  visible par les agents du site, par un seul agent ou par les responsables seulement.
+  L'agent la retrouve dans « Ma journée ».
+- **Vue d'ensemble client** (ex. un syndic) : tous ses sites et sous-sites, passages du mois,
+  taux de réalisation, prochains passages, anomalies ouvertes, note qualité.
+- **Planning** : alerte quand un intervenant est prévu à deux endroits en même temps, filtre
+  par intervenant.
+- L'import V12 range les détails des sites dans la fiche de site.
+
 ## [1.4.0] — 2026-10-06 — Moteur de récurrence et import du fichier V12 (lot 2)
 
 ### Ajouté

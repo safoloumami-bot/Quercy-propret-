@@ -126,3 +126,48 @@ export function splitWorkedMinutes(
   }
   return split;
 }
+
+export interface PlannedSlot {
+  id: string;
+  agentId: string | null;
+  day: string;
+  startTime: string | null;
+  durationMinutes: number | null;
+}
+
+/**
+ * Chevauchements dans le planning : un même intervenant prévu sur deux passages qui se
+ * recouvrent le même jour. Simple alerte (certains horaires sont indicatifs) ; un passage
+ * sans heure ne peut pas être en conflit.
+ */
+export function findConflicts(
+  slots: readonly PlannedSlot[],
+): { agentId: string; day: string; ids: string[] }[] {
+  const groups = new Map<string, { start: number; end: number; id: string }[]>();
+  for (const s of slots) {
+    const start = parseClock(s.startTime ?? "");
+    if (!s.agentId || start === null) continue;
+    const key = `${s.agentId}|${s.day}`;
+    const end = start + Math.max(1, s.durationMinutes ?? 60);
+    groups.set(key, [...(groups.get(key) ?? []), { start, end, id: s.id }]);
+  }
+  const conflicts: { agentId: string; day: string; ids: string[] }[] = [];
+  for (const [key, list] of groups) {
+    list.sort((a, b) => a.start - b.start);
+    const [agentId, day] = key.split("|") as [string, string];
+    let cluster: typeof list = [];
+    let clusterEnd = -1;
+    for (const slot of list) {
+      if (slot.start < clusterEnd) {
+        cluster.push(slot);
+        clusterEnd = Math.max(clusterEnd, slot.end);
+      } else {
+        if (cluster.length > 1) conflicts.push({ agentId, day, ids: cluster.map((c) => c.id) });
+        cluster = [slot];
+        clusterEnd = slot.end;
+      }
+    }
+    if (cluster.length > 1) conflicts.push({ agentId, day, ids: cluster.map((c) => c.id) });
+  }
+  return conflicts.sort((a, b) => a.day.localeCompare(b.day));
+}

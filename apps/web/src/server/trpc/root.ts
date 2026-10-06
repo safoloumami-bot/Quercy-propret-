@@ -5,6 +5,7 @@ import { automationsRouter } from "./routers/automations";
 import { integrationsRouter } from "./routers/integrations";
 import { cleaningRouter } from "./routers/cleaning";
 import { recurrenceRouter } from "./routers/recurrence";
+import { sitesRouter } from "./routers/sites";
 import { auditRouter } from "./routers/audit";
 import { commentsRouter } from "./routers/comments";
 import { crmRouter } from "./routers/crm";
@@ -57,6 +58,7 @@ export const appRouter = createTRPCRouter({
   integrations: integrationsRouter,
   cleaning: cleaningRouter,
   recurrence: recurrenceRouter,
+  sites: sitesRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,4 +1,12 @@
-import { ENTITIES, addDays, dayKey, parseRecordInput, utcDay, weekStart } from "@quercy/core";
+import {
+  ENTITIES,
+  addDays,
+  dayKey,
+  findConflicts,
+  parseRecordInput,
+  utcDay,
+  weekStart,
+} from "@quercy/core";
 import { generateInterventions, recordInterventionEvent } from "@quercy/jobs";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -8,6 +16,7 @@ import { afterRecordChange } from "../../records/after-change";
 import { entityContext } from "../../records/context";
 import { applyBusinessRules } from "../../records/hooks";
 import { cleaningHours, workspaceAgents } from "../../cleaning/hours";
+import { isCleaningManager, visibleSiteInfos } from "./sites";
 import { authorize, createTRPCRouter, orgProcedure, recordAudit } from "../init";
 
 const dayInput = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date attendue (AAAA-MM-JJ).");
@@ -62,22 +71,29 @@ export const cleaningRouter = createTRPCRouter({
       },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     });
+    const interventions = rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      day: dayKey(r.date),
+      startTime: r.startTime,
+      durationMinutes: r.durationMinutes,
+      status: r.status,
+      agentId: r.ownerId,
+      siteName: r.site?.name ?? null,
+      city: r.site?.city ?? null,
+      companyName: r.company?.name ?? null,
+    }));
     return {
       weekStart: dayKey(monday),
       days: Array.from({ length: 7 }, (_, i) => dayKey(addDays(monday, i))),
       agents: await workspaceAgents(ctx),
-      interventions: rows.map((r) => ({
-        id: r.id,
-        title: r.title,
-        day: dayKey(r.date),
-        startTime: r.startTime,
-        durationMinutes: r.durationMinutes,
-        status: r.status,
-        agentId: r.ownerId,
-        siteName: r.site?.name ?? null,
-        city: r.site?.city ?? null,
-        companyName: r.company?.name ?? null,
-      })),
+      interventions,
+      // Un même intervenant prévu à deux endroits en même temps : alerte, jamais blocage.
+      conflicts: findConflicts(
+        interventions
+          .filter((i) => !["cancelled", "done"].includes(i.status))
+          .map((i) => ({ ...i, agentId: i.agentId })),
+      ),
     };
   }),
 
@@ -128,10 +144,15 @@ export const cleaningRouter = createTRPCRouter({
     await entityContext(ctx, "intervention", "view");
     const day = utcDay(new Date(`${input.day}T00:00:00.000Z`));
     const rows = await ctx.db.intervention.findMany({
-      where: { ownerId: ctx.user.id, date: day, status: { not: "cancelled" } },
+      where: {
+        OR: [{ ownerId: ctx.user.id }, { replacementAgentId: ctx.user.id }],
+        date: day,
+        status: { not: "cancelled" },
+      },
       include: {
         site: {
           select: {
+            id: true,
             name: true,
             address: true,
             postalCode: true,
@@ -146,7 +167,14 @@ export const cleaningRouter = createTRPCRouter({
       },
       orderBy: [{ startTime: "asc" }, { createdAt: "asc" }],
     });
+    // Fiche de site : seulement ce que cet agent doit voir.
+    const siteIds = [...new Set(rows.flatMap((r) => (r.site ? [r.site.id] : [])))];
+    const infos = await visibleSiteInfos(ctx, siteIds, {
+      manager: isCleaningManager(ctx),
+      siteAgentOf: () => true,
+    });
     return rows.map((r) => ({
+      infos: infos.filter((i) => i.siteId === r.site?.id),
       id: r.id,
       title: r.title,
       startTime: r.startTime,

@@ -33,6 +33,7 @@ import { FieldEditor } from "./field-editor";
 import { FilesTab } from "./files-tab";
 import { HistoryTab } from "./history-tab";
 import { Presence } from "./presence";
+import { useExtraTabs } from "./extra-tabs";
 import { RelatedList, useRelatedLists } from "./related-list";
 import type { EntityPermissions } from "./types";
 import { useRecordMutations } from "./use-record-mutations";
@@ -119,6 +120,7 @@ export function RecordView({
   const { open: openTab } = useRecordTabs();
   const url = recordPath(entity, id);
   const related = useRelatedLists(entity);
+  const extraTabs = useExtraTabs(entity);
   const title = record.data?.row.title;
 
   React.useEffect(() => {
@@ -186,8 +188,19 @@ export function RecordView({
   );
 
   const tabs = (
-    <Tabs defaultValue={initialTab ?? (related[0] ? `lie-${related[0].entity}` : "commentaires")}>
+    <Tabs
+      defaultValue={
+        initialTab ??
+        extraTabs[0]?.value ??
+        (related[0] ? `lie-${related[0].entity}` : "commentaires")
+      }
+    >
       <TabsList className="flex-wrap">
+        {extraTabs.map((t) => (
+          <TabsTrigger key={t.value} value={t.value}>
+            {t.label}
+          </TabsTrigger>
+        ))}
         {related.map((r) => (
           <TabsTrigger key={r.entity} value={`lie-${r.entity}`}>
             {r.label}
@@ -197,6 +210,11 @@ export function RecordView({
         <TabsTrigger value="fichiers">Fichiers</TabsTrigger>
         <TabsTrigger value="historique">Historique</TabsTrigger>
       </TabsList>
+      {extraTabs.map((t) => (
+        <TabsContent key={t.value} value={t.value}>
+          {t.render(id)}
+        </TabsContent>
+      ))}
       {related.map((r) => (
         <TabsContent key={r.entity} value={`lie-${r.entity}`}>
           <RelatedList related={r} id={id} />

@@ -357,6 +357,21 @@ export function MyDay() {
                     {i.site.instructions}
                   </Callout>
                 ) : null}
+                {i.infos.length ? (
+                  <details className="rounded-md border border-border px-3 py-2 text-sm">
+                    <summary className="cursor-pointer font-medium">
+                      Fiche du site ({i.infos.length})
+                    </summary>
+                    <dl className="mt-2 space-y-1.5">
+                      {i.infos.map((info) => (
+                        <div key={info.id}>
+                          <dt className="text-xs text-muted-foreground">{info.label}</dt>
+                          <dd className="whitespace-pre-line">{info.content}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </details>
+                ) : null}
 
                 {i.checkOutAt ? (
                   <p className="text-sm text-success-text">
