@@ -1,237 +1,310 @@
-# Prompt maître — Logiciel de propreté « convertible » + application terrain
+# Prompt maître — Plateforme SaaS métier (premier vertical : propreté)
 
-> À donner tel quel à l'assistant qui développe le logiciel (dépôt `safoloumami-bot/Quercy-propret-`).
-> Chaque bloc se termine par des **critères de réussite** : un bloc n'est terminé que s'ils sont tous vérifiés.
+> **Version 2.** Elle fusionne la feuille de route du propriétaire (26 points), l'analyse du fichier
+> Excel « Pilotage automatique V12 » et les demandes faites oralement. À donner tel quel à l'assistant
+> qui développe le dépôt `safoloumami-bot/Quercy-propret-`.
+> Chaque bloc se termine par des **critères de réussite** : il n'est terminé que s'ils sont tous vérifiés.
 
 ---
 
-## 0. Contexte et règles du jeu
+## 0. Objectif et décisions déjà prises
 
-**Ce qui existe déjà :**
+**Objectif.** Il ne s'agit pas seulement d'un logiciel interne pour Quercy Propreté. Quercy est le premier
+terrain réel d'une **plateforme SaaS métier**, construite comme un **CORE générique plus des modules métiers**.
+Demain, un logiciel pour la sécurité, l'immobilier ou la maintenance doit réutiliser tel quel : clients,
+sites, utilisateurs, équipes, planning, interventions, documents, matériel, stocks, finances, rapports et
+notifications. Il n'ajoutera que son propre module (`security.*`, `real_estate.*`…). **Priorité : une
+architecture propre, robuste et évolutive avant d'empiler les fonctionnalités.**
 
-- **Le logiciel** : un SaaS multi-entreprise (Next.js, tRPC, Prisma, PostgreSQL Neon), hébergé sur Netlify.
-  Modules : CRM, ventes et factures, achats, stock, salariés, congés, planning, module Nettoyage
-  (sites, contrats, interventions, contrôles qualité, heures et paie). Il y a aussi un assistant IA et un export FEC.
-- **L'application terrain** (`apps/terrain`, servie à `/terrain/<entreprise>`). C'est elle que les agents
-  utilisent sur téléphone : tournée, pointage, contrôle pièce par pièce, photos, signature, bon PDF,
-  fonctionnement hors réseau. Elle est déjà reliée aux interventions du logiciel.
-- **L'application de référence** : https://inspiring-cuchufli-4df11b.netlify.app/. C'est la version la plus
-  récente de l'application terrain, avec une fonction « alertes » qui tourne toutes les 10 minutes.
-  **Repartir de cette version** : récupérer son code source (déploiement par glisser-déposer, absent de
-  GitHub ; le demander au propriétaire s'il n'est pas accessible). Ses écrans et son fonctionnement
-  sont la référence : on ne refait pas l'interface, on la complète.
+L'Excel V12 est un **prototype métier**, pas un modèle d'écrans : on reprend sa logique, pas sa présentation.
 
-**Règles :**
+**Décisions prises (ne pas rouvrir) :**
 
-1. **Ne rien casser.** Travailler dans un dossier ou une branche séparés. Les applications en ligne
-   continuent de tourner tant que la nouvelle n'est pas validée.
-2. **Convertible / vendable en SaaS.** Rien n'est écrit en dur pour Quercy Propreté : nom, logo,
-   couleurs, ville, modèles de fiches, tarifs, jours fériés, textes des mails viennent des réglages de
-   chaque entreprise. Une nouvelle entreprise cliente s'installe sans toucher au code.
-3. **Deux écrans distincts dans l'application** : **Accueil** (résumé du jour, alertes, absences,
-   messages) et **Tournée** (la liste ordonnée des passages). Le responsable a ses écrans à lui.
-4. **Chacun ne voit que ce qui le concerne.** Un agent ne voit que ses missions, ses sites, ses
-   véhicules et son matériel. Le chef voit son équipe. Le patron voit tout. Le client ne reçoit jamais
-   une anomalie interne.
-5. **Le plus de choix possible, toujours modifiable.** Listes à cocher riches, modèles personnalisables,
-   et tout reste corrigeable après envoi, avec une trace de qui a modifié quoi.
-6. **Français, simple, mobile d'abord, hors réseau.** Tout ce qui est saisi sur le terrain doit
-   fonctionner sans réseau et repartir tout seul.
-7. **Chaque bloc livré avec** : migration de base, tests automatiques, données de démonstration,
+- **Technique.** On garde l'existant : Next.js, React, TypeScript, PostgreSQL (hébergé chez Neon), Prisma,
+  tRPC, la connexion actuelle et le stockage Netlify Blobs. **Pas de migration vers Supabase**, mais on
+  apporte ce que la feuille de route attendait de Supabase :
+  - **RLS PostgreSQL activée** sur toutes les tables métier ;
+  - **clés étrangères composites** qui empêchent une donnée de l'entreprise A de pointer vers une
+    donnée de l'entreprise B ;
+  - **tests d'isolation** entre deux entreprises.
+- **Hébergement.** Netlify. Les migrations s'appliquent automatiquement à chaque déploiement, et les
+  tâches quotidiennes passent par une fonction planifiée.
+- **Application terrain.** On repart de celle des agents (https://inspiring-cuchufli-4df11b.netlify.app/,
+  la version la plus récente, avec ses alertes toutes les 10 minutes), déjà reliée au logiciel
+  (`apps/terrain`, `/terrain/<entreprise>`). On complète ses écrans, on ne les refait pas.
+- **Données réelles.** Le dépôt Git est **public** : aucune donnée réelle de client n'y entre (ni l'Excel
+  V12, ni noms, adresses ou téléphones). L'import se fait depuis l'application, par l'envoi du fichier.
+
+## 1. Règles transverses
+
+1. **Multi-entreprise strict.** Toute donnée métier porte `organizationId`. La base elle-même (RLS et
+   clés composites), et pas seulement le code, empêche les fuites et les références croisées.
+2. **Rôles** : owner, admin, manager, worker, viewer (correspondance avec les rôles actuels à faire).
+   - Owner et admin : tout.
+   - Manager : planning, clients, sites, contrats, équipes, rapports.
+   - Worker : son planning et ses missions ; il démarre et termine, ajoute photos et anomalies.
+   - Viewer : lecture seule sur son périmètre.
+   - **Un worker ne supprime jamais un client, un site ni un contrat.**
+3. **Rien ne disparaît.** Un site ou un contrat qui s'arrête est **archivé**. Aucune suppression en
+   cascade des interventions, preuves, photos, anomalies, rapports ni de l'historique. On doit retrouver
+   des années plus tard ce qui s'est passé sur un site.
+4. **Fuseau Europe/Paris** (réglable par entreprise). Les horodatages techniques sont en UTC, mais les
+   jours métier se calculent dans le fuseau de l'entreprise, jamais par un `toISOString()` naïf.
+5. **Convertible.** Nom, logo, couleurs, modèles de fiches, barèmes, jours fériés et textes sont réglés
+   par entreprise. Une nouvelle entreprise cliente s'installe sans toucher au code.
+6. **Chacun ne voit que ce qui le concerne.** L'agent n'a jamais l'interface de gestion. Le client ne
+   reçoit jamais une anomalie interne.
+7. **RGPD.** Minimisation, droits d'accès, archivage, anonymisation possible plus tard (clients
+   particuliers).
+8. **Chaque lot est livré avec** : migration, tests automatiques, données de démonstration **fictives**,
    et une notice de deux paragraphes pour un utilisateur non technicien.
 
----
+## 2. Modèle de données (CORE + module Propreté)
 
-## 1. Clients, sites et vue d'ensemble (ex. Foncia et ses 20 cages)
+**CORE** : entreprises, utilisateurs, rôles et permissions, clients, contacts, sites, contrats,
+prestations, intervenants (salariés et sous-traitants), équipes, planning, interventions, événements,
+documents, photos et preuves, anomalies, historique, notifications, matériel, produits, fournisseurs,
+stocks, achats, chiffrages, données financières.
 
-- Hiérarchie **Client → Site → Sous-site**. Exemple : Foncia → Résidence Les Tilleuls → Cage A, Cage B…
-  Un syndic peut avoir des dizaines de résidences et de cages.
-- **Fiche client « vue d'ensemble »** : tous ses sites et sous-sites, contrats en cours, passages
-  prévus et réalisés, contrôles qualité, anomalies (vue interne), factures, chiffre d'affaires et marge.
-- **Rapport client unique** : un seul rapport mensuel par client, regroupant ses 20 cages (passages
-  faits, manqués, note qualité par cage, photos choisies). Il s'exporte en PDF et s'envoie au client
-  **sans les anomalies internes**.
-- **Fiche de site** : adresse, plan d'accès, codes, clés (qui les détient), consignes, horaires
-  autorisés, produits interdits, contacts, photos de référence.
-  - Chaque information porte une **visibilité** : tous les agents du site, un agent précis, ou chefs
+**Module Propreté** (il fait référence au CORE et ne le modifie jamais) : fiches mission, types de sols,
+surfaces, produits recommandés ou interdits, matériel nécessaire, procédures, contrôles qualité, preuves
+obligatoires, spécificités de copropriété, sanitaires, vitres, extérieurs…
+
+**Chaîne contractuelle — la fréquence n'est jamais rangée dans le site :**
+
+```
+Client → Site → Contrat → Prestation contractuelle → Série de récurrence → Version de règle → Interventions générées
+```
+
+Exemple, résidence A, contrat d'entretien : escalier chaque lundi, hall chaque lundi, vitres le premier
+lundi du mois. Quand une fréquence change, on crée une **nouvelle version** de la règle avec une date
+d'effet. L'historique ancien n'est jamais modifié.
+
+**Intervention :**
+
+- intervenant **prévu**, **remplaçant** éventuel, intervenant **réel**. Exemple : l'agent A était prévu,
+  il est absent, l'agent B le remplace et c'est B qui a exécuté l'intervention ; les trois informations
+  sont conservées ;
+- statuts : `scheduled`, `in_progress`, `completed`, `cancelled`, `rescheduled`, `access_impossible`,
+  `missed`, `to_rework` ;
+- date prévue d'origine (`original_planned_date`), début et fin réels, durées prévue et réelle,
+  commentaires, notes terrain ;
+- `slot_key` unique : une intervention n'est **jamais générée deux fois**.
+
+**Journal d'événements** `intervention_events` (intervention, utilisateur, type, date et heure,
+métadonnées). Exemple : 08:00 prévue → 08:04 démarrée → 08:42 photo → 08:45 anomalie → 08:51 terminée.
+Il sert à l'audit, aux statistiques et plus tard à l'IA.
+
+**Entités séparées (pas de JSON fourre-tout dans l'intervention) :**
+
+- **Photos et preuves** : type, fichier, date, auteur, intervention, site.
+- **Anomalies** : type, emplacement, commentaire, photo, statut, date, auteur du signalement,
+  résolution. Types de départ : ampoule HS ou éclairage, encombrants, fuite ou eau, porte ou serrure,
+  interphone, nuisibles, dégradation, salissure inhabituelle, autre.
+
+**À reprendre dans l'existant** : l'application terrain range aujourd'hui son relevé (photos, journal,
+contrôle) dans un champ JSON `intervention.fieldData`. Il faut le migrer vers ces entités sans rien
+perdre, sans changer les écrans de l'application.
+
+## 3. Moteur de récurrence (cœur du produit)
+
+- Règles : chaque semaine (jours au choix), toutes les 2 ou 3 semaines, X fois par mois, « semaine 1 »,
+  « semaines 1 et 3 », « semaines 2 et 4 », « 1er lundi du mois », « dernier vendredi », jours ouvrés,
+  intervalle en jours, dates personnalisées. Ces règles couvrent tous les types de la V12 :
+  hebdomadaire, mensuelle, toutes les 2 semaines, ponctuelle, personnalisée.
+- **Versions** : la règle change à une date d'effet. Exemple : le dimanche ce mois-ci, le mardi à partir
+  du mois prochain. Les passages réalisés ne bougent jamais.
+- **Jours fériés** par pays ou zone. Choix par série : maintenir, reporter (veille ou lendemain),
+  ignorer.
+- **Fermetures du client** (vacances, travaux) : périodes sans passage.
+- Un passage déplacé à la main garde sa date (`rescheduled`, avec sa date d'origine). La génération
+  automatique ne l'écrase pas.
+- Génération sur un horizon glissant (3 mois), idempotente grâce à `slot_key`, relancée chaque nuit et à
+  chaque changement de version.
+- Créneaux et heures de passage par site (« horaires / accès autorisés ») : alerte si l'agent arrive en
+  dehors.
+
+**Réussite :** une batterie de tests couvre chaque type de règle, les changements de version, les
+jours fériés (25 décembre, lundi de Pâques), les fermetures, les reports manuels, et deux générations
+successives qui ne créent aucun doublon.
+
+## 4. Import de la V12
+
+- Le fichier est envoyé depuis l'application, **jamais versionné dans Git**. On prévisualise, puis on
+  confirme.
+- Onglets à lire : Sites (registre maître, 52 colonnes), Intervenants, Tournées, Passages et Suivi
+  interventions, Remplacements, Véhicules, Contrats ponctuels.
+- **Les noms de sites viennent de la colonne « Nom du site ».** On ne remplace jamais le nom par la
+  ville. Exemple : le site B01 est à Catus, pas à Cahors.
+- **On ne déduit pas les règles de récurrence des dates de l'Excel** : certaines ont été modifiées à la
+  main. Le logiciel **propose** une règle par site, à partir des colonnes Type récurrence, Passages par
+  période, Jour(s), Semaine(s) du mois, Intervalle et Début de contrat. Le responsable **valide** la
+  règle ; ensuite seulement, la série génère les interventions futures.
+- Trois interventions réellement validées deviennent des interventions historiques `completed`, sans
+  heures de début ou de fin inventées :
+  - C01 le 30/09/2026 ;
+  - C04 le 29/09/2026 ;
+  - C05 le 30/09/2026.
+  - L'intervenant réel est celui que donne la V12.
+- Les « 0 » et « À compléter » de l'Excel deviennent des champs vides et une tâche « à compléter ».
+  On n'invente rien.
+
+**Réussite :** import de la V12 dans un espace de test. On obtient 15 sites avec leur bon nom et leur
+bonne ville, 3 intervenants, 3 tournées et 3 interventions historiques, aucune intervention future
+avant validation des règles, et un second import sans aucun doublon.
+
+## 5. Clients, sites, vue d'ensemble et rapport syndic
+
+- Hiérarchie **Client → Site → Sous-site**. Exemple : Foncia → résidences → cages d'escalier.
+- **Fiche client « vue d'ensemble »** : sites, contrats, passages prévus et réalisés, anomalies (vue
+  interne), contrôles, factures, CA et marge.
+- **Fiche de site** (reprise des colonnes de la V12) :
+  - accès et clés, eau, électricité, configuration, niveaux et zones ;
+  - sols principal et secondaire, matières sensibles, vitrages, sanitaires, kitchenette, déchets,
+    extérieurs ;
+  - prestations particulières, produits et matériel spécifiques, consignes surfaces, zones exclues ;
+  - sécurité, hauteur et risques, preuves obligatoires, anomalies à surveiller, consignes, contact,
+    horaires autorisés.
+  - Chaque information a une **visibilité** : tous les agents du site, un agent précis, ou chefs
     seulement.
-  - L'agent ne voit que ce qui lui est destiné.
+- **Rapport syndic automatique** par client et par période, exporté en PDF :
+  - en tête : passages prévus, réalisés, taux de réalisation, anomalies, sites concernés ;
+  - puis le détail : résidence, date, prestation, intervenant, statut, preuve, observation, anomalie ;
+  - puis une section anomalies : date, résidence, type, emplacement, commentaire, statut, photo.
+  - Un seul rapport pour toutes les cages d'un syndic. Les anomalies non validées par le chef n'y
+    figurent pas.
 
-**Réussite :** créer Foncia avec 3 résidences et 20 cages. La fiche client montre tout en un écran,
-le rapport PDF unique regroupe les 20 cages, et un agent affecté à la cage A ne voit pas la cage B.
+**Réussite :** un syndic fictif avec 20 cages donne un rapport PDF unique et juste, et un agent affecté
+à la cage A ne voit rien de la cage B.
 
-## 2. Contrats ponctuels, puis récurrents, à l'année
+## 6. Fiches mission (très important)
 
-- **Contrat ponctuel** (un chantier, une remise en état) → bouton **« Transformer en contrat
-  récurrent »**. Client, site, fiche mission et tarif sont repris.
-- **Contrat à l'année** : date de début, de fin et reconduction tacite, révision de prix annuelle
-  (indice ou pourcentage), forfait mensuel ou prix au passage.
-- **Récurrence intelligente** :
-  - Règles proposées : chaque semaine (jours au choix), toutes les 2 ou 3 semaines, « le 1er lundi
-    du mois », « le dernier vendredi », chaque jour ouvré, X fois par mois, dates précises.
-  - **Les règles changent dans le temps**. Exemple : le rendez-vous est le dimanche ce mois-ci, puis
-    le mardi à partir du mois prochain. On crée une nouvelle version de la règle, avec sa date d'effet.
-    Les passages déjà réalisés ne bougent jamais.
-  - **Jours fériés** (calendrier français, réglable par entreprise et par pays). Choix par contrat :
-    passer, avancer à la veille, reporter au lendemain, ou maintenir (heures majorées).
-  - **Fermetures du client** (vacances scolaires, congés annuels, travaux) : périodes sans passage.
-  - Un passage déplacé à la main reste déplacé : il n'est pas écrasé par la génération automatique.
-  - Planning généré sur 3 mois glissants, recalculé à chaque modification du contrat.
-- **Heures de passage** : créneau autorisé par site (ex. 6 h–8 h avant ouverture), heure prévue,
-  durée. Alerte si l'agent arrive en dehors du créneau.
+- **Bibliothèque de tâches à cocher** aussi complète que possible, par zone : bureaux, ateliers,
+  cuisine, WC et sanitaires, vestiaires, escaliers et cages, halls, ascenseurs, parkings, vitres,
+  locaux poubelles, extérieurs, salles de réunion, chambres, remise en état.
+  - Pour chaque tâche : fréquence, caractère critique ou non, photo obligatoire ou non.
+- **Fiche mission par site et par prestation.** Seules les tâches dues ce jour-là s'affichent. Elle
+  reprend aussi l'adresse, les accès, la durée, les produits, le matériel, la procédure et les consignes
+  (comme la « Fiche mission » de la V12, avec la méthode standard « du haut vers le bas »).
+- **Modifiable après envoi.** Le chef corrige une fiche déjà envoyée et l'agent reçoit la nouvelle
+  version. Après clôture, le relevé reste corrigeable par le chef, avec l'historique des versions.
+- **Feuille de passage** nominative par site (date, heure, statut, intervenant réel, conformité,
+  observation), imprimable.
+- Import et export Excel des tâches.
 
-**Réussite :** un contrat « dimanche » qui passe au « mardi » le 1er du mois suivant génère les bonnes
-dates. Le 25 décembre est traité selon le choix du contrat. Une fermeture de 2 semaines retire les passages.
+## 7. Planning, agenda, tournées
 
-## 3. Fiches mission (très important)
+- Agenda de la semaine (du lundi au samedi) et planning individuel.
+- **Conflits** : un même agent prévu sur deux sites à la même heure déclenche une alerte, **non
+  bloquante** (certains horaires sont indicatifs).
+- **Tournées** : nom, zone, agent principal, remplaçant, véhicule, jour habituel, heures de départ et de
+  fin, ordre des sites, point de départ, temps et distance de trajet, active ou non. L'optimisation des
+  tournées viendra plus tard.
+- Dans l'application, l'écran **Accueil** (résumé, alertes, absences) est séparé de l'écran **Tournée**.
 
-- **Bibliothèque de tâches à cocher**, rangées par zone et aussi complète que possible :
-  - zones : bureaux, ateliers, cuisine, WC et sanitaires, vestiaires, escaliers et cages, halls,
-    ascenseurs, parkings, vitres, locaux poubelles, extérieurs, salles de réunion, chambres,
-    remise en état ;
-  - chaque tâche a une fréquence (chaque passage, hebdomadaire, mensuelle, trimestrielle…), un
-    caractère critique ou non, et accepte une photo obligatoire ou facultative.
-- **Import Excel** : reprendre les tâches récurrentes depuis le fichier Excel du propriétaire (à fournir ;
-  colonnes zone / tâche / fréquence). Chaque fiche mission peut aussi s'exporter en Excel.
-- **Fiche mission par site** : composée à partir de la bibliothèque. Le jour venu, seules les tâches
-  dues à cette date s'affichent (la tâche mensuelle n'apparaît qu'une fois par mois).
-- **Modifiable après envoi** :
-  - le chef corrige une fiche déjà envoyée à l'agent, et l'agent reçoit la nouvelle version ;
-  - après clôture, le chef peut encore corriger le relevé ; l'historique des versions est gardé.
-- Modèles réutilisables d'une entreprise à l'autre (convertible).
+## 8. Intervenants, sous-traitants, absences, remplacements
 
-**Réussite :** importer un Excel de 80 tâches, composer une fiche pour une cage d'escalier, voir les
-tâches mensuelles le bon jour seulement, modifier la fiche alors que l'agent est sur place : il voit la
-mise à jour.
+- Dans les intervenants : statut (salarié, sous-traitant, dirigeant), activités, zone, coût horaire,
+  **remplaçants n°1 et n°2**, véhicule habituel, autorisation de conduire les véhicules de
+  l'entreprise. Pour les sous-traitants : SIRET, attestations (URSSAF, assurance) avec date
+  d'expiration et alerte.
+- **Absences**, congés et indisponibilités, demandés depuis l'application et validés par le chef.
+- Pour une absence, le logiciel **liste les interventions touchées** et propose dans l'ordre : le
+  remplaçant n°1, le n°2, un autre agent qualifié, puis le sous-traitant. Le chef confirme. Le
+  remplaçant reçoit la fiche du site et les accès nécessaires, et seulement eux.
 
-## 4. Anomalies (jamais envoyées automatiquement au client)
+## 9. Anomalies, contrôle qualité, accès et QR code
 
-- **Détection automatique** :
-  - arrivée hors créneau, passage non pointé, durée anormale (trop courte ou trop longue) ;
-  - point critique non fait, photo obligatoire manquante, matériel signalé en panne, stock
-    de consommables bas.
-  - Reprendre la fonction « alertes » de l'application de référence (contrôle toutes les 10 minutes).
-- **L'agent peut signaler** une anomalie (texte, photo, gravité).
-- **Circuit** : l'anomalie part **au patron et au chef**, jamais au client. Le chef la **valide** (elle
-  devient un fait interne, ou une information à transmettre), la **rejette** ou la **corrige**. Seul un
-  humain peut décider d'en parler au client, par un envoi manuel.
-- Notifications : dans le logiciel, par mail et dans l'application.
+- **Anomalies automatiques** :
+  - passage non pointé, hors créneau, durée anormale ;
+  - point critique non fait, preuve obligatoire manquante, matériel en panne, stock bas ;
+  - c'est la fonction « alertes » de l'application de référence, toutes les 10 minutes.
+- **Circuit des anomalies** : signalée par l'agent ou par le système, elle part au patron et au chef,
+  jamais au client. Le chef **valide**, rejette ou corrige. Seule une anomalie validée peut figurer dans
+  un rapport client.
+- **Contrôle qualité** par le chef : note par zone, photos, et qui est responsable de chaque zone. Un
+  contrôle non conforme crée une anomalie et peut planifier une repasse (`to_rework`).
+- **Registre des accès** : clés, badges, codes, qui les a en main et l'historique de remise.
+- **QR code par site ou par cage**, imprimable. Scanné avec l'application, il ouvre la fiche du jour
+  (filtrée selon la personne) et pointe l'arrivée. Scanné sans compte, il ne montre rien de sensible.
 
-**Réussite :** un passage manqué crée une anomalie chez le patron en moins de 10 minutes, aucun mail
-ne part vers le client, et le chef peut la valider ou la rejeter.
+## 10. Matériel, véhicules, produits, stocks
 
-## 5. Contrôle qualité
+- **Matériel** :
+  - catalogue : catégorie, marque, modèle, numéro de série, prix d'achat, fournisseur, date d'achat ;
+  - états : en stock, affecté à un salarié, affecté à un site, réservé, loué, en maintenance, en
+    réparation, vendu, réformé ;
+  - **historique des mouvements** (dépôt → agent → chantier → maintenance → dépôt) ;
+  - matériel loué ponctuellement pour un chantier, avec son loyer.
+- **Véhicules** : immatriculation, modèle, type, affectation, kilométrage, énergie, entretien,
+  contrôle technique, **loyer ou crédit-bail**, état des lieux et pannes depuis l'application.
+- **Produits** : catalogue (catégorie, fournisseur, unité, coût, prix de vente) et stock par dépôt,
+  véhicule, salarié ou site, avec seuil de réassort. Un produit s'attribue à une mission récurrente ou
+  à un chantier, et on note la **consommation réelle**.
+  - Fournisseurs : tarifs, commandes, réception, historique.
+- **Vente et location** d'articles : prix par jour, semaine ou mois, caution, sortie, retour,
+  disponibilité, facturation.
 
-- Contrôles faits par le chef sur la fiche mission du site : note par zone, photos, signature.
-- **Qui est affecté à quoi** : chaque contrôle montre l'agent responsable de chaque zone ou tâche, et
-  qui détient les accès (clés, badges, codes).
-- Un contrôle non conforme crée automatiquement une anomalie interne (voir bloc 4) et, si on le
-  choisit, une repasse planifiée.
-- Notes par site, par agent et par client, avec leur évolution sur 12 mois.
-- **Facturation liée** : une repasse ou une prestation supplémentaire constatée lors d'un contrôle
-  peut s'ajouter à la prochaine facture.
+## 11. Chiffrage, devis, contrats
 
-## 6. Accès, clés et QR code de site
+- Saisie : nombre de personnes, heures, coût horaire réel, kilomètres, coût au km, temps de
+  déplacement, produits, matériel, location, sous-traitance, autres coûts, marge souhaitée.
+- Calcul : coût de revient, prix HT minimum, prix HT conseillé, marge en € et en %.
+  - **Prix de vente = coût total / (1 − taux de marge cible).**
+  - Exemple de test : coût 190 €, marge 32 % → **279,41 € HT**.
+- **Validation par le chef** avant envoi. Sous une marge minimale réglable, il faut aussi la
+  validation du patron.
+- Le chiffrage devient un **devis**, puis un **contrat ponctuel** ou un **contrat récurrent**, sans
+  rien ressaisir. Un contrat ponctuel peut devenir récurrent.
+- Contrat à l'année : début, fin, reconduction tacite, révision annuelle des prix.
+- **Facturation récurrente** depuis les passages réalisés : une facture par client, avec le détail
+  par site ou par cage, les passages manqués déduits et les extras ajoutés après validation.
 
-- **Registre des accès** : clés, badges, bips, codes. Pour chacun : quel site, qui l'a en main,
-  depuis quand, et l'historique de remise et de retour.
-- **QR code par site (et par cage), qui dit tout** : collé sur place, scanné avec l'application.
-  - Il ouvre la fiche du site (filtrée selon la personne) et la fiche mission du jour.
-  - Il pointe l'arrivée et prouve la présence de l'agent.
-  - Un QR scanné par quelqu'un sans compte ne montre rien de sensible.
-- Le QR imprimable (étiquette PDF) se génère depuis la fiche du site.
+## 12. Pilotage financier
 
-## 7. Personnel, sous-traitants, absences et remplaçants
+- Un vrai tableau de bord moderne, qui ne recopie pas l'Excel :
+  - CA récurrent, ponctuel, total et facturé ;
+  - coûts directs : salariés, sous-traitants, produits, déplacements, matériel, autres ;
+  - marge contributive en € et en %, trésorerie.
+- Filtres : période, client, site, type de prestation, organisation.
+- Graphiques : évolution du CA et de la marge, récurrent contre ponctuel, structure des coûts, CA par
+  activité et par client, marge par client et par site.
+- **Les contrats peu rentables sautent aux yeux.**
+- Plus tard : banque via Open Banking, par un prestataire agréé. Les identifiants bancaires ne sont
+  jamais stockés. L'architecture doit le permettre dès maintenant, sans le construire.
 
-- Dans **Salariés**, ajouter le type **Sous-traitant** (entreprise, SIRET, assurance et attestation
-  URSSAF avec date d'expiration et alerte, tarif horaire ou au passage).
-- **Demande d'absence depuis l'application** (congé, maladie avec justificatif en photo, absence
-  imprévue), validée par le chef.
-- **Remplaçant attitré** pour chaque agent, sur chaque site.
-- **Remplacement automatique** quand une absence est validée :
-  1. le remplaçant attitré, s'il est libre ;
-  2. sinon un autre agent qualifié pour le site ;
-  3. sinon le sous-traitant prévu pour ce site.
-  - Le remplaçant reçoit la fiche du site et la fiche mission, avec les accès nécessaires et seulement eux.
-  - Le chef voit et peut modifier chaque proposition avant envoi.
-- Les heures du remplaçant et du sous-traitant sont comptées pour la paie et pour la facture du
-  sous-traitant.
+## 13. Application terrain (agent)
 
-**Réussite :** Sandrine déclare une absence pour demain, le chef valide. Karim (son remplaçant) voit
-les 3 passages de Sandrine dans sa tournée, avec les codes. Si Karim est lui-même absent, le
-sous-traitant est proposé.
-
-## 8. Tournées
-
-- La tournée du jour est ordonnée : heures de passage, temps de trajet entre sites, itinéraire et
-  carte. La liste peut être réordonnée à la main.
-- L'écran Tournée est séparé de l'écran Accueil.
-- Le responsable voit toutes les tournées de la journée (carte et liste) et les retards en direct.
-
-## 9. Chiffrage des chantiers, validation et marge
-
-- **Devis chiffré** : surface, tâches et fréquences, temps estimé par tâche (barèmes réglables),
-  taux horaire chargé, produits, matériel, déplacement, sous-traitance. Le prix est proposé avec la
-  **marge** visible (en € et en %).
-- **Validation par le chef** avant envoi au client. Un seuil de marge minimale est réglable : en
-  dessous, la validation du patron devient obligatoire.
-- **Suivi réel** : heures pointées, consommables posés et matériel utilisé donnent la **marge réelle**
-  par chantier, par site, par client et par mois. Les écarts entre prévu et réel sont signalés.
-- Un devis accepté devient un contrat ponctuel ou récurrent en un clic (voir bloc 2).
-
-## 10. Véhicules et matériel (aussi dans l'application)
-
-- **Véhicules** : immatriculation, affectation (agent ou équipe), kilométrage, carburant, entretien,
-  contrôle technique et assurance avec alertes d'échéance, **loyer ou crédit-bail**, coût mensuel
-  intégré à la marge.
-- **Matériel** : autolaveuses, aspirateurs, monobrosses… Pour chacun : numéro, site ou agent
-  affecté, état, entretien, **loyer de location** s'il est loué, coût réparti sur les chantiers.
-- **Dans l'application** : l'agent voit son véhicule et son matériel, fait un état des lieux
-  (photos, kilométrage) et signale une panne, ce qui crée une anomalie (bloc 4).
-
-## 11. Vente et location d'articles
-
-- Le catalogue gère la **vente** (déjà en place) et la **location** : prix par jour, semaine ou mois,
-  caution, dates de sortie et de retour, état au retour, disponibilité (un article loué n'est pas
-  disponible).
-- Location facturée automatiquement, chaque mois ou à la fin de la location.
-
-## 12. Facturation
-
-- **Facturation récurrente des contrats**, mensuelle ou au passage réalisé : les passages manqués
-  sont déduits, les passages supplémentaires ajoutés, la révision annuelle est appliquée.
-- Une facture par client, avec le détail par site ou par cage (Foncia : une facture, 20 lignes),
-  ou une facture par site, au choix du client.
-- Les prestations constatées sur le terrain (repasse, extra, consommables facturables) sont
-  proposées sur la facture suivante, après validation.
-
-## 13. Vendable en SaaS
-
-- Inscription d'une nouvelle entreprise, essai, abonnement (déjà en place), modules activables.
-- Tout ce qui précède se règle par entreprise : modèles de fiches, barèmes, jours fériés, textes,
-  marque de l'application terrain.
-- Démo complète d'une entreprise de propreté fictive, prête à montrer à un prospect.
+- L'agent voit : Aujourd'hui → Site A → Site B → Site C.
+- Il ouvre une mission : adresse, accès, durée, produits, matériel, procédure, consignes.
+- Bouton **Démarrer**, puis tâches, photos, anomalie éventuelle, puis **Terminer l'intervention**.
+- Signature du client et bon d'intervention : déjà en place.
+- **Hors réseau** : consultation de la mission et saisie temporaire, synchronisées ensuite (déjà
+  amorcé dans l'application actuelle). L'architecture ne doit pas bloquer une PWA complète.
+- Dans l'application aussi : demande d'absence, véhicule et matériel (état des lieux, panne).
 
 ---
 
-## Ordre de réalisation conseillé
+## Ordre de réalisation
 
-1. Clients, sites et sous-sites, fiches de site avec visibilité (bloc 1).
-2. Fiches mission et import Excel (bloc 3).
-3. Contrats ponctuels et récurrents, récurrence intelligente, heures de passage (bloc 2).
-4. Personnel, sous-traitants, absences, remplaçants (bloc 7).
-5. Anomalies et contrôle qualité (blocs 4 et 5).
-6. Accès et QR code (bloc 6), tournées (bloc 8).
-7. Chiffrage et marge (bloc 9), facturation (bloc 12).
-8. Véhicules, matériel, location (blocs 10 et 11).
-9. Rapport client unique (bloc 1) et finitions SaaS (bloc 13).
+| Lot | Contenu                                                                                                                                          |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Schéma CORE (contrats, prestations, séries, versions, interventions enrichies, événements, photos, anomalies) · RLS et rôles · tests d'isolation |
+| 2   | Moteur de récurrence et ses tests · import V12 (prévisualisation, validation des règles)                                                         |
+| 3   | Clients et sites (hiérarchie, fiche de site, visibilité) · agenda, planning, conflits                                                            |
+| 4   | Application terrain sur le nouveau modèle (migration de `fieldData`) · photos, preuves, anomalies et leur circuit                                |
+| 5   | Rapport syndic PDF · fiches mission et feuille de passage                                                                                        |
+| 6   | Intervenants, sous-traitants, absences, remplacements · tournées                                                                                 |
+| 7   | Matériel, véhicules, produits, stocks, location                                                                                                  |
+| 8   | Chiffrage → devis → contrat · facturation récurrente                                                                                             |
+| 9   | Tableau de bord financier · finitions hors ligne et PWA                                                                                          |
+| 10  | Plus tard : WhatsApp, Tiime, banque                                                                                                              |
 
-Après chaque étape : tests verts, mise en ligne, et une phrase au propriétaire pour lui dire quoi
-essayer.
+Après chaque lot : tests verts, mise en ligne, et une phrase au propriétaire pour lui dire quoi essayer.
 
-## À fournir par le propriétaire
+## Encore à fournir par le propriétaire
 
-- Le **fichier Excel** des tâches récurrentes.
-- Le **code source** de l'application de référence (inspiring-cuchufli), s'il n'est pas récupérable
+- Le code source de l'application de référence (inspiring-cuchufli), s'il n'est pas récupérable
   depuis Netlify.
 - Les tarifs habituels : taux horaire, marge minimale, prix de location.
+- La liste complète des tâches à cocher par zone, si elle existe ailleurs que dans la V12.

@@ -20,3 +20,8 @@ test-results/
 *.log
 **/e2e/.auth/
 .storage/
+
+# Fichiers de données réelles (Excel de pilotage, feuilles de route) : jamais dans le dépôt public.
+*.xlsx
+*.xls
+*.docx
