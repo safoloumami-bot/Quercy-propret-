@@ -25,3 +25,6 @@ test-results/
 *.xlsx
 *.xls
 *.docx
+
+# Instantané Redis local
+dump.rdb
