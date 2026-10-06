@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.11.0] — 2026-10-08 — Pilotage financier et application terrain hors réseau (lot 9)
+
+### Ajouté
+
+- **Nettoyage › Pilotage financier** : CA produit par les passages (récurrent, ponctuel,
+  total), CA facturé, coûts directs (salariés, sous-traitants, produits ; et sur la vue
+  d'ensemble : déplacements, matériel loué, autres dépenses), marge contributive en € et en %,
+  trésorerie et reste à encaisser. Filtres : période, client, activité. Graphiques : évolution
+  du CA et de la marge, structure des coûts. Rentabilité par contrat, client, site et
+  activité ; **les contrats sous la marge minimale ressortent en rouge, en tête**.
+- **Application terrain › Accueil** : un écran d'accueil séparé de la tournée — le jour en un
+  coup d'œil (passages prévus et terminés, prochain passage, envois en attente), puis « Ma
+  tournée », véhicule et matériel, absences et espace responsable.
+- **Application terrain hors réseau** : l'application s'installe comme une appli (service
+  worker) ; l'écran, la tournée du jour et les fiches des passages du jour restent
+  consultables sans réseau, les saisies partent au retour du réseau. Se déconnecter efface
+  les données gardées sur le téléphone.
+- **Démonstration** : fiches intervenants avec coûts horaires, une absence, une tournée, une
+  fiche mission avec consommables, véhicules, matériel, une location, deux chiffrages et un
+  supplément à valider (données fictives).
+- **Notices** pour les lots 7 à 9 (`docs/NOTICES.md`).
+
 ## [1.10.0] — 2026-10-08 — Chiffrage, devis, contrats et facturation des passages (lot 8)
 
 ### Ajouté

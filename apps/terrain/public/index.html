@@ -284,7 +284,7 @@ input.f{border-radius:15px;padding:12px 14px}
 /* Réglages de l'entreprise, inscrits par le logiciel : adresse du serveur, nom, couleur. */
 var T = %%CONFIG%%;
 
-var S = { moi:null, date:jour(), tournee:[], ch:null, vue:"tournee", agents:[], histo:[], plie:{}, an:null };
+var S = { moi:null, date:jour(), tournee:[], ch:null, vue:"accueil", agents:[], histo:[], plie:{}, an:null };
 var file = [];                 // file d'attente hors réseau
 var enLigne = navigator.onLine !== false;
 var tmr = null, envoiEnCours = false;
@@ -317,6 +317,8 @@ function api(route, corps){
     }
     return r.json().catch(function(){ return {}; }).then(function(d){
       if(!r.ok){ var err=new Error(d.erreur||"Erreur"); err.status=r.status; err.detail=d.detail; throw err; }
+      var mem=r.headers.get("x-qp-memoire");
+      if(mem && d && typeof d==="object") d.horsLigne=+mem;
       return d;
     });
   });
@@ -386,7 +388,7 @@ function ouvrirApp(horsLigne){
   ecran("ecran");
   majEtat(); viderFile();
   if(horsLigne){ rendre(); return; }
-  chargerTournee();
+  chargerTournee("accueil");
 }
 document.getElementById("fcx").addEventListener("submit", function(ev){
   ev.preventDefault();
@@ -408,16 +410,30 @@ document.getElementById("finst").addEventListener("submit", function(ev){
 });
 document.getElementById("sortir").addEventListener("click", function(){
   if(file.length && !confirm(file.length+" enregistrement(s) ne sont pas encore partis. Quitter quand même ?")) return;
-  api("deconnexion").catch(function(){}).then(function(){ S.moi=null; ls("qp.cache",null); location.reload(); });
+  api("deconnexion").catch(function(){}).then(function(){
+    S.moi=null; ls("qp.cache",null);
+    var fin = window.caches ? caches.delete("qp-donnees").catch(function(){}) : Promise.resolve();
+    fin.then(function(){ location.reload(); });
+  });
 });
 
 /* ------------------------------------------------------------- chargement */
-function chargerTournee(){
+function chargerTournee(vue){
+  vue = vue || "tournee";
   api("tournee?d="+S.date).then(function(d){
     S.tournee=d.chantiers; S.absences=d.absences||[]; S.typesAbsence=d.typesAbsence||[];
     S.materiel=d.materiel||{vehicules:[],equipements:[]};
-    S.vue="tournee"; S.ch=null; rendre();
-  }).catch(function(){ S.vue="tournee"; rendre(); });
+    S.vue=vue; S.ch=null; rendre();
+    if(d.horsLigne) toast("Hors réseau : tournée en mémoire du "+hhmm(d.horsLigne)+".");
+    else prechargerJour();
+  }).catch(function(){ S.vue=vue; rendre(); });
+}
+/* Fiches du jour gardées sur le téléphone (service worker) : elles s'ouvrent sans réseau. */
+function prechargerJour(){
+  if(!enLigne || S.date!==jour() || !("serviceWorker" in navigator)) return;
+  S.tournee.slice(0,20).forEach(function(c,i){
+    setTimeout(function(){ api("chantier?id="+encodeURIComponent(c.id)).catch(function(){}); }, 400*i);
+  });
 }
 function ouvrirChantier(id){
   api("chantier?id="+encodeURIComponent(id)).then(function(d){
@@ -452,13 +468,47 @@ function anomalie(){
 /* ------------------------------------------------------------------ rendu */
 function rendre(){
   var v=document.getElementById("vue");
-  v.innerHTML = S.vue==="fiche" ? vueFiche() : S.vue==="admin" ? vueAdmin() : vueTournee();
+  v.innerHTML = S.vue==="fiche" ? vueFiche() : S.vue==="admin" ? vueAdmin()
+    : S.vue==="accueil" ? vueAccueil() : vueTournee();
   brancher(); majEtat(); battre();
+}
+
+/* Accueil : le jour en un coup d'œil, puis tournée, véhicule et matériel, absences. */
+function vueAccueil(){
+  var aujourd = S.date===jour(), t = aujourd ? S.tournee : [];
+  var faits = t.filter(function(c){ return c.statut==="cloture"; }).length;
+  var suivant = t.filter(function(c){ return c.statut!=="cloture"; })[0];
+  var prenom = String((S.moi&&S.moi.nom)||"").split(" ")[0];
+  var heure = new Date().getHours();
+  var h='<section class="g pad">'+
+    '<div class="lab">'+e(new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"}))+"</div>"+
+    '<div style="display:flex;align-items:center;gap:10px">'+
+      '<h2 style="font-size:21px;font-weight:600;letter-spacing:-.02em;flex:1">'+(heure<18?"Bonjour":"Bonsoir")+(prenom?" "+e(prenom):"")+"</h2>"+
+      '<span class="ava">'+e(ini(S.moi&&S.moi.nom))+"</span></div>"+
+    '<p class="meta" style="margin:6px 0 0">'+
+      (t.length ? t.length+" passage"+(t.length>1?"s":"")+" aujourd'hui · "+faits+" terminé"+(faits>1?"s":"") : "Aucun passage prévu aujourd'hui.")+
+    "</p>"+
+    (file.length ? '<p class="fine" style="margin:6px 0 0">'+file.length+" enregistrement(s) en attente d'envoi.</p>" : "")+
+    "</section>";
+  if(suivant)
+    h+='<section class="g pad"><div class="lab">Prochain passage</div>'+
+      '<button class="stop'+(suivant.statut==="en-cours"?" now":"")+'" data-a="ouvrir" data-id="'+e(suivant.id)+'">'+
+      '<span class="h num">'+e(suivant.heure)+"</span>"+
+      '<span style="flex:1;min-width:0"><span class="n">'+e(suivant.client)+"</span><br>"+
+      '<span class="p">'+e(suivant.prestation)+(suivant.ville?" · "+e(suivant.ville):"")+"</span></span></button></section>";
+  h+='<button class="cta" data-a="tournee">Ma tournée</button>';
+  h+=blocMateriel();
+  h+=blocAbsences();
+  if(S.moi && S.moi.role==="patron")
+    h+='<button class="cta gh" data-a="admin">Espace responsable</button>';
+  h+='<p class="foot">'+e(T.pied)+'</p>';
+  return h;
 }
 
 function vueTournee(){
   var d=new Date(S.date+"T12:00:00");
-  var h='<section class="g pad">'+
+  var h='<button class="lnk" data-a="accueil" style="align-self:flex-start">‹ Accueil</button>'+
+    '<section class="g pad">'+
     '<div class="lab">Tournée</div>'+
     '<div style="display:flex;align-items:center;gap:10px">'+
       '<h2 style="font-size:21px;font-weight:600;letter-spacing:-.02em;flex:1;text-transform:capitalize">'+
@@ -483,10 +533,6 @@ function vueTournee(){
       "</button>";
   }).join("");
   h+="</section>";
-  h+=blocMateriel();
-  h+=blocAbsences();
-  if(S.moi && S.moi.role==="patron")
-    h+='<button class="cta gh" data-a="admin">Espace responsable</button>';
   h+='<p class="foot">'+e(T.pied)+'</p>';
   return h;
 }
@@ -748,7 +794,7 @@ function blocAnomalie(){
 }
 
 function vueAdmin(){
-  var h='<button class="lnk" data-a="retour" style="align-self:flex-start">‹ Tournée</button>';
+  var h='<button class="lnk" data-a="accueil" style="align-self:flex-start">‹ Accueil</button>';
   h+='<section class="g pad"><h2 style="font-size:20px;font-weight:600;letter-spacing:-.02em;margin-bottom:4px">Espace responsable</h2>'+
      '<p class="meta">Comptes des agents et planification des chantiers.</p></section>';
 
@@ -921,6 +967,8 @@ document.addEventListener("click", function(ev){
   var el=ev.target.closest("[data-a]"); if(!el) return;
   var a=el.dataset.a, c=S.ch;
   if(a==="ouvrir") return ouvrirChantier(el.dataset.id);
+  if(a==="accueil"){ S.date=jour(); return chargerTournee("accueil"); }
+  if(a==="tournee"){ S.vue="tournee"; rendre(); return window.scrollTo(0,0); }
   if(a==="retour"){ S.vue="tournee"; S.ch=null; return chargerTournee(); }
   if(a==="jour"){ var d=new Date(S.date+"T12:00:00"); d.setDate(d.getDate()+ +el.dataset.n); S.date=jour(d); return chargerTournee(); }
   if(a==="aujourdhui"){ S.date=jour(); return chargerTournee(); }
@@ -1107,6 +1155,9 @@ function pdf(){
   d.save(c.cloture.bon+".pdf");
 }
 
+/* Hors réseau : l'application et la tournée du jour restent sur le téléphone. */
+if("serviceWorker" in navigator)
+  navigator.serviceWorker.register(T.base+"sw.js",{scope:T.base.replace(/\/$/,"")}).catch(function(){});
 demarrer();
 setInterval(function(){ if(enLigne && file.length) viderFile(); }, 20000);
 })();

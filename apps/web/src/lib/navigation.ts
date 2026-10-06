@@ -57,6 +57,7 @@ import {
   WrenchIcon,
   CarIcon,
   CalculatorIcon,
+  ChartNoAxesCombinedIcon,
   ReceiptEuroIcon,
   CalendarClockIcon,
   CalendarRangeIcon,
@@ -426,6 +427,15 @@ export const MODULE_SECTIONS: NavSection[] = [
         "cleaning",
         ["devis", "prix", "marge", "coût de revient"],
       ),
+      {
+        id: "cleaning-finance",
+        href: "/nettoyage/pilotage",
+        label: "Pilotage financier",
+        icon: ChartNoAxesCombinedIcon,
+        keywords: ["marge", "rentabilité", "chiffre d'affaires", "coûts", "trésorerie"],
+        permission: ["cleaning", "update"],
+        module: "cleaning",
+      },
       {
         id: "cleaning-billing",
         href: "/nettoyage/facturation",

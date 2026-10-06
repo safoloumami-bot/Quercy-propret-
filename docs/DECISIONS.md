@@ -415,3 +415,20 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
       (`Intervention.invoiceId`) : rejouer ne facture rien deux fois.
 134.  **Un supplément (`extraPriceCents`) attend la validation du chef** avant d'être facturé ;
       le modifier le remet « à valider ».
+
+## 2026-10-08 — Lot 9 de la feuille de route (pilotage financier, application hors réseau)
+
+135.  **Le CA du pilotage est celui produit par les passages** (même calcul que la facture :
+      forfait au prorata, passages réalisés, suppléments validés) ; le CA facturé est affiché
+      à côté, pour voir l'écart.
+136.  **Les coûts directs se rattachent aux passages** (minutes travaillées × coût horaire de
+      la fiche intervenant, sinon coût par défaut ; produits sortis du stock au prix d'achat).
+      Véhicules, matériel loué et dépenses ne se rattachent à aucun client : ils ne comptent
+      que sur la vue d'ensemble, sans filtre.
+137.  **Un contrat est « peu rentable » sous la marge minimale de l'entreprise**, la même que
+      celle du chiffrage.
+138.  **Le service worker ne met jamais un envoi en cache** : seules les lectures (état,
+      tournée, fiche) sont gardées, réseau d'abord ; la file d'attente existante rejoue les
+      envois. Les données gardées s'effacent à la déconnexion.
+139.  **La banque (Open Banking) reste pour plus tard** : la trésorerie lit les comptes et
+      opérations déjà saisis ; aucun identifiant bancaire n'est stocké.

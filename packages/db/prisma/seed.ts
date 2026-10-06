@@ -7,6 +7,7 @@ import { seedBusiness } from "./seed-business";
 import { seedCleaning } from "./seed-cleaning";
 import { seedCrm } from "./seed-crm";
 import { seedExtras } from "./seed-extras";
+import { seedField } from "./seed-field";
 import { seedModules } from "./seed-modules";
 import { seedReports } from "./seed-reports";
 
@@ -198,6 +199,7 @@ async function main() {
   await seedModules(prisma, org.id, sellers);
   await seedCleaning(prisma, org.id, sellers);
   await seedExtras(prisma, org.id, sellers);
+  await seedField(prisma, org.id, sellers);
   await seedReports(prisma, org.id, users["demo@quercy.app"]!);
 
   // Super-admin de la plateforme (équipe Quercy), sans espace client.

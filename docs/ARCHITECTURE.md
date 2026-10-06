@@ -153,6 +153,14 @@ contrat ponctuel ou récurrent, `makeRecurring`). `CleaningContract` gagne `kind
 une facture par client (`SalesDocument.billingPeriod`), passages rattachés par
 `Intervention.invoiceId` ; routeur `cleaningBilling`.
 
+**Pilotage financier et hors réseau** (lot 9) : `financeDashboard()`
+(`apps/web/src/server/finance/dashboard.ts`, règles pures dans `packages/core/src/finance.ts`)
+assemble CA par contrat (`contractRevenueCents`), coûts directs par passage, coûts de
+structure proratisés et trésorerie ; routeur `finance`. Application terrain : écran
+`accueil`, service worker servi par `app/terrain/[slug]/sw.js` (code dans
+`server/terrain/service-worker.ts`, portée = adresse de l'application via
+`Service-Worker-Allowed`), réponses gardées marquées `x-qp-memoire`.
+
 ## Authentification
 
 Better Auth (`apps/web/src/server/auth.ts`), avec l'adaptateur Prisma :
