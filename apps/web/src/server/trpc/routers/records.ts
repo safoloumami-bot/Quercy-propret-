@@ -26,6 +26,7 @@ import { notify } from "../../notify";
 import { publish } from "../../realtime";
 import { type RecordsCtx, delegate, entityContext } from "../../records/context";
 import { afterRecordChange } from "../../records/after-change";
+import { assertRecordConstraints } from "../../equipment/service";
 import { applyBusinessRules, bulkEditable, deletableWhere } from "../../records/hooks";
 import { searchWhere } from "../../records/search";
 import { listInclude, serialize } from "../../records/serialize";
@@ -240,6 +241,8 @@ export const recordsRouter = createTRPCRouter({
       if (data.ownerId === undefined || data.ownerId === null || scope === "own")
         data.ownerId = ctx.user.id;
       await assertReferences(ctx, fields, data);
+      const clash = await assertRecordConstraints(ctx.organizationId, input.entity, data);
+      if (clash) throw new TRPCError({ code: "CONFLICT", message: clash });
       const created = (await delegate(ctx, input.entity).create({
         data: {
           ...data,
@@ -279,6 +282,13 @@ export const recordsRouter = createTRPCRouter({
       if (!parsed.success) invalid(parsed.errors);
       const data = applyBusinessRules(input.entity, parsed.value.data, current);
       await assertReferences(ctx, fields, data);
+      const clash = await assertRecordConstraints(
+        ctx.organizationId,
+        input.entity,
+        data,
+        current as Record<string, unknown>,
+      );
+      if (clash) throw new TRPCError({ code: "CONFLICT", message: clash });
 
       const beforeCustom = (current.customFields ?? {}) as Record<string, unknown>;
       const nextCustom = { ...beforeCustom, ...parsed.value.customFields };

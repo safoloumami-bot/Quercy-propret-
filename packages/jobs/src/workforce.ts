@@ -4,7 +4,9 @@ import {
   addDays,
   documentAlertLevel,
   labelOf,
+  recordPath,
   utcDay,
+  vehicleDues,
 } from "@quercy/core";
 import { prisma } from "@quercy/db";
 
@@ -46,6 +48,53 @@ export async function alertWorkerDocuments(now: Date = new Date()): Promise<numb
       data: { alertLevel: level, alertedAt: now },
     });
     sent++;
+  }
+  return sent;
+}
+
+/**
+ * Échéances des véhicules (contrôle technique, entretien à la date ou au kilométrage,
+ * assurance, fin de contrat) : une alerte aux responsables par échéance, une seule fois
+ * (clé retenue sur le véhicule).
+ */
+export async function alertVehicleDues(now: Date = new Date()): Promise<number> {
+  const today = utcDay(now);
+  const vehicles = await prisma.vehicle.findMany({
+    where: { deletedAt: null, status: { not: "sold" } },
+  });
+  let sent = 0;
+  const managersOf = new Map<string, string[]>();
+  for (const v of vehicles) {
+    const fresh = vehicleDues(v, today).filter((d) => !v.alertKeys.includes(d.key));
+    if (!fresh.length) continue;
+    if (!managersOf.has(v.organizationId))
+      managersOf.set(v.organizationId, await cleaningManagerIds(v.organizationId));
+    const recipients = managersOf.get(v.organizationId)!;
+    const name = `${v.plate}${v.model ? ` (${v.model})` : ""}`;
+    if (recipients.length)
+      await prisma.notification.createMany({
+        data: fresh.flatMap((due) =>
+          recipients.map((userId) => ({
+            organizationId: v.organizationId,
+            userId,
+            type: "vehicle.due",
+            title: `${due.label} : ${name}`,
+            body: due.date
+              ? `${due.overdue ? "Dépassé depuis le" : "Prévu le"} ${due.date.toLocaleDateString(
+                  "fr-FR",
+                  { dateStyle: "long", timeZone: "UTC" },
+                )}.`
+              : `Kilométrage atteint (${(v.mileage ?? 0).toLocaleString("fr-FR")} km).`,
+            url: recordPath("vehicle", v.id),
+          })),
+        ),
+      });
+    await prisma.vehicle.update({
+      where: { id: v.id },
+      // On ne garde que les clés encore d'actualité (une nouvelle date réarme l'alerte).
+      data: { alertKeys: vehicleDues(v, today).map((d) => d.key) },
+    });
+    sent += fresh.length;
   }
   return sent;
 }

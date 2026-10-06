@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.9.0] — 2026-10-07 — Matériel, véhicules, stock et location (lot 7)
+
+### Ajouté
+
+- **Matériel & véhicules › Matériel** : chaque machine ou outil avec son état (en stock,
+  affecté à un salarié ou à un site, réservé, loué, en maintenance, en réparation, vendu,
+  réformé), sa propriété (à l'entreprise ou loué, avec loyer et fin de location) et ses tarifs
+  de location. Onglet « Suivi » : déplacer ou changer d'état, journal de tous les mouvements,
+  locations passées, pannes signalées.
+- **Matériel & véhicules › Véhicules** : immatriculation, modèle, énergie, conducteur,
+  kilométrage, financement, contrôle technique, entretien (date ou kilométrage), assurance,
+  fin de contrat. Alerte aux responsables 30 jours avant chaque échéance, une seule fois par
+  échéance.
+- **Matériel & véhicules › Locations** : référence LOC-AAAA-NNNN, client, site de livraison,
+  période, tarif au jour, à la semaine ou au mois (toute période entamée est due), caution.
+  Un matériel ne peut pas être loué deux fois sur les mêmes jours. Boutons « Sortie »,
+  « Retour » (caution rendue ou non) et « Facturer » (facture brouillon prête à émettre).
+- **Stock par emplacement** (onglet de l'article) : dépôt, véhicule, salarié ou site ;
+  transfert d'un emplacement à un autre.
+- **Commandes fournisseurs** : lignes de commande (tarifs du fournisseur proposés),
+  réception partielle ou totale qui fait entrer les articles en stock au dépôt choisi.
+- **Fournisseurs** : onglet « Tarifs » (prix et référence par article).
+- **Fiches mission** : consommables du stock prévus par passage ; l'agent relève les quantités
+  utilisées et elles sortent du stock (du véhicule de l'agent) à la clôture du passage.
+  Alerte « stock bas » aux responsables.
+- **Application terrain** : bloc « Véhicule et matériel » — état des lieux du véhicule
+  (kilométrage obligatoire, il ne peut pas baisser ; remarques et photo), signalement de panne
+  sur un véhicule ou un matériel, transmis aux responsables.
+
 ## [1.8.0] — 2026-10-07 — Intervenants, absences, remplacements et tournées (lot 6)
 
 ### Ajouté

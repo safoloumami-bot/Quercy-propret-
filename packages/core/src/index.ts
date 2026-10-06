@@ -18,3 +18,4 @@ export * from "./sites";
 export * from "./anomalies";
 export * from "./missions";
 export * from "./workforce";
+export * from "./equipment";

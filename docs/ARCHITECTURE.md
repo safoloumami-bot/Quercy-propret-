@@ -129,6 +129,19 @@ l'applique passage par passage en tenant pour occupé le remplaçant déjà rete
 s'ouvrent alors au remplaçant pour ce passage seulement. Routeurs tRPC `workers`, `absences`,
 `routes` ; route `absence` de l'application terrain.
 
+**Matériel, véhicules, stock, location** (lot 7) : `Equipment` + `EquipmentMovement`
+(journal, `trackEquipment()`), `Vehicle` (échéances `vehicleDues()`, alertes
+`alertVehicleDues()` dans la tâche quotidienne, clés déjà signalées dans `alertKeys`),
+`AssetReport` (état des lieux ou panne, depuis la route `etat-materiel` de l'application),
+`Rental` (référence, chevauchement refusé par `assertRecordConstraints()`, facture brouillon
+par `invoiceRental()` de `@quercy/documents`), `SupplierPrice`, `PurchaseOrderLine`
+(réception → mouvements d'entrée), `MissionConsumable` (consommables prévus par la fiche
+mission, repris dans `InterventionConsumable.productId`, sortis du stock par
+`consumeForIntervention()` à la clôture). `StockMovement` porte l'emplacement (`warehouseId`,
+`vehicleId`, `holderId`, `siteId`) ; `stockByLocation()` et `recomputeProductStock()` dans
+`apps/web/src/server/equipment/service.ts`. Routeur tRPC `assets` ; onglets dans
+`components/equipment/asset-tabs.tsx`.
+
 ## Authentification
 
 Better Auth (`apps/web/src/server/auth.ts`), avec l'adaptateur Prisma :

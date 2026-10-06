@@ -9,7 +9,7 @@ import { prisma } from "@quercy/db";
 
 import { type AnomalyInput, reportAnomalies } from "./anomalies";
 import { recordInterventionEvents } from "./events";
-import { alertWorkerDocuments } from "./workforce";
+import { alertVehicleDues, alertWorkerDocuments } from "./workforce";
 import { generateSeriesInterventions } from "./recurrence";
 
 /** Horizon de planification : interventions créées pour les 3 prochaines semaines. */
@@ -23,6 +23,7 @@ export interface CleaningDailyResult {
   missed: number;
   anomalies: number;
   documentAlerts: number;
+  vehicleAlerts: number;
 }
 
 /**
@@ -105,7 +106,8 @@ export async function runCleaningDaily(now: Date = new Date()): Promise<Cleaning
   );
   const anomalies = await detectAnomalies(now, forgotten);
   const documentAlerts = await alertWorkerDocuments(now);
-  return { ...planned, missed: missed.count, anomalies, documentAlerts };
+  const vehicleAlerts = await alertVehicleDues(now);
+  return { ...planned, missed: missed.count, anomalies, documentAlerts, vehicleAlerts };
 }
 
 /** Fenêtre de rattrapage des anomalies de pointage (pointages synchronisés en retard). */

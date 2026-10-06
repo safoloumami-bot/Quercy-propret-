@@ -102,6 +102,12 @@ export async function refreshUpcomingVisits(
   const ids = visits.map((v) => v.id);
   await prisma.$transaction([
     prisma.interventionTask.deleteMany({ where: { interventionId: { in: ids } } }),
+    prisma.interventionConsumable.deleteMany({
+      where: {
+        interventionId: { in: ids },
+        intervention: { consumables: { none: { quantity: { gt: 0 } } } },
+      },
+    }),
     prisma.intervention.updateMany({
       where: { id: { in: ids } },
       data: { missionSheetId: null, missionVersion: null },

@@ -23,6 +23,7 @@ export {
   generateFromRecurring,
   getDocument,
   invoiceProjectTime,
+  invoiceRental,
   makeRecurring,
   refreshInvoice,
   salesSettings,

@@ -415,6 +415,7 @@ document.getElementById("sortir").addEventListener("click", function(){
 function chargerTournee(){
   api("tournee?d="+S.date).then(function(d){
     S.tournee=d.chantiers; S.absences=d.absences||[]; S.typesAbsence=d.typesAbsence||[];
+    S.materiel=d.materiel||{vehicules:[],equipements:[]};
     S.vue="tournee"; S.ch=null; rendre();
   }).catch(function(){ S.vue="tournee"; rendre(); });
 }
@@ -482,6 +483,7 @@ function vueTournee(){
       "</button>";
   }).join("");
   h+="</section>";
+  h+=blocMateriel();
   h+=blocAbsences();
   if(S.moi && S.moi.role==="patron")
     h+='<button class="cta gh" data-a="admin">Espace responsable</button>';
@@ -640,6 +642,41 @@ function bandePhotos(piece){
        '<label class="phadd"><svg viewBox="0 0 24 24"><path d="M12 7v10M7 12h10"/></svg><span>Après</span>'+
        '<input type="file" accept="image/*" capture="environment" multiple hidden data-a="phadd" data-piece="'+e(piece)+'" data-slot="apres"></label>';
   return h+"</div>";
+}
+
+/* Véhicule et matériel confiés : état des lieux (kilométrage) et pannes, vus par le responsable. */
+function blocMateriel(){
+  var m=S.materiel||{}, vs=m.vehicules||[], eq=m.equipements||[], f=S.mat;
+  if(!vs.length && !eq.length) return "";
+  var h='<section class="g pad"><h3 style="font-size:16px;font-weight:600;margin-bottom:8px">Véhicule et matériel</h3>';
+  h+=vs.map(function(v){
+    return '<div class="cons"><span class="l">'+e(v.immat)+(v.modele?" · "+e(v.modele):"")+
+      (v.km?'<span class="fine" style="display:block;margin:0">'+e(Number(v.km).toLocaleString("fr-FR"))+" km</span>":"")+
+      v.pannes.map(function(p){ return '<span class="fine" style="display:block;margin:0">Panne : '+e(p.note)+"</span>"; }).join("")+
+      "</span>"+(v.faitAujourdhui?'<span class="pill">État fait</span>':'<button class="cta gh sm2" style="width:auto;margin:0" data-a="mat-ouvrir" data-v="'+e(v.id)+'">État des lieux</button>')+"</div>";
+  }).join("");
+  h+=eq.map(function(x){
+    return '<div class="cons"><span class="l">'+e(x.nom)+(x.serie?'<span class="fine" style="display:block;margin:0">N° '+e(x.serie)+"</span>":"")+
+      '</span><span class="pill">'+e(x.etat)+"</span></div>";
+  }).join("");
+  if(!f) return h+'<button class="cta gh sm2" style="margin-top:10px" data-a="mat-panne">Signaler une panne</button></section>';
+  var cibles=vs.map(function(v){ return {id:"v:"+v.id, l:v.immat+(v.modele?" · "+v.modele:"")}; })
+    .concat(eq.map(function(x){ return {id:"m:"+x.id, l:x.nom}; }));
+  h+='<div class="sep" style="margin:12px -18px"></div>';
+  if(f.type==="panne")
+    h+='<div class="champ"><label for="mt_cible">Véhicule ou matériel</label><select class="f" id="mt_cible">'+
+      cibles.map(function(c){ return '<option value="'+e(c.id)+'"'+(f.cible===c.id?" selected":"")+">"+e(c.l)+"</option>"; }).join("")+"</select></div>";
+  var veh=String(f.cible||"").indexOf("v:")===0;
+  if(veh)
+    h+='<div class="champ"><label for="mt_km">Kilométrage du compteur'+(f.type==="panne"?" (facultatif)":"")+'</label><input class="f" id="mt_km" inputmode="numeric" value="'+e(f.km||"")+'"></div>';
+  h+='<div class="champ"><label for="mt_note">'+(f.type==="panne"?"Ce qui ne va pas":"Remarques (rayure, voyant, propreté…)")+'</label><textarea class="obs" id="mt_note">'+e(f.note||"")+"</textarea></div>"+
+    '<div class="phs">'+(f.photo
+      ? '<div class="ph"><img src="'+f.photo+'" alt="Photo"><button class="rm" data-a="mat-phsup" aria-label="Retirer la photo">×</button></div>'
+      : '<label class="phadd"><svg viewBox="0 0 24 24"><path d="M12 7v10M7 12h10"/></svg><span>Photo</span>'+
+        '<input type="file" accept="image/*" capture="environment" hidden data-a="mat-photo"></label>')+"</div>"+
+    '<div class="g2" style="margin-top:12px"><button class="cta gh sm2" data-a="mat-annuler">Annuler</button>'+
+    '<button class="cta sm2" data-a="mat-envoyer">Envoyer</button></div>';
+  return h+"</section>";
 }
 
 /* Mes absences : demandées ici, validées par le responsable dans le logiciel. */
@@ -858,6 +895,15 @@ function brancher(){
     var el=document.getElementById(k[0]);
     if(el) el.addEventListener("input", function(){ if(S.abs) S.abs[k[1]]=this.value; });
   });
+  [["mt_cible","cible"],["mt_km","km"],["mt_note","note"]].forEach(function(k){
+    var el=document.getElementById(k[0]);
+    if(el) el.addEventListener("input", function(){ if(S.mat){ S.mat[k[1]]=this.value; if(k[0]==="mt_cible") rendre(); } });
+  });
+  var mtp=document.querySelector('[data-a="mat-photo"]');
+  if(mtp) mtp.addEventListener("change", function(){
+    var f=(this.files||[])[0]; if(!f) return;
+    reduire(f).then(function(d){ if(!S.mat) return; if(!d) return toast("Photo illisible ou trop lourde."); S.mat.photo=d; rendre(); });
+  });
   var anp=document.querySelector('[data-a="an-photo"]');
   if(anp) anp.addEventListener("change", function(){
     var f=(this.files||[])[0]; if(!f) return;
@@ -918,6 +964,25 @@ document.addEventListener("click", function(ev){
     var pid=el.dataset.pid;
     c.photos=(c.photos||[]).filter(function(p){ return p.id!==pid; });
     rendre(); return envoyer("photo-suppr",{id:c.id, pid:pid});
+  }
+  if(a==="mat-ouvrir"){ S.mat={type:"etat", cible:"v:"+el.dataset.v}; return rendre(); }
+  if(a==="mat-panne"){
+    var m0=S.materiel||{}, c0=(m0.vehicules||[])[0]?"v:"+m0.vehicules[0].id:(m0.equipements||[])[0]?"m:"+m0.equipements[0].id:"";
+    S.mat={type:"panne", cible:c0}; return rendre();
+  }
+  if(a==="mat-annuler"){ S.mat=null; return rendre(); }
+  if(a==="mat-phsup"){ if(S.mat) S.mat.photo=null; return rendre(); }
+  if(a==="mat-envoyer"){
+    var mt=S.mat; if(!mt) return;
+    var estV=String(mt.cible).indexOf("v:")===0, idm=String(mt.cible).slice(2);
+    if(mt.type==="etat" && !String(mt.km||"").trim()) return toast("Indiquez le kilométrage du compteur.");
+    if(mt.type==="panne" && !String(mt.note||"").trim()) return toast("Décrivez la panne en quelques mots.");
+    var cm={type:mt.type, note:mt.note||"", km:String(mt.km||"").replace(/\D/g,""), photo:mt.photo||null};
+    if(estV) cm.vehicule=idm; else cm.materiel=idm;
+    return api("etat-materiel",cm).then(function(d){
+      S.mat=null; S.materiel=d.materiel||S.materiel; buzz(14); rendre();
+      toast(mt.type==="panne"?"Panne transmise au responsable.":"État des lieux enregistré.");
+    }).catch(function(x){ toast(x.message||"Envoi impossible : réessayez avec du réseau."); });
   }
   if(a==="abs-ouvrir"){ S.abs={type:((S.typesAbsence||[])[0]||{}).value||"leave", debut:jour(), fin:jour()}; return rendre(); }
   if(a==="abs-annuler"){ S.abs=null; return rendre(); }

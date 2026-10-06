@@ -29,6 +29,10 @@ export const missionTaskInput = z.object({
 
 const SHEET_INCLUDE = {
   tasks: { orderBy: { sortOrder: "asc" } },
+  consumables: {
+    orderBy: { sortOrder: "asc" },
+    include: { product: { select: { name: true, unit: true } } },
+  },
   serviceLine: { select: { id: true, name: true } },
   updatedBy: { select: { name: true } },
 } as const;
@@ -61,6 +65,11 @@ function snapshotOf(sheet: {
   };
 }
 
+const consumableInput = z.object({
+  productId: z.string().min(1),
+  plannedQuantity: z.number().min(0).max(999).default(1),
+});
+
 export const missionsRouter = createTRPCRouter({
   /** Fiches mission d'un site : responsables, et agents du site en lecture. */
   list: orgProcedure
@@ -69,7 +78,7 @@ export const missionsRouter = createTRPCRouter({
       const manager = isCleaningManager(ctx);
       if (!manager && !(await siteAgentIds(ctx, input.siteId)).has(ctx.user.id))
         throw new TRPCError({ code: "FORBIDDEN", message: "Fiches réservées aux agents du site." });
-      const [sheets, lines] = await Promise.all([
+      const [sheets, lines, products] = await Promise.all([
         ctx.db.missionSheet.findMany({
           where: { siteId: input.siteId, archivedAt: null },
           include: SHEET_INCLUDE,
@@ -82,10 +91,19 @@ export const missionsRouter = createTRPCRouter({
               orderBy: { name: "asc" },
             })
           : [],
+        manager
+          ? ctx.db.product.findMany({
+              where: { type: "good", active: true },
+              select: { id: true, name: true, unit: true, stockQuantity: true },
+              orderBy: { name: "asc" },
+              take: 500,
+            })
+          : [],
       ]);
       return {
         canManage: manager,
         serviceLines: lines,
+        products,
         sheets: sheets.map((s) => ({
           id: s.id,
           title: s.title,
@@ -105,6 +123,12 @@ export const missionsRouter = createTRPCRouter({
             frequencyLabel: taskFrequencyLabel(t.frequency),
             critical: t.critical,
             photoRequired: t.photoRequired,
+          })),
+          consumables: s.consumables.map((c) => ({
+            productId: c.productId,
+            name: c.product.name,
+            unit: c.product.unit,
+            plannedQuantity: c.plannedQuantity,
           })),
         })),
       };
@@ -127,6 +151,7 @@ export const missionsRouter = createTRPCRouter({
         instructions: text(6000),
         durationMinutes: z.number().int().min(5).max(1440).nullable().default(null),
         tasks: z.array(missionTaskInput).max(300),
+        consumables: z.array(consumableInput).max(50).default([]),
         note: z.string().trim().max(300).optional(),
       }),
     )
@@ -174,6 +199,18 @@ export const missionsRouter = createTRPCRouter({
         : null;
       if (input.id && !current)
         throw new TRPCError({ code: "NOT_FOUND", message: "Fiche introuvable." });
+      const productIds = [...new Set(input.consumables.map((c) => c.productId))];
+      if (
+        productIds.length &&
+        (await ctx.db.product.count({ where: { id: { in: productIds } } })) !== productIds.length
+      )
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Article du stock introuvable." });
+      const consumables = input.consumables.map((c, i) => ({
+        organizationId: ctx.organizationId,
+        productId: c.productId,
+        plannedQuantity: c.plannedQuantity,
+        sortOrder: i,
+      }));
       const version = current ? current.version + 1 : 1;
       const tasks = input.tasks.map((t, i) => ({
         organizationId: ctx.organizationId,
@@ -188,6 +225,7 @@ export const missionsRouter = createTRPCRouter({
               version,
               updatedById: ctx.user.id,
               tasks: { deleteMany: {}, createMany: { data: tasks } },
+              consumables: { deleteMany: {}, createMany: { data: consumables } },
             },
           })
         : await ctx.db.missionSheet.create({
@@ -199,6 +237,7 @@ export const missionsRouter = createTRPCRouter({
               createdById: ctx.user.id,
               updatedById: ctx.user.id,
               tasks: { createMany: { data: tasks } },
+              consumables: { createMany: { data: consumables } },
             },
           });
       await ctx.db.missionSheetVersion.create({

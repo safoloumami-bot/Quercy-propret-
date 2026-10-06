@@ -1,11 +1,16 @@
 import "server-only";
 
-import { type EntityKey, recordPath } from "@quercy/core";
+import { type EntityKey } from "@quercy/core";
 import { generateInterventions } from "@quercy/jobs";
 
 import { runAutomations } from "../automations/engine";
+import {
+  afterRentalChange,
+  alertLowStock,
+  recomputeProductStock,
+  trackEquipment,
+} from "../equipment/service";
 import { enqueueDeliveries, webhookEvent } from "../automations/webhooks";
-import { notify } from "../notify";
 import { type RecordsCtx, delegate } from "./context";
 
 export type ChangeAction = "created" | "updated" | "deleted" | "restored";
@@ -26,6 +31,10 @@ export async function afterRecordChange(
   depth = 0,
 ): Promise<void> {
   if (entity === "stockMovement") await syncStock(ctx, ids);
+  if (entity === "equipment" && ids.length)
+    await trackEquipment(ctx.organizationId, ids, ctx.user.id);
+  if (entity === "rental" && ids.length)
+    await afterRentalChange(ctx.organizationId, ids, ctx.user.id);
   if (entity === "bankTransaction" || entity === "bankAccount")
     await syncBalances(ctx, entity, ids);
   // Un contrat d'entretien créé ou modifié remplit aussitôt le planning.
@@ -57,33 +66,11 @@ async function syncStock(ctx: RecordsCtx, ids: string[]) {
     where: { ...(ids.length ? { id: { in: ids } } : {}), deletedAt: undefined },
     select: { productId: true },
   });
-  const productIds = [...new Set(moved.map((m) => m.productId))];
-  for (const productId of productIds) {
-    const rows = await ctx.db.stockMovement.groupBy({
-      by: ["type"],
-      where: { productId, deletedAt: null },
-      _sum: { quantity: true },
-    });
-    const sum = (type: string) => rows.find((r) => r.type === type)?._sum.quantity ?? 0;
-    const quantity = sum("in") - sum("out") + sum("adjust");
-    const product = await ctx.db.product.findFirst({
-      where: { id: productId },
-      select: { stockQuantity: true, reorderLevel: true, name: true, ownerId: true },
-    });
-    if (!product) continue;
-    await ctx.db.product.update({ where: { id: productId }, data: { stockQuantity: quantity } });
-    const threshold = product.reorderLevel;
-    if (threshold !== null && quantity <= threshold && product.stockQuantity > threshold) {
-      await notify({
-        organizationId: ctx.organizationId,
-        userIds: [product.ownerId ?? ctx.user.id],
-        actorId: "system",
-        type: "stock.low",
-        title: `Stock bas : « ${product.name} » (${quantity} restant${quantity > 1 ? "s" : ""})`,
-        url: recordPath("product", productId),
-      });
-    }
-  }
+  const crossed = await recomputeProductStock(
+    ctx.organizationId,
+    moved.map((m) => m.productId),
+  );
+  await alertLowStock(ctx.organizationId, crossed, [ctx.user.id]);
 }
 
 /** Solde d'un compte = solde initial + opérations hors corbeille. */

@@ -283,6 +283,7 @@ export const SUPPLIER_CATEGORIES: FieldOption[] = [
 export const PURCHASE_ORDER_STATUSES: FieldOption[] = [
   { value: "draft", label: "Brouillon", tone: "neutral" },
   { value: "sent", label: "Envoyée", tone: "info" },
+  { value: "partial", label: "Reçue en partie", tone: "primary" },
   { value: "received", label: "Reçue", tone: "success" },
   { value: "cancelled", label: "Annulée", tone: "warning" },
 ];
@@ -428,6 +429,66 @@ export const INTERVENTION_STATUSES: FieldOption[] = [
   { value: "cancelled", label: "Annulée", tone: "neutral" },
 ];
 
+export const EQUIPMENT_STATUSES: FieldOption[] = [
+  { value: "in_stock", label: "En stock", tone: "success" },
+  { value: "assigned_agent", label: "Affecté à un salarié", tone: "info" },
+  { value: "assigned_site", label: "Affecté à un site", tone: "info" },
+  { value: "reserved", label: "Réservé", tone: "primary" },
+  { value: "rented", label: "Loué", tone: "primary" },
+  { value: "maintenance", label: "En maintenance", tone: "warning" },
+  { value: "repair", label: "En réparation", tone: "danger" },
+  { value: "sold", label: "Vendu", tone: "neutral" },
+  { value: "retired", label: "Réformé", tone: "neutral" },
+];
+
+export const EQUIPMENT_OWNERSHIP: FieldOption[] = [
+  { value: "owned", label: "À l'entreprise" },
+  { value: "hired", label: "Loué pour un chantier" },
+];
+
+export const VEHICLE_TYPES: FieldOption[] = [
+  { value: "car", label: "Voiture" },
+  { value: "van", label: "Fourgonnette" },
+  { value: "utility", label: "Utilitaire" },
+  { value: "other", label: "Autre" },
+];
+
+export const VEHICLE_ENERGIES: FieldOption[] = [
+  { value: "diesel", label: "Diesel" },
+  { value: "petrol", label: "Essence" },
+  { value: "electric", label: "Électrique" },
+  { value: "hybrid", label: "Hybride" },
+  { value: "other", label: "Autre" },
+];
+
+export const VEHICLE_STATUSES: FieldOption[] = [
+  { value: "available", label: "Disponible", tone: "success" },
+  { value: "in_use", label: "En service", tone: "info" },
+  { value: "maintenance", label: "À l'entretien", tone: "warning" },
+  { value: "broken", label: "En panne", tone: "danger" },
+  { value: "sold", label: "Vendu", tone: "neutral" },
+];
+
+export const VEHICLE_FINANCING: FieldOption[] = [
+  { value: "owned", label: "Acheté" },
+  { value: "lease", label: "Location longue durée (LLD / LOA)" },
+  { value: "credit", label: "Crédit-bail" },
+  { value: "rental", label: "Location courte" },
+];
+
+export const RENTAL_PERIODS: FieldOption[] = [
+  { value: "day", label: "Jour" },
+  { value: "week", label: "Semaine" },
+  { value: "month", label: "Mois" },
+];
+
+export const RENTAL_STATUSES: FieldOption[] = [
+  { value: "reserved", label: "Réservée", tone: "info" },
+  { value: "out", label: "Sortie", tone: "primary" },
+  { value: "returned", label: "Rendue", tone: "success" },
+  { value: "cancelled", label: "Annulée", tone: "neutral" },
+];
+
 export const INSPECTION_RESULTS: FieldOption[] = [
   { value: "compliant", label: "Conforme", tone: "success" },
   { value: "to_improve", label: "À améliorer", tone: "warning" },
@@ -468,6 +529,21 @@ export const DOCUMENT_ENTITY: Record<DocumentKind, EntityKey> = {
 
 export function isDocumentEntity(entity: EntityKey): boolean {
   return Object.values(DOCUMENT_ENTITY).includes(entity);
+}
+
+/** Montant saisi (centimes), facultatif. */
+function amount(key: string, label: string, extra: Partial<FieldDef> = {}): FieldDef {
+  return {
+    key,
+    label,
+    type: "currency",
+    cents: true,
+    editable: true,
+    sortable: true,
+    filterable: true,
+    width: 130,
+    ...extra,
+  };
 }
 
 function money(key: string, label: string, extra: Partial<FieldDef> = {}): FieldDef {
@@ -877,6 +953,8 @@ export const ENTITIES: Record<EntityKey, EntityDef> = {
       },
       text("name", "Désignation", { required: true, defaultVisible: true, width: 260 }),
       text("sku", "Référence", { defaultVisible: true, width: 130, maxLength: 60 }),
+      text("category", "Catégorie", { width: 150, maxLength: 80 }),
+      relation("supplierId", "Fournisseur", "supplier"),
       choice("type", "Type", PRODUCT_TYPES, {
         defaultValue: "service",
         required: true,
@@ -1364,6 +1442,18 @@ export const ENTITIES: Record<EntityKey, EntityDef> = {
         width: 110,
       },
       relation("warehouseId", "Entrepôt", "warehouse", { defaultVisible: true }),
+      relation("vehicleId", "Véhicule", "vehicle"),
+      {
+        key: "holderId",
+        label: "Chez le salarié",
+        type: "user",
+        editable: true,
+        sortable: true,
+        filterable: true,
+        groupable: true,
+        width: 170,
+      },
+      relation("siteId", "Sur le site", "site"),
       text("reference", "Référence", { defaultVisible: true, width: 160, maxLength: 80 }),
       longtext("note", "Note"),
       owner("Saisi par"),
@@ -1880,6 +1970,213 @@ export const ENTITIES: Record<EntityKey, EntityDef> = {
       },
       text("signedBy", "Signé par", { width: 160 }),
       longtext("notes", "Compte rendu"),
+      TAGS,
+      ...SYSTEM_FIELDS,
+    ],
+  },
+  // ─────────────────────────── Matériel, véhicules, locations ───────────────────────────
+  equipment: {
+    key: "equipment",
+    module: "cleaning",
+    model: "equipment",
+    slug: "materiel",
+    label: "Matériel",
+    labelPlural: "Matériel",
+    feminine: false,
+    titleFields: ["name"],
+    emptyTitle: "Sans nom",
+    subtitleFields: ["brand", "model"],
+    searchFields: ["name", "brand", "model", "serialNumber", "category"],
+    defaultSort: { field: "name", direction: "asc" },
+    layouts: { board: { field: "status" } },
+    related: [{ entity: "rental", field: "equipmentId", label: "Locations" }],
+    fields: [
+      text("name", "Désignation", { required: true, defaultVisible: true, width: 220 }),
+      text("category", "Catégorie", { defaultVisible: true, width: 150, maxLength: 80 }),
+      text("brand", "Marque", { width: 130, maxLength: 80 }),
+      text("model", "Modèle", { width: 130, maxLength: 80 }),
+      text("serialNumber", "N° de série", { width: 150, maxLength: 80 }),
+      choice("status", "État", EQUIPMENT_STATUSES, {
+        defaultValue: "in_stock",
+        required: true,
+        notNull: true,
+        defaultVisible: true,
+        width: 170,
+      }),
+      {
+        key: "assignedUserId",
+        label: "Affecté à",
+        type: "user",
+        editable: true,
+        sortable: true,
+        filterable: true,
+        groupable: true,
+        defaultVisible: true,
+        width: 170,
+      },
+      relation("siteId", "Site", "site", { defaultVisible: true }),
+      relation("warehouseId", "Dépôt", "warehouse"),
+      amount("purchasePriceCents", "Prix d'achat HT"),
+      relation("supplierId", "Fournisseur", "supplier"),
+      date("purchaseDate", "Date d'achat"),
+      choice("ownership", "Propriété", EQUIPMENT_OWNERSHIP, {
+        defaultValue: "owned",
+        required: true,
+        notNull: true,
+      }),
+      amount("hireCostCents", "Loyer (matériel loué)"),
+      date("hireEndDate", "Fin de location"),
+      {
+        key: "rentable",
+        label: "Proposé à la location",
+        type: "boolean",
+        editable: true,
+        filterable: true,
+        notNull: true,
+        width: 120,
+      },
+      amount("dayRateCents", "Tarif jour HT"),
+      amount("weekRateCents", "Tarif semaine HT"),
+      amount("monthRateCents", "Tarif mois HT"),
+      amount("depositCents", "Caution"),
+      longtext("notes", "Notes"),
+      owner("Responsable"),
+      TAGS,
+      ...SYSTEM_FIELDS,
+    ],
+  },
+  vehicle: {
+    key: "vehicle",
+    module: "cleaning",
+    model: "vehicle",
+    slug: "vehicules",
+    label: "Véhicule",
+    labelPlural: "Véhicules",
+    feminine: false,
+    titleFields: ["plate"],
+    emptyTitle: "Sans immatriculation",
+    subtitleFields: ["model"],
+    searchFields: ["plate", "model"],
+    defaultSort: { field: "plate", direction: "asc" },
+    fields: [
+      text("plate", "Immatriculation", {
+        required: true,
+        defaultVisible: true,
+        width: 140,
+        maxLength: 20,
+      }),
+      text("model", "Modèle", { defaultVisible: true, width: 170, maxLength: 80 }),
+      choice("type", "Type", VEHICLE_TYPES, { defaultValue: "van", required: true, notNull: true }),
+      choice("energy", "Énergie", VEHICLE_ENERGIES),
+      choice("status", "État", VEHICLE_STATUSES, {
+        defaultValue: "available",
+        required: true,
+        notNull: true,
+        defaultVisible: true,
+      }),
+      {
+        key: "assignedUserId",
+        label: "Affecté à",
+        type: "user",
+        editable: true,
+        sortable: true,
+        filterable: true,
+        groupable: true,
+        defaultVisible: true,
+        width: 170,
+      },
+      {
+        key: "mileage",
+        label: "Kilométrage",
+        type: "number",
+        editable: true,
+        sortable: true,
+        filterable: true,
+        integer: true,
+        defaultVisible: true,
+        width: 120,
+      },
+      choice("financing", "Financement", VEHICLE_FINANCING, {
+        defaultValue: "owned",
+        required: true,
+        notNull: true,
+        width: 200,
+      }),
+      amount("monthlyCostCents", "Loyer ou mensualité", { defaultVisible: true }),
+      date("contractEndDate", "Fin du contrat"),
+      date("lastServiceDate", "Dernier entretien"),
+      date("nextServiceDate", "Prochain entretien", { defaultVisible: true }),
+      {
+        key: "nextServiceMileage",
+        label: "Entretien à (km)",
+        type: "number",
+        editable: true,
+        sortable: true,
+        filterable: true,
+        integer: true,
+        width: 130,
+      },
+      date("inspectionDueDate", "Contrôle technique", { defaultVisible: true }),
+      date("insuranceDueDate", "Échéance assurance"),
+      longtext("notes", "Notes"),
+      owner("Responsable"),
+      TAGS,
+      ...SYSTEM_FIELDS,
+    ],
+  },
+  rental: {
+    key: "rental",
+    module: "cleaning",
+    model: "rental",
+    slug: "locations",
+    label: "Location",
+    labelPlural: "Locations",
+    feminine: true,
+    titleFields: ["reference"],
+    emptyTitle: "Location",
+    subtitleFields: [],
+    searchFields: ["reference", "notes"],
+    defaultSort: { field: "startDate", direction: "desc" },
+    layouts: { board: { field: "status" }, calendar: { start: "startDate", end: "endDate" } },
+    fields: [
+      text("reference", "Référence", { editable: false, defaultVisible: true, width: 140 }),
+      relation("equipmentId", "Matériel", "equipment", { required: true, defaultVisible: true }),
+      relation("companyId", "Client", "company", { defaultVisible: true }),
+      relation("siteId", "Site de livraison", "site"),
+      date("startDate", "Du", {
+        required: true,
+        notNull: true,
+        defaultVisible: true,
+        defaultValue: "today",
+      }),
+      date("endDate", "Au", { required: true, notNull: true, defaultVisible: true }),
+      choice("period", "Tarif au", RENTAL_PERIODS, {
+        defaultValue: "day",
+        required: true,
+        notNull: true,
+        defaultVisible: true,
+        width: 110,
+      }),
+      amount("unitPriceCents", "Prix HT par période", { notNull: true, defaultVisible: true }),
+      amount("depositCents", "Caution", { notNull: true }),
+      {
+        key: "depositReturned",
+        label: "Caution rendue",
+        type: "boolean",
+        editable: true,
+        filterable: true,
+        notNull: true,
+        width: 120,
+      },
+      choice("status", "État", RENTAL_STATUSES, {
+        defaultValue: "reserved",
+        required: true,
+        notNull: true,
+        defaultVisible: true,
+      }),
+      relation("invoiceId", "Facture", "invoice", { editable: false, defaultVisible: true }),
+      longtext("notes", "Notes"),
+      owner("Responsable"),
       TAGS,
       ...SYSTEM_FIELDS,
     ],

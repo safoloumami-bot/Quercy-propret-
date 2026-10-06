@@ -5,12 +5,16 @@ import { randomBytes } from "node:crypto";
 import {
   ABSENCE_KINDS,
   ABSENCE_STATUSES,
+  EQUIPMENT_STATUSES,
   FIELD_ANOMALY_TYPES,
+  PRODUCT_UNITS,
+  VEHICLE_STATUSES,
   type InterventionEventType,
   dayKey,
   detectPointageAnomalies,
   inspectionOutcome,
   labelOf,
+  recordPath,
   siteInfoVisible,
   utcDay,
 } from "@quercy/core";
@@ -21,6 +25,7 @@ import {
   type InterventionEventInput,
   recordInterventionEvent,
   recordInterventionEvents,
+  cleaningManagerIds,
   reportAnomalies,
 } from "@quercy/jobs";
 import { MailNotConfiguredError, mailConfigured, sendMail } from "@quercy/mailer";
@@ -34,6 +39,7 @@ import { applyBusinessRules } from "../records/hooks";
 import { deleteObject, newStorageKey, putObject, readObject } from "../storage";
 import { absenceSummary, recordAbsence } from "../cleaning/absences";
 import { dueMissionTasks, missionSheetFor } from "../cleaning/missions";
+import { alertLowStock, consumeForIntervention } from "../equipment/service";
 import { CHECKLISTS } from "./checklists";
 import {
   type FieldData,
@@ -209,14 +215,33 @@ async function ensureConsumables(org: TerrainOrgRow, row: InterventionRow, data:
   if (row.consumables.length) return row.consumables;
   const list = checklistOf(row, data);
   data.grille ??= list.key;
+  // Les consommables prévus par la fiche mission (articles du stock) passent avant la grille.
+  const sheet = await missionSheetFor(org.id, row);
+  const planned = sheet
+    ? await prisma.missionConsumable.findMany({
+        where: { organizationId: org.id, sheetId: sheet.id },
+        include: { product: { select: { name: true, unit: true, deletedAt: true } } },
+        orderBy: { sortOrder: "asc" },
+      })
+    : [];
+  const fromSheet = planned.filter((p) => !p.product.deletedAt);
   await prisma.interventionConsumable.createMany({
-    data: list.consommables.map((c, i) => ({
-      organizationId: org.id,
-      interventionId: row.id,
-      label: c.l,
-      unit: c.u || null,
-      sortOrder: i,
-    })),
+    data: fromSheet.length
+      ? fromSheet.map((p, i) => ({
+          organizationId: org.id,
+          interventionId: row.id,
+          label: p.product.name,
+          unit: labelOf(PRODUCT_UNITS, p.product.unit) || null,
+          productId: p.productId,
+          sortOrder: i,
+        }))
+      : list.consommables.map((c, i) => ({
+          organizationId: org.id,
+          interventionId: row.id,
+          label: c.l,
+          unit: c.u || null,
+          sortOrder: i,
+        })),
     skipDuplicates: true,
   });
   return prisma.interventionConsumable.findMany({
@@ -329,9 +354,10 @@ async function saveIntervention(
 async function storePhoto(
   org: TerrainOrgRow,
   me: Me,
-  row: InterventionRow,
+  row: { id: string },
   name: string,
   bytes: Uint8Array,
+  entityType = "intervention",
 ) {
   const key = newStorageKey(org.id, name);
   try {
@@ -347,7 +373,7 @@ async function storePhoto(
       mimeType: "image/jpeg",
       size: bytes.byteLength,
       uploadedById: me.id,
-      entityType: "intervention",
+      entityType,
       entityId: row.id,
     },
   });
@@ -470,6 +496,66 @@ const READ_ROUTES = new Set([
  * que le serveur d'origine, mais les chantiers sont les interventions du module Nettoyage,
  * les agents sont les membres de l'espace et les photos des pièces jointes.
  */
+/* ------------------------------------------------- véhicule et matériel */
+
+/** Véhicules et matériel confiés à l'agent, pour l'état des lieux et les pannes. */
+async function myAssets(org: TerrainOrgRow, me: Me) {
+  const [vehicles, equipment] = await Promise.all([
+    prisma.vehicle.findMany({
+      where: { organizationId: org.id, assignedUserId: me.id, deletedAt: null },
+      select: {
+        id: true,
+        plate: true,
+        model: true,
+        mileage: true,
+        status: true,
+        reports: {
+          where: { status: "open" },
+          orderBy: { createdAt: "desc" },
+          take: 3,
+          select: { kind: true, note: true, createdAt: true },
+        },
+      },
+      orderBy: { plate: "asc" },
+    }),
+    prisma.equipment.findMany({
+      where: { organizationId: org.id, assignedUserId: me.id, deletedAt: null },
+      select: { id: true, name: true, serialNumber: true, status: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+  const today = dayKey(new Date());
+  const done = await prisma.assetReport.findMany({
+    where: {
+      organizationId: org.id,
+      reportedById: me.id,
+      kind: "inspection",
+      createdAt: { gte: new Date(`${today}T00:00:00.000Z`) },
+    },
+    select: { vehicleId: true },
+  });
+  const checked = new Set(done.map((d) => d.vehicleId));
+  return {
+    vehicules: vehicles.map((v) => ({
+      id: v.id,
+      immat: v.plate,
+      modele: v.model ?? "",
+      km: v.mileage,
+      etat: labelOf(VEHICLE_STATUSES, v.status),
+      faitAujourdhui: checked.has(v.id),
+      pannes: v.reports
+        .filter((r) => r.kind === "breakdown")
+        .map((r) => ({ note: r.note ?? "", ts: r.createdAt.getTime() })),
+    })),
+    equipements: equipment.map((e) => ({
+      id: e.id,
+      nom: e.name,
+      serie: e.serialNumber ?? "",
+      etat: labelOf(EQUIPMENT_STATUSES, e.status),
+    })),
+  };
+}
+
 export async function handleTerrainApi(
   request: Request,
   org: TerrainOrgRow,
@@ -595,7 +681,12 @@ export async function handleTerrainApi(
         include: STOP_INCLUDE,
       })) as StopRow[];
       const stops = rows.map(toStop).sort((a, b) => a.heure.localeCompare(b.heure));
-      return json({ date: d, chantiers: stops, ...(await myAbsences(org, me)) });
+      return json({
+        date: d,
+        chantiers: stops,
+        ...(await myAbsences(org, me)),
+        materiel: await myAssets(org, me),
+      });
     }
 
     if (route === "chantier") {
@@ -914,6 +1005,123 @@ export async function handleTerrainApi(
       });
     }
 
+    /* ---------- état des lieux ou panne d'un véhicule / d'un matériel ---------- */
+    if (route === "etat-materiel" && request.method === "POST") {
+      const kind = body.type === "panne" ? "breakdown" : "inspection";
+      const note = str(body.note, 1000).trim();
+      if (kind === "breakdown" && !note) return fail("Décrivez la panne en quelques mots.", 400);
+      const vehicle = body.vehicule
+        ? await prisma.vehicle.findFirst({
+            where: {
+              id: String(body.vehicule),
+              organizationId: org.id,
+              deletedAt: null,
+              ...(me.role === "patron" ? {} : { assignedUserId: me.id }),
+            },
+          })
+        : null;
+      const equipment =
+        !vehicle && body.materiel
+          ? await prisma.equipment.findFirst({
+              where: {
+                id: String(body.materiel),
+                organizationId: org.id,
+                deletedAt: null,
+                ...(me.role === "patron" ? {} : { assignedUserId: me.id }),
+              },
+            })
+          : null;
+      if (!vehicle && !equipment) return fail("Véhicule ou matériel introuvable.", 404);
+      const km = Number(body.km);
+      const mileage = vehicle && Number.isFinite(km) && km > 0 ? Math.round(km) : null;
+      if (vehicle && kind === "inspection" && mileage === null)
+        return fail("Indiquez le kilométrage du compteur.", 400);
+      if (mileage !== null && vehicle?.mileage && mileage < vehicle.mileage)
+        return fail(
+          `Le compteur ne peut pas baisser (dernier relevé : ${vehicle.mileage.toLocaleString("fr-FR")} km).`,
+          400,
+        );
+      let photoFileId: string | null = null;
+      if (body.photo) {
+        const raw = String(body.photo);
+        const prefix = "data:image/jpeg;base64,";
+        if (!raw.startsWith(prefix) || raw.length > 600_000)
+          return fail("Photo invalide ou trop lourde.", 400);
+        const bytes = new Uint8Array(Buffer.from(raw.slice(prefix.length), "base64"));
+        const file = await storePhoto(
+          org,
+          me,
+          { id: (vehicle ?? equipment)!.id },
+          kind === "breakdown" ? "Panne.jpg" : "Etat-des-lieux.jpg",
+          bytes,
+          vehicle ? "vehicle" : "equipment",
+        );
+        if (file instanceof Response) return file;
+        photoFileId = file.id;
+      }
+      const report = await prisma.assetReport.create({
+        data: {
+          organizationId: org.id,
+          vehicleId: vehicle?.id ?? null,
+          equipmentId: equipment?.id ?? null,
+          kind,
+          mileage,
+          note: note || null,
+          photoFileId,
+          reportedById: me.id,
+          status: kind === "breakdown" ? "open" : "resolved",
+        },
+      });
+      if (vehicle && (mileage !== null || kind === "breakdown"))
+        await prisma.vehicle.update({
+          where: { id: vehicle.id },
+          data: {
+            ...(mileage !== null ? { mileage } : {}),
+            ...(kind === "breakdown" ? { status: "broken" } : {}),
+          },
+        });
+      const label = vehicle
+        ? `${vehicle.plate}${vehicle.model ? ` (${vehicle.model})` : ""}`
+        : equipment!.name;
+      // Une panne (ou une remarque sur l'état) part aux responsables ; un état des lieux
+      // sans remarque reste dans l'historique du véhicule.
+      if (kind === "breakdown" || note) {
+        const managers = (await cleaningManagerIds(org.id)).filter((id) => id !== me.id);
+        if (managers.length) {
+          await prisma.notification.createMany({
+            data: managers.map((userId) => ({
+              organizationId: org.id,
+              userId,
+              actorId: me.id,
+              type: kind === "breakdown" ? "asset.breakdown" : "asset.inspection",
+              title:
+                kind === "breakdown"
+                  ? `Panne signalée : ${label}`
+                  : `État des lieux avec remarque : ${label}`,
+              body: [me.nom, mileage ? `${mileage.toLocaleString("fr-FR")} km` : null, note]
+                .filter(Boolean)
+                .join(" — "),
+              url: vehicle
+                ? recordPath("vehicle", vehicle.id)
+                : recordPath("equipment", equipment!.id),
+            })),
+          });
+          for (const userId of managers) await publish(org.id, { type: "notification", userId });
+        }
+      }
+      await prisma.auditLog.create({
+        data: {
+          organizationId: org.id,
+          actorId: me.id,
+          action: kind === "breakdown" ? "asset.breakdown" : "asset.inspection",
+          entityType: vehicle ? "vehicle" : "equipment",
+          entityId: (vehicle ?? equipment)!.id,
+          metadata: { name: label, source: "application terrain", reportId: report.id },
+        },
+      });
+      return json({ ok: true, materiel: await myAssets(org, me) });
+    }
+
     /* ---------- anomalie : transmise aux responsables, jamais au client ---------- */
     if (route === "anomalie" && request.method === "POST") {
       const row = await loadIntervention(org, me, body.id);
@@ -1079,6 +1287,16 @@ export async function handleTerrainApi(
           dedupeKey: `controle:${inspection.id}`,
         });
       await raiseAnomalies(org, detected);
+      // Consommables liés au stock : sortie réelle, au nom du passage et du bon.
+      try {
+        const crossed = await consumeForIntervention(org.id, row.id, me.id, bon);
+        const managers = await cleaningManagerIds(org.id);
+        await alertLowStock(org.id, crossed, managers.length ? managers : [me.id]);
+      } catch (error) {
+        console.error(
+          JSON.stringify({ level: "error", msg: "terrain.stock_failed", error: String(error) }),
+        );
+      }
       const chantier = toChantier(closed);
       const mail = await sendReport(org, chantier);
       data.cloture.mail = mail;

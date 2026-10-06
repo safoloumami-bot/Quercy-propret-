@@ -69,6 +69,7 @@ interface SheetDraft {
   equipment: string;
   procedure: string;
   tasks: TaskDraft[];
+  consumables: { productId: string; plannedQuantity: string }[];
   note: string;
 }
 
@@ -92,6 +93,10 @@ function draftOf(sheet?: Sheet): SheetDraft {
           critical,
           photoRequired,
         })),
+        consumables: sheet.consumables.map((c) => ({
+          productId: c.productId,
+          plannedQuantity: String(c.plannedQuantity),
+        })),
         note: "",
       }
     : {
@@ -103,6 +108,7 @@ function draftOf(sheet?: Sheet): SheetDraft {
         equipment: "",
         procedure: DEFAULT_PROCEDURE,
         tasks: [],
+        consumables: [],
         note: "",
       };
 }
@@ -143,7 +149,7 @@ export function MissionSheets({ siteId }: { siteId: string }) {
 
   if (list.isPending) return <Skeleton className="h-24" />;
   if (list.error) return <Callout variant="warning">{errorMessage(list.error)}</Callout>;
-  const { sheets, canManage, serviceLines } = list.data;
+  const { sheets, canManage, serviceLines, products } = list.data;
 
   return (
     <section className="space-y-3">
@@ -236,6 +242,21 @@ export function MissionSheets({ siteId }: { siteId: string }) {
                   </ul>
                 </div>
               ))}
+              {s.consumables.length ? (
+                <div>
+                  <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                    Consommables prévus
+                  </p>
+                  <ul className="space-y-0.5">
+                    {s.consumables.map((c) => (
+                      <li key={c.productId}>
+                        {c.name}{" "}
+                        <span className="text-muted-foreground">× {c.plannedQuantity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           </div>
         ))
@@ -246,6 +267,7 @@ export function MissionSheets({ siteId }: { siteId: string }) {
           siteId={siteId}
           draft={draft}
           serviceLines={serviceLines}
+          products={products}
           onChange={setDraft}
           onClose={() => setDraft(null)}
           onSaved={() => {
@@ -263,6 +285,7 @@ function SheetEditor({
   siteId,
   draft,
   serviceLines,
+  products,
   onChange,
   onClose,
   onSaved,
@@ -270,6 +293,7 @@ function SheetEditor({
   siteId: string;
   draft: SheetDraft;
   serviceLines: { id: string; name: string }[];
+  products: MissionList["products"];
   onChange: (d: SheetDraft) => void;
   onClose: () => void;
   onSaved: () => void;
@@ -387,6 +411,75 @@ function SheetEditor({
             onChange={(e) => set({ procedure: e.target.value })}
           />
         </FormField>
+
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-end gap-2">
+            <h4 className="mr-auto text-sm font-medium">
+              Consommables du stock ({draft.consumables.length})
+            </h4>
+            <Select
+              value=""
+              onValueChange={(productId) => {
+                if (draft.consumables.some((c) => c.productId === productId)) return;
+                set({ consumables: [...draft.consumables, { productId, plannedQuantity: "1" }] });
+              }}
+            >
+              <SelectTrigger className="w-56" aria-label="Ajouter un article du stock">
+                <SelectValue
+                  placeholder={products.length ? "Ajouter un article" : "Aucun article en stock"}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {products.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name} ({p.stockQuantity} en stock)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {draft.consumables.length ? (
+            <ul className="space-y-1">
+              {draft.consumables.map((c, i) => (
+                <li key={c.productId} className="flex items-center gap-2 text-sm">
+                  <span className="mr-auto">
+                    {products.find((p) => p.id === c.productId)?.name ?? "Article retiré"}
+                  </span>
+                  <Input
+                    className="w-20"
+                    inputMode="decimal"
+                    aria-label="Quantité prévue par passage"
+                    value={c.plannedQuantity}
+                    onChange={(e) =>
+                      set({
+                        consumables: draft.consumables.map((x, k) =>
+                          k === i
+                            ? { ...x, plannedQuantity: e.target.value.replace(/[^\d.,]/g, "") }
+                            : x,
+                        ),
+                      })
+                    }
+                  />
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label="Retirer l'article"
+                    onClick={() =>
+                      set({ consumables: draft.consumables.filter((_, k) => k !== i) })
+                    }
+                  >
+                    <Trash2Icon />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              L&apos;agent relève sur l&apos;appli les quantités utilisées ; elles sortent du stock
+              à la clôture du passage.
+            </p>
+          )}
+        </div>
 
         <div className="space-y-2">
           <div className="flex flex-wrap items-end gap-2">
@@ -584,6 +677,10 @@ function SheetEditor({
                 equipment: draft.equipment,
                 procedure: draft.procedure,
                 tasks: draft.tasks,
+                consumables: draft.consumables.map((c) => ({
+                  productId: c.productId,
+                  plannedQuantity: Number(c.plannedQuantity.replace(",", ".")) || 0,
+                })),
                 note: draft.note || undefined,
               })
             }

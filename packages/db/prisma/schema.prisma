@@ -107,7 +107,16 @@ model User {
   replacementsDone     Intervention[]          @relation("InterventionReplacement")
   interventionsActual  Intervention[]          @relation("InterventionActual")
 
-  apiKeys ApiKey[] @relation("ApiKeyUser")
+  apiKeys           ApiKey[]            @relation("ApiKeyUser")
+  equipmentOwned    Equipment[]         @relation("EquipmentOwner")
+  equipmentAssigned Equipment[]         @relation("EquipmentAssignee")
+  equipmentMoves    EquipmentMovement[] @relation("EquipmentMover")
+  vehiclesOwned     Vehicle[]           @relation("VehicleOwner")
+  vehiclesAssigned  Vehicle[]           @relation("VehicleAssignee")
+  assetReports      AssetReport[]       @relation("AssetReporter")
+  assetResolutions  AssetReport[]       @relation("AssetResolver")
+  rentalsOwned      Rental[]            @relation("RentalOwner")
+  stockHeld         StockMovement[]     @relation("StockMovementHolder")
 
   @@map("user")
 }
@@ -304,9 +313,17 @@ model Organization {
   routes                  Route[]
   routeStops              RouteStop[]
 
-  automations Automation[]
-  apiKeys     ApiKey[]
-  webhooks    Webhook[]
+  automations        Automation[]
+  apiKeys            ApiKey[]
+  webhooks           Webhook[]
+  equipment          Equipment[]
+  equipmentMovements EquipmentMovement[]
+  vehicles           Vehicle[]
+  assetReports       AssetReport[]
+  rentals            Rental[]
+  supplierPrices     SupplierPrice[]
+  purchaseOrderLines PurchaseOrderLine[]
+  missionConsumables MissionConsumable[]
 
   @@map("organization")
 }
@@ -557,6 +574,7 @@ model Company {
   sites             Site[]             @relation("SiteCompany")
   cleaningContracts CleaningContract[] @relation("CleaningContractCompany")
   interventions     Intervention[]     @relation("InterventionCompany")
+  rentals           Rental[]           @relation("RentalCompany")
 
   @@index([organizationId, deletedAt, name])
   @@index([organizationId, ownerId])
@@ -639,11 +657,12 @@ model StoredFile {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  uploadedBy      User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
-  proofs          InterventionProof[]
-  anomalyPhotos   Anomaly[]
-  workerDocuments WorkerDocument[]
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedBy        User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  proofs            InterventionProof[]
+  anomalyPhotos     Anomaly[]
+  workerDocuments   WorkerDocument[]
+  assetReportPhotos AssetReport[]       @relation("AssetReportPhoto")
 
   @@index([organizationId, entityType, entityId])
   @@map("stored_file")
@@ -760,6 +779,8 @@ model Product {
   vatRate        String    @default("20")
   description    String?
   active         Boolean   @default(true)
+  category       String?
+  supplierId     String?
   stockQuantity  Float     @default(0)
   reorderLevel   Float?
   ownerId        String?
@@ -773,7 +794,12 @@ model Product {
   owner        User?               @relation("ProductOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   lines        SalesDocumentLine[]
 
-  stockMovementProducts StockMovement[] @relation("StockMovementProduct")
+  stockMovementProducts   StockMovement[]          @relation("StockMovementProduct")
+  supplierPrices          SupplierPrice[]          @relation("SupplierPriceProduct")
+  purchaseOrderLines      PurchaseOrderLine[]      @relation("PurchaseOrderLineProduct")
+  missionConsumables      MissionConsumable[]      @relation("MissionConsumableProduct")
+  supplier                Supplier?                @relation("ProductSupplier", fields: [supplierId], references: [id], onDelete: SetNull)
+  interventionConsumables InterventionConsumable[] @relation("InterventionConsumableProduct")
 
   @@index([organizationId, deletedAt, name])
   @@map("product")
@@ -843,6 +869,7 @@ model SalesDocument {
   timeEntries     TimeEntry[]
 
   bankTransactionInvoices BankTransaction[] @relation("BankTransactionInvoice")
+  rentals                 Rental[]          @relation("RentalInvoice")
 
   @@unique([organizationId, kind, number])
   @@index([organizationId, kind, deletedAt, status])
@@ -1202,6 +1229,9 @@ model Supplier {
 
   purchaseOrderSuppliers PurchaseOrder[] @relation("PurchaseOrderSupplier")
   billSuppliers          Bill[]          @relation("BillSupplier")
+  equipment              Equipment[]     @relation("EquipmentSupplier")
+  prices                 SupplierPrice[] @relation("SupplierPriceSupplier")
+  products               Product[]       @relation("ProductSupplier")
 
   @@index([organizationId, deletedAt])
   @@map("supplier")
@@ -1230,7 +1260,8 @@ model PurchaseOrder {
   supplier     Supplier     @relation("PurchaseOrderSupplier", fields: [supplierId], references: [id], onDelete: Cascade)
   project      Project?     @relation("PurchaseOrderProject", fields: [projectId], references: [id], onDelete: SetNull)
 
-  billPurchaseOrders Bill[] @relation("BillPurchaseOrder")
+  billPurchaseOrders Bill[]              @relation("BillPurchaseOrder")
+  lines              PurchaseOrderLine[] @relation("PurchaseOrderLines")
 
   @@index([organizationId, deletedAt])
   @@map("purchase_order")
@@ -1312,32 +1343,43 @@ model Warehouse {
   owner        User?        @relation("WarehouseOwner", fields: [ownerId], references: [id], onDelete: SetNull)
 
   stockMovementWarehouses StockMovement[] @relation("StockMovementWarehouse")
+  equipment               Equipment[]     @relation("EquipmentWarehouse")
 
   @@index([organizationId, deletedAt])
   @@map("warehouse")
 }
 
 model StockMovement {
-  id             String    @id @default(cuid())
-  organizationId String
-  date           DateTime  @default(now())
-  type           String    @default("in")
-  quantity       Float     @default(0)
-  reference      String?
-  note           String?
-  productId      String
-  warehouseId    String?
-  ownerId        String?
-  tags           String[]  @default([])
-  customFields   Json      @default("{}")
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedAt      DateTime?
+  id              String    @id @default(cuid())
+  organizationId  String
+  date            DateTime  @default(now())
+  type            String    @default("in")
+  quantity        Float     @default(0)
+  reference       String?
+  note            String?
+  productId       String
+  warehouseId     String?
+  /// Emplacement hors entrepôt : véhicule, salarié ou site (un seul renseigné).
+  vehicleId       String?
+  holderId        String?
+  siteId          String?
+  /// Passage (consommation réelle) ou commande fournisseur (réception) à l'origine.
+  interventionId  String?
+  purchaseOrderId String?
+  ownerId         String?
+  tags            String[]  @default([])
+  customFields    Json      @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner        User?        @relation("StockMovementOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   product      Product      @relation("StockMovementProduct", fields: [productId], references: [id], onDelete: Cascade)
   warehouse    Warehouse?   @relation("StockMovementWarehouse", fields: [warehouseId], references: [id], onDelete: SetNull)
+  vehicle      Vehicle?     @relation("StockMovementVehicle", fields: [vehicleId], references: [id], onDelete: SetNull)
+  holder       User?        @relation("StockMovementHolder", fields: [holderId], references: [id], onDelete: SetNull)
+  site         Site?        @relation("StockMovementSite", fields: [siteId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, deletedAt])
   @@map("stock_movement")
@@ -1654,21 +1696,24 @@ model Site {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  organization  Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner         User?               @relation("SiteOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  company       Company?            @relation("SiteCompany", fields: [companyId], references: [id], onDelete: SetNull)
-  contracts     CleaningContract[]  @relation("CleaningContractSite")
-  interventions Intervention[]      @relation("InterventionSite")
-  inspections   Inspection[]        @relation("InspectionSite")
-  serviceLines  ServiceLine[]
-  closures      SiteClosure[]
-  proofs        InterventionProof[]
-  anomalies     Anomaly[]
-  parent        Site?               @relation("SiteParent", fields: [parentId], references: [id], onDelete: NoAction)
-  children      Site[]              @relation("SiteParent")
-  infos         SiteInfo[]
-  missionSheets MissionSheet[]
-  routeStops    RouteStop[]
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User?               @relation("SiteOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  company        Company?            @relation("SiteCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  contracts      CleaningContract[]  @relation("CleaningContractSite")
+  interventions  Intervention[]      @relation("InterventionSite")
+  inspections    Inspection[]        @relation("InspectionSite")
+  serviceLines   ServiceLine[]
+  closures       SiteClosure[]
+  proofs         InterventionProof[]
+  anomalies      Anomaly[]
+  parent         Site?               @relation("SiteParent", fields: [parentId], references: [id], onDelete: NoAction)
+  children       Site[]              @relation("SiteParent")
+  infos          SiteInfo[]
+  missionSheets  MissionSheet[]
+  routeStops     RouteStop[]
+  equipment      Equipment[]         @relation("EquipmentSite")
+  rentals        Rental[]            @relation("RentalSite")
+  stockMovements StockMovement[]     @relation("StockMovementSite")
 
   @@unique([organizationId, code])
   @@index([organizationId, deletedAt])
@@ -2084,6 +2129,7 @@ model InterventionConsumable {
   interventionId String
   label          String
   unit           String?
+  productId      String?
   quantity       Int      @default(0)
   sortOrder      Int      @default(0)
   createdAt      DateTime @default(now())
@@ -2091,6 +2137,7 @@ model InterventionConsumable {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   intervention Intervention @relation(fields: [interventionId], references: [id], onDelete: NoAction)
+  product      Product?     @relation("InterventionConsumableProduct", fields: [productId], references: [id], onDelete: SetNull)
 
   @@unique([interventionId, sortOrder])
   @@index([organizationId, interventionId])
@@ -2154,6 +2201,7 @@ model MissionSheet {
   tasks         MissionTask[]
   versions      MissionSheetVersion[]
   interventions Intervention[]
+  consumables   MissionConsumable[]
 
   @@index([organizationId, siteId])
   @@map("mission_sheet")
@@ -2333,4 +2381,247 @@ model RouteStop {
 
   @@index([routeId, sortOrder])
   @@map("route_stop")
+}
+
+/// Matériel (aspirateur, autolaveuse, échafaudage…) : catalogue, état, affectation.
+model Equipment {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  name               String
+  category           String?
+  brand              String?
+  model              String?
+  serialNumber       String?
+  purchasePriceCents Int?
+  supplierId         String?
+  purchaseDate       DateTime?
+  /// in_stock, assigned_agent, assigned_site, reserved, rented, maintenance, repair, sold, retired
+  status             String    @default("in_stock")
+  assignedUserId     String?
+  siteId             String?
+  warehouseId        String?
+  /// owned (à nous) ou hired (loué ponctuellement pour un chantier, avec son loyer)
+  ownership          String    @default("owned")
+  hireCostCents      Int?
+  hireEndDate        DateTime?
+  /// Location à nos clients : tarifs et caution.
+  rentable           Boolean   @default(false)
+  dayRateCents       Int?
+  weekRateCents      Int?
+  monthRateCents     Int?
+  depositCents       Int?
+  notes              String?
+  ownerId            String?
+  tags               String[]  @default([])
+  customFields       Json      @default("{}")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?               @relation("EquipmentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  assignedUser User?               @relation("EquipmentAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  supplier     Supplier?           @relation("EquipmentSupplier", fields: [supplierId], references: [id], onDelete: SetNull)
+  site         Site?               @relation("EquipmentSite", fields: [siteId], references: [id], onDelete: SetNull)
+  warehouse    Warehouse?          @relation("EquipmentWarehouse", fields: [warehouseId], references: [id], onDelete: SetNull)
+  movements    EquipmentMovement[]
+  rentals      Rental[]
+  reports      AssetReport[]
+
+  @@index([organizationId, deletedAt])
+  @@map("equipment")
+}
+
+/// Historique des mouvements d'un matériel (dépôt → agent → chantier → maintenance → dépôt).
+model EquipmentMovement {
+  id             String   @id @default(cuid())
+  organizationId String
+  equipmentId    String
+  status         String
+  /// Où il se trouve après le mouvement, en clair (« Dépôt central », « Julien », « Résidence A »).
+  location       String?
+  assignedUserId String?
+  siteId         String?
+  warehouseId    String?
+  note           String?
+  movedById      String?
+  at             DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  equipment    Equipment    @relation(fields: [equipmentId], references: [id], onDelete: NoAction)
+  movedBy      User?        @relation("EquipmentMover", fields: [movedById], references: [id], onDelete: SetNull)
+
+  @@index([equipmentId, at])
+  @@map("equipment_movement")
+}
+
+/// Véhicule : affectation, kilométrage, entretien, contrôle technique, financement.
+model Vehicle {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  plate              String
+  model              String?
+  /// car, van, utility, other
+  type               String    @default("van")
+  /// diesel, petrol, electric, hybrid, other
+  energy             String?
+  assignedUserId     String?
+  mileage            Int?
+  /// available, in_use, maintenance, broken, sold
+  status             String    @default("available")
+  /// owned, lease (LLD/LOA), credit (crédit-bail), rental
+  financing          String    @default("owned")
+  monthlyCostCents   Int?
+  contractEndDate    DateTime?
+  lastServiceDate    DateTime?
+  nextServiceDate    DateTime?
+  nextServiceMileage Int?
+  inspectionDueDate  DateTime?
+  insuranceDueDate   DateTime?
+  /// Dernière alerte envoyée (clé « échéance:date »), pour ne prévenir qu'une fois.
+  alertKeys          String[]  @default([])
+  notes              String?
+  ownerId            String?
+  tags               String[]  @default([])
+  customFields       Json      @default("{}")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User?           @relation("VehicleOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  assignedUser   User?           @relation("VehicleAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  reports        AssetReport[]
+  stockMovements StockMovement[] @relation("StockMovementVehicle")
+
+  @@index([organizationId, deletedAt])
+  @@map("vehicle")
+}
+
+/// État des lieux ou panne d'un véhicule ou d'un matériel, signalé depuis l'application.
+model AssetReport {
+  id             String    @id @default(cuid())
+  organizationId String
+  vehicleId      String?
+  equipmentId    String?
+  /// inspection (état des lieux) ou breakdown (panne)
+  kind           String
+  mileage        Int?
+  note           String?
+  photoFileId    String?
+  /// open, resolved
+  status         String    @default("open")
+  reportedById   String?
+  resolvedById   String?
+  resolvedAt     DateTime?
+  resolution     String?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: NoAction)
+  equipment    Equipment?   @relation(fields: [equipmentId], references: [id], onDelete: NoAction)
+  photo        StoredFile?  @relation("AssetReportPhoto", fields: [photoFileId], references: [id], onDelete: NoAction)
+  reportedBy   User?        @relation("AssetReporter", fields: [reportedById], references: [id], onDelete: SetNull)
+  resolvedBy   User?        @relation("AssetResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@map("asset_report")
+}
+
+/// Location d'un matériel à un client : période, tarif, caution, sortie, retour, facture.
+model Rental {
+  id              String    @id @default(cuid())
+  organizationId  String
+  /// Référence lisible (LOC-2026-0001), attribuée à la création.
+  reference       String?
+  equipmentId     String
+  companyId       String?
+  siteId          String?
+  startDate       DateTime
+  endDate         DateTime
+  /// day, week, month
+  period          String    @default("day")
+  unitPriceCents  Int       @default(0)
+  depositCents    Int       @default(0)
+  depositReturned Boolean   @default(false)
+  /// reserved, out, returned, cancelled
+  status          String    @default("reserved")
+  outAt           DateTime?
+  returnedAt      DateTime?
+  invoiceId       String?
+  notes           String?
+  ownerId         String?
+  tags            String[]  @default([])
+  customFields    Json      @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?          @relation("RentalOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  equipment    Equipment      @relation(fields: [equipmentId], references: [id], onDelete: NoAction)
+  company      Company?       @relation("RentalCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  site         Site?          @relation("RentalSite", fields: [siteId], references: [id], onDelete: SetNull)
+  invoice      SalesDocument? @relation("RentalInvoice", fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@index([equipmentId, startDate])
+  @@map("rental")
+}
+
+/// Tarif d'un fournisseur pour un article.
+model SupplierPrice {
+  id             String   @id @default(cuid())
+  organizationId String
+  supplierId     String
+  productId      String
+  priceCents     Int
+  supplierRef    String?
+  minQuantity    Float?
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier     Supplier     @relation("SupplierPriceSupplier", fields: [supplierId], references: [id], onDelete: Cascade)
+  product      Product      @relation("SupplierPriceProduct", fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, productId])
+  @@map("supplier_price")
+}
+
+/// Ligne d'une commande fournisseur, et ce qui en a été reçu.
+model PurchaseOrderLine {
+  id               String  @id @default(cuid())
+  organizationId   String
+  purchaseOrderId  String
+  productId        String?
+  label            String
+  quantity         Float
+  unitPriceCents   Int     @default(0)
+  receivedQuantity Float   @default(0)
+  sortOrder        Int     @default(0)
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchaseOrder PurchaseOrder @relation("PurchaseOrderLines", fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product?      @relation("PurchaseOrderLineProduct", fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([purchaseOrderId, sortOrder])
+  @@map("purchase_order_line")
+}
+
+/// Produit prévu sur une fiche mission (consommation attendue par passage).
+model MissionConsumable {
+  id              String @id @default(cuid())
+  organizationId  String
+  sheetId         String
+  productId       String
+  plannedQuantity Float  @default(1)
+  sortOrder       Int    @default(0)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sheet        MissionSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  product      Product      @relation("MissionConsumableProduct", fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([sheetId, sortOrder])
+  @@map("mission_consumable")
 }

@@ -54,6 +54,9 @@ import {
   FileSignatureIcon,
   SparklesIcon,
   ClipboardCheckIcon,
+  WrenchIcon,
+  CarIcon,
+  CalendarClockIcon,
   CalendarRangeIcon,
   QrCodeIcon,
   CalendarSyncIcon,
@@ -146,6 +149,9 @@ export const ENTITY_ICONS: Record<EntityKey, LucideIcon> = {
   cleaningContract: FileSignatureIcon,
   intervention: SparklesIcon,
   inspection: ClipboardCheckIcon,
+  equipment: WrenchIcon,
+  vehicle: CarIcon,
+  rental: CalendarClockIcon,
 };
 
 function entityItem(
@@ -426,6 +432,32 @@ export const MODULE_SECTIONS: NavSection[] = [
         permission: ["cleaning", "export"],
         module: "cleaning",
       },
+    ],
+  },
+  {
+    id: "equipment",
+    label: "Matériel & véhicules",
+    items: [
+      entityItem("equipment-list", "/nettoyage/materiel", "Matériel", "equipment", "cleaning", [
+        "aspirateur",
+        "autolaveuse",
+        "échafaudage",
+        "outillage",
+        "numéro de série",
+      ]),
+      entityItem("equipment-vehicles", "/nettoyage/vehicules", "Véhicules", "vehicle", "cleaning", [
+        "camionnette",
+        "contrôle technique",
+        "entretien",
+        "kilométrage",
+        "crédit-bail",
+      ]),
+      entityItem("equipment-rentals", "/nettoyage/locations", "Locations", "rental", "cleaning", [
+        "louer",
+        "caution",
+        "sortie",
+        "retour",
+      ]),
     ],
   },
   {

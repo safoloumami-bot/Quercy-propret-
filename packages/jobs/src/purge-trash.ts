@@ -31,7 +31,12 @@ export async function purgeTrash(now: Date = new Date()): Promise<PurgeResult> {
 
   // Une photo servant de preuve ou d'anomalie fait partie de l'historique : jamais effacée.
   const files = await prisma.storedFile.findMany({
-    where: { ...expired, proofs: { none: {} }, anomalyPhotos: { none: {} } },
+    where: {
+      ...expired,
+      proofs: { none: {} },
+      anomalyPhotos: { none: {} },
+      assetReportPhotos: { none: {} },
+    },
     select: { id: true, storageKey: true },
   });
   for (const file of files) {
@@ -113,6 +118,16 @@ export async function purgeTrash(now: Date = new Date()): Promise<PurgeResult> {
         missionSheets: { none: {} },
       },
     }),
+    // Location facturée : la facture la cite, elle reste. Matériel : purgé avec son journal
+    // de mouvements s'il n'a ni location ni état des lieux ; véhicule sans état des lieux.
+    prisma.rental.deleteMany({ where: { ...expired, invoiceId: null } }),
+    prisma.equipmentMovement.deleteMany({
+      where: { equipment: { ...expired, rentals: { none: {} }, reports: { none: {} } } },
+    }),
+    prisma.equipment.deleteMany({
+      where: { ...expired, movements: { none: {} }, rentals: { none: {} }, reports: { none: {} } },
+    }),
+    prisma.vehicle.deleteMany({ where: { ...expired, reports: { none: {} } } }),
     prisma.stockMovement.deleteMany({ where: expired }),
     prisma.bankTransaction.deleteMany({ where: expired }),
     prisma.leave.deleteMany({ where: expired }),

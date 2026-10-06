@@ -39,6 +39,19 @@ export function applyBusinessRules(
   }
 
   switch (entity) {
+    case "rental": {
+      const start = (next.startDate ?? current?.startDate) as Date | undefined;
+      const end = (next.endDate ?? current?.endDate) as Date | undefined;
+      if (start && end && end < start)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "La fin de location précède son début.",
+        });
+      // Sortie et retour datés au moment où l'état change.
+      if (next.status === "out" && current?.status !== "out") next.outAt = now;
+      if (next.status === "returned" && current?.status !== "returned") next.returnedAt = now;
+      break;
+    }
     case "deal": {
       if (typeof next.stage === "string") {
         // La probabilité suit l'étape, sauf si elle est saisie en même temps.

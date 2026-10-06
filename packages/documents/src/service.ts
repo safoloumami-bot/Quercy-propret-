@@ -1,4 +1,6 @@
 import {
+  RENTAL_PERIOD_LABELS,
+  rentalPeriods,
   DOCUMENT_TITLES,
   type DocumentKind,
   type DocumentLineInput,
@@ -590,5 +592,59 @@ export async function invoiceProjectTime(
     });
     await storeTotals(tx, organizationId, invoice.id);
     return { invoice, entries: entries.length };
+  });
+}
+
+/** Facture brouillon d'une location : périodes entamées × tarif, caution en ligne d'information. */
+export async function invoiceRental(
+  organizationId: string,
+  rentalId: string,
+  ownerId: string | null,
+) {
+  return prisma.$transaction(async (tx) => {
+    const rental = await tx.rental.findFirst({
+      where: { id: rentalId, organizationId, deletedAt: null },
+      include: { equipment: { select: { name: true } } },
+    });
+    if (!rental) throw new SalesError("Cette location n'existe pas.");
+    if (rental.invoiceId) throw new SalesError("Cette location est déjà facturée.");
+    if (rental.status === "cancelled")
+      throw new SalesError("Une location annulée ne se facture pas.");
+    if (!rental.companyId)
+      throw new SalesError("Choisissez le client de la location avant de facturer.");
+    if (rental.unitPriceCents <= 0) throw new SalesError("Renseignez le prix de la location.");
+    const quantity = rentalPeriods(rental.startDate, rental.endDate, rental.period);
+    const unit = RENTAL_PERIOD_LABELS[rental.period] ?? RENTAL_PERIOD_LABELS.day!;
+    const day = (d: Date) => d.toLocaleDateString("fr-FR", { timeZone: "UTC" });
+    const settings = await salesSettings(organizationId, tx);
+    const invoice = await tx.salesDocument.create({
+      data: {
+        organizationId,
+        kind: "INVOICE",
+        status: "draft",
+        companyId: rental.companyId,
+        ownerId: ownerId ?? rental.ownerId,
+        subject: `Location ${rental.reference ?? ""} — ${rental.equipment.name}`.replace("  ", " "),
+        paymentTermsDays: settings.paymentTermsDays,
+      },
+    });
+    await tx.salesDocumentLine.createMany({
+      data: [
+        {
+          documentId: invoice.id,
+          position: 0,
+          description: `Location ${rental.equipment.name} du ${day(rental.startDate)} au ${day(rental.endDate)} (${quantity} ${quantity > 1 ? unit.many : unit.one})`,
+          quantity,
+          unit: rental.period === "day" ? "day" : "unit",
+          unitPriceCents: rental.unitPriceCents,
+          discountPercent: 0,
+          vatRate: 20,
+          totalExclCents: lineTotalCents({ quantity, unitPriceCents: rental.unitPriceCents }),
+        },
+      ],
+    });
+    await tx.rental.update({ where: { id: rental.id }, data: { invoiceId: invoice.id } });
+    await storeTotals(tx, organizationId, invoice.id);
+    return { invoice };
   });
 }

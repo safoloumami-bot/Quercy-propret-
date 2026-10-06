@@ -381,3 +381,20 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
 121.  **L'écran « Accueil » séparé de la tournée** dans l'application viendra avec les finitions
       PWA (lot 9) ; en attendant, « Mes absences » s'ajoute sous la tournée, dans le style
       existant.
+
+## 2026-10-07 — Lot 7 de la feuille de route (matériel, véhicules, stock, location)
+
+122.  **Le journal du matériel s'écrit après coup** (`trackEquipment()`), quelle que soit la
+      source du changement (fiche, modification groupée, import, location) : une ligne
+      seulement si l'état ou l'affectation a changé.
+123.  **Toute période de location entamée est due** (semaine = 7 jours, mois = 30 jours,
+      bornes incluses) ; le chevauchement est refusé avant écriture, hors locations annulées
+      ou rendues.
+124.  **Le stock reste la somme des mouvements** ; l'emplacement est porté par le mouvement
+      (dépôt, véhicule, salarié ou site, un seul). Un transfert = une sortie + une entrée.
+125.  **La consommation d'un passage sort du véhicule de l'agent** s'il en a un, à la clôture ;
+      rejouer la clôture remplace les sorties du passage au lieu de les doubler.
+126.  **Le compteur kilométrique ne recule jamais** depuis l'application ; une panne met le
+      véhicule « en panne », c'est le responsable qui le remet en service.
+127.  **Une location facturée n'est jamais purgée** (la facture la cite) ; un matériel ou un
+      véhicule qui a des états des lieux, pannes ou locations reste en corbeille.
