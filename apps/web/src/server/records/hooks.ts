@@ -128,6 +128,16 @@ export function applyBusinessRules(
         )
           next.status = outAt ? "done" : inAt ? "in_progress" : merged.status;
       }
+      // Un supplément proposé (ou modifié) attend la validation du chef avant facturation.
+      if ("extraPriceCents" in next) {
+        if (current?.invoiceId)
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Passage déjà facturé : le supplément ne se modifie plus.",
+          });
+        if (next.extraPriceCents !== current?.extraPriceCents)
+          next.extraStatus = next.extraPriceCents ? "pending" : null;
+      }
       break;
     }
     case "inspection": {

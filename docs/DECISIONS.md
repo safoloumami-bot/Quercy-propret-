@@ -398,3 +398,20 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
       véhicule « en panne », c'est le responsable qui le remet en service.
 127.  **Une location facturée n'est jamais purgée** (la facture la cite) ; un matériel ou un
       véhicule qui a des états des lieux, pannes ou locations reste en corbeille.
+
+## 2026-10-08 — Lot 8 de la feuille de route (chiffrage, devis, contrats, facturation)
+
+128.  **Le chiffrage se saisit par passage** ; le forfait mensuel d'un récurrent = prix du
+      passage × passages par mois (jours de la semaine × 52 / 12).
+129.  **Les valeurs calculées sont enregistrées** (coût, prix minimum et conseillé, marge) pour
+      lister, trier et filtrer ; elles sont recalculées à chaque écriture.
+130.  **La marge minimale se règle par entreprise** (20 % par défaut) ; un patron
+      (propriétaire ou administrateur) qui valide couvre aussi la validation du chef.
+131.  **Une fois le devis créé, le chiffrage est figé** : changer le prix demande un nouveau
+      chiffrage, pour que le devis envoyé reste la référence.
+132.  **Un passage manqué est déduit au prorata du forfait** (forfait / passages prévus du
+      mois) ; un passage annulé ne compte pas.
+133.  **On ne facture qu'un mois terminé**, et chaque passage compté est rattaché à sa facture
+      (`Intervention.invoiceId`) : rejouer ne facture rien deux fois.
+134.  **Un supplément (`extraPriceCents`) attend la validation du chef** avant d'être facturé ;
+      le modifier le remet « à valider ».

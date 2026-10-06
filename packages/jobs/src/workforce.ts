@@ -98,3 +98,68 @@ export async function alertVehicleDues(now: Date = new Date()): Promise<number> 
   }
   return sent;
 }
+
+/**
+ * Contrats à l'année : à la date anniversaire, révision des prix (forfait et prix au passage
+ * augmentés du taux prévu) ; à l'échéance, reconduction tacite d'un an ou fin du contrat.
+ * Les responsables sont prévenus de chaque changement.
+ */
+export async function reviseContracts(now: Date = new Date()): Promise<number> {
+  const today = utcDay(now);
+  const contracts = await prisma.cleaningContract.findMany({
+    where: {
+      deletedAt: null,
+      status: "active",
+      OR: [
+        { priceRevisionPct: { not: null }, nextRevisionDate: { lte: today } },
+        { endDate: { lt: today } },
+      ],
+    },
+  });
+  let changed = 0;
+  const managersOf = new Map<string, string[]>();
+  for (const c of contracts) {
+    const messages: string[] = [];
+    const data: Record<string, unknown> = {};
+    if (c.priceRevisionPct && c.nextRevisionDate && c.nextRevisionDate <= today) {
+      const k = 1 + c.priceRevisionPct / 100;
+      if (c.monthlyPriceCents) data.monthlyPriceCents = Math.round(c.monthlyPriceCents * k);
+      if (c.visitPriceCents) data.visitPriceCents = Math.round(c.visitPriceCents * k);
+      const next = new Date(c.nextRevisionDate);
+      next.setUTCFullYear(next.getUTCFullYear() + 1);
+      data.nextRevisionDate = next;
+      messages.push(`Prix révisés de ${c.priceRevisionPct.toLocaleString("fr-FR")} %.`);
+    }
+    if (c.endDate && c.endDate < today) {
+      if (c.tacitRenewal) {
+        const end = new Date(c.endDate);
+        end.setUTCFullYear(end.getUTCFullYear() + 1);
+        data.endDate = end;
+        messages.push(
+          `Reconduit jusqu'au ${end.toLocaleDateString("fr-FR", { dateStyle: "long", timeZone: "UTC" })}.`,
+        );
+      } else {
+        data.status = "ended";
+        messages.push("Arrivé à échéance sans reconduction : contrat terminé.");
+      }
+    }
+    if (!messages.length) continue;
+    await prisma.cleaningContract.update({ where: { id: c.id }, data });
+    if (!managersOf.has(c.organizationId))
+      managersOf.set(c.organizationId, await cleaningManagerIds(c.organizationId));
+    const recipients = managersOf.get(c.organizationId)!;
+    if (recipients.length)
+      await prisma.notification.createMany({
+        data: recipients.map((userId) => ({
+          organizationId: c.organizationId,
+          userId,
+          type: "contract.revised",
+          title: `Contrat ${c.name}`,
+          body: messages.join(" "),
+          url: recordPath("cleaningContract", c.id),
+        })),
+      });
+    changed++;
+  }
+  return changed;
+}

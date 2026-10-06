@@ -67,6 +67,7 @@ export const TENANT_MODELS = [
   "Vehicle",
   "AssetReport",
   "Rental",
+  "Estimate",
   "SupplierPrice",
   "PurchaseOrderLine",
   "MissionConsumable",
@@ -117,6 +118,7 @@ export const SOFT_DELETE_MODELS = [
   "Equipment",
   "Vehicle",
   "Rental",
+  "Estimate",
 ] as const;
 
 const tenantModels = new Set<string>(TENANT_MODELS);

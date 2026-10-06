@@ -11,6 +11,8 @@ import { fieldRecordRouter } from "./routers/field-record";
 import { missionsRouter } from "./routers/missions";
 import { absencesRouter } from "./routers/absences";
 import { assetsRouter } from "./routers/assets";
+import { cleaningBillingRouter } from "./routers/cleaning-billing";
+import { estimatesRouter } from "./routers/estimates";
 import { routesRouter } from "./routers/routes";
 import { workersRouter } from "./routers/workers";
 import { auditRouter } from "./routers/audit";
@@ -71,6 +73,8 @@ export const appRouter = createTRPCRouter({
   missions: missionsRouter,
   absences: absencesRouter,
   assets: assetsRouter,
+  estimates: estimatesRouter,
+  cleaningBilling: cleaningBillingRouter,
   workers: workersRouter,
   routes: routesRouter,
 });

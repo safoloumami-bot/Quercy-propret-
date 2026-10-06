@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.10.0] — 2026-10-08 — Chiffrage, devis, contrats et facturation des passages (lot 8)
+
+### Ajouté
+
+- **Nettoyage › Chiffrages** : personnes, heures, coût horaire réel, kilomètres et coût au km,
+  temps de déplacement, produits, matériel, location, sous-traitance, autres coûts, marge
+  souhaitée. Calcul en direct : coût de revient, prix minimum, prix conseillé
+  (prix = coût / (1 − marge) ; 190 € à 32 % → 279,41 € HT), marge en € et en %, forfait
+  mensuel pour un récurrent.
+- **Validation** : le chiffrage part au chef, qui valide ou refuse (avec motif) ; sous la
+  marge minimale de l'entreprise, le patron valide aussi. Modifier un chiffrage validé le
+  renvoie en brouillon.
+- **Du chiffrage au contrat sans rien ressaisir** : « Créer le devis » (brouillon prêt à
+  envoyer), puis « Créer le contrat » ponctuel (son passage est planifié) ou récurrent (le
+  planning se remplit). Onglet « Récurrence » d'un contrat ponctuel : le passer en récurrent.
+- **Contrats à l'année** : type, mode de facturation (forfait mensuel ou au passage), prix
+  par passage, reconduction tacite, révision annuelle des prix. Chaque matin : révision à la
+  date anniversaire, reconduction d'un an ou fin du contrat, responsables prévenus.
+- **Nettoyage › Facturation des passages** : une facture brouillon par client et par mois,
+  détaillée par contrat et par site (ou cage) ; passages manqués déduits du forfait, passages
+  réalisés au prix prévu, suppléments ajoutés après validation. Un passage facturé ne l'est
+  jamais deux fois ; un mois se facture une fois terminé.
+- **Paramètres de vente › Chiffrage** : marge minimale, coût horaire et coût au km proposés.
+
 ## [1.9.0] — 2026-10-07 — Matériel, véhicules, stock et location (lot 7)
 
 ### Ajouté

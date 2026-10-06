@@ -100,6 +100,7 @@ export const ENTITY_KEYS = [
   "equipment",
   "vehicle",
   "rental",
+  "estimate",
 ] as const;
 export type EntityKey = (typeof ENTITY_KEYS)[number];
 
@@ -133,7 +134,8 @@ export type EntityModel =
   | "inspection"
   | "equipment"
   | "vehicle"
-  | "rental";
+  | "rental"
+  | "estimate";
 
 /** Affichages possibles d'une liste, en plus du tableau. */
 export interface EntityLayouts {

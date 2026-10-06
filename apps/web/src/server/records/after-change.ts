@@ -10,6 +10,7 @@ import {
   recomputeProductStock,
   trackEquipment,
 } from "../equipment/service";
+import { recomputeEstimates } from "../estimates/service";
 import { enqueueDeliveries, webhookEvent } from "../automations/webhooks";
 import { type RecordsCtx, delegate } from "./context";
 
@@ -33,6 +34,8 @@ export async function afterRecordChange(
   if (entity === "stockMovement") await syncStock(ctx, ids);
   if (entity === "equipment" && ids.length)
     await trackEquipment(ctx.organizationId, ids, ctx.user.id);
+  if (entity === "estimate" && ids.length && action !== "deleted")
+    await recomputeEstimates(ctx.organizationId, ids);
   if (entity === "rental" && ids.length)
     await afterRentalChange(ctx.organizationId, ids, ctx.user.id);
   if (entity === "bankTransaction" || entity === "bankAccount")

@@ -26,6 +26,34 @@ import { errorMessage, useTRPC } from "@/lib/trpc";
 
 type Output = z.output<typeof salesSettingsSchema>;
 
+/** Saisie en euros d'un montant stocké en centimes (vide = aucun). */
+function EuroInput({
+  id,
+  cents,
+  onChange,
+  disabled,
+}: {
+  id: string;
+  cents: number | null;
+  onChange: (cents: number | null) => void;
+  disabled: boolean;
+}) {
+  const [text, setText] = React.useState(cents === null ? "" : String(cents / 100));
+  return (
+    <Input
+      id={id}
+      inputMode="decimal"
+      value={text}
+      disabled={disabled}
+      onChange={(e) => {
+        const v = e.target.value.replace(/[^\d.,]/g, "");
+        setText(v);
+        onChange(v.trim() ? Math.round(Number(v.replace(",", ".")) * 100) || 0 : null);
+      }}
+    />
+  );
+}
+
 function Form({ defaults, canEdit }: { defaults: SalesSettingsInput; canEdit: boolean }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -117,6 +145,50 @@ function Form({ defaults, canEdit }: { defaults: SalesSettingsInput; canEdit: bo
               )}
             />
           </FormField>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        id="estimates"
+        title="Chiffrage"
+        description="Sous la marge minimale, un chiffrage doit aussi être validé par le patron. Les coûts sont proposés à chaque nouveau chiffrage."
+        footer={footer}
+      >
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            id="s-minMarginPct"
+            label="Marge minimale (%)"
+            error={errors.minMarginPct?.message}
+          >
+            <Input
+              {...fieldAria("s-minMarginPct", errors.minMarginPct?.message)}
+              type="number"
+              step="0.5"
+              {...form.register("minMarginPct", { valueAsNumber: true })}
+              disabled={!canEdit}
+            />
+          </FormField>
+          {(
+            [
+              ["defaultHourlyCostCents", "Coût horaire réel (€/h)"],
+              ["defaultKmCostCents", "Coût au kilomètre (€/km)"],
+            ] as const
+          ).map(([name, label]) => (
+            <FormField key={name} id={`s-${name}`} label={label}>
+              <Controller
+                control={form.control}
+                name={name}
+                render={({ field }) => (
+                  <EuroInput
+                    id={`s-${name}`}
+                    cents={field.value ?? null}
+                    onChange={field.onChange}
+                    disabled={!canEdit}
+                  />
+                )}
+              />
+            </FormField>
+          ))}
         </div>
       </SettingsSection>
 
@@ -402,6 +474,9 @@ export function SalesSettingsForm() {
           latePenaltyText: s.latePenaltyText ?? "",
           remindersEnabled: s.remindersEnabled,
           reminderDays: s.reminderDays,
+          minMarginPct: s.minMarginPct,
+          defaultHourlyCostCents: s.defaultHourlyCostCents,
+          defaultKmCostCents: s.defaultKmCostCents,
         }}
       />
       <StripeSection stripe={s.stripe} canEdit={s.canEdit} />

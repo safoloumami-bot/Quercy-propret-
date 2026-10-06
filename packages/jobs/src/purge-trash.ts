@@ -120,6 +120,7 @@ export async function purgeTrash(now: Date = new Date()): Promise<PurgeResult> {
     }),
     // Location facturée : la facture la cite, elle reste. Matériel : purgé avec son journal
     // de mouvements s'il n'a ni location ni état des lieux ; véhicule sans état des lieux.
+    prisma.estimate.deleteMany({ where: expired }),
     prisma.rental.deleteMany({ where: { ...expired, invoiceId: null } }),
     prisma.equipmentMovement.deleteMany({
       where: { equipment: { ...expired, rentals: { none: {} }, reports: { none: {} } } },

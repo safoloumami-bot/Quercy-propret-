@@ -234,5 +234,13 @@ export const salesSettingsSchema = z.object({
   latePenaltyText: z.string().trim().max(1000).nullable(),
   remindersEnabled: z.boolean(),
   reminderDays: z.array(z.number().int().min(1).max(365)).min(1).max(5),
+  /** Chiffrage : marge minimale (sous elle, le patron valide) et coûts proposés. */
+  minMarginPct: z
+    .number({ error: "Indiquez une marge en %." })
+    .min(0, { error: "Entre 0 et 90 %." })
+    .max(90, { error: "Entre 0 et 90 %." })
+    .default(20),
+  defaultHourlyCostCents: z.number().int().min(0).max(100_000).nullable().default(null),
+  defaultKmCostCents: z.number().int().min(0).max(10_000).nullable().default(null),
 });
 export type SalesSettingsInput = z.input<typeof salesSettingsSchema>;

@@ -9,7 +9,7 @@ import { prisma } from "@quercy/db";
 
 import { type AnomalyInput, reportAnomalies } from "./anomalies";
 import { recordInterventionEvents } from "./events";
-import { alertVehicleDues, alertWorkerDocuments } from "./workforce";
+import { alertVehicleDues, alertWorkerDocuments, reviseContracts } from "./workforce";
 import { generateSeriesInterventions } from "./recurrence";
 
 /** Horizon de planification : interventions créées pour les 3 prochaines semaines. */
@@ -24,6 +24,7 @@ export interface CleaningDailyResult {
   anomalies: number;
   documentAlerts: number;
   vehicleAlerts: number;
+  revisedContracts: number;
 }
 
 /**
@@ -78,6 +79,8 @@ export async function generateInterventions(
 
 /** Tâche quotidienne : planning des contrats et interventions oubliées. */
 export async function runCleaningDaily(now: Date = new Date()): Promise<CleaningDailyResult> {
+  // Échéances des contrats d'abord : un contrat terminé ne génère plus de passages.
+  const revisedContracts = await reviseContracts(now);
   const legacy = await generateInterventions({ now });
   const fromSeries = await generateSeriesInterventions({ now });
   const planned = {
@@ -107,7 +110,14 @@ export async function runCleaningDaily(now: Date = new Date()): Promise<Cleaning
   const anomalies = await detectAnomalies(now, forgotten);
   const documentAlerts = await alertWorkerDocuments(now);
   const vehicleAlerts = await alertVehicleDues(now);
-  return { ...planned, missed: missed.count, anomalies, documentAlerts, vehicleAlerts };
+  return {
+    ...planned,
+    missed: missed.count,
+    anomalies,
+    documentAlerts,
+    vehicleAlerts,
+    revisedContracts,
+  };
 }
 
 /** Fenêtre de rattrapage des anomalies de pointage (pointages synchronisés en retard). */

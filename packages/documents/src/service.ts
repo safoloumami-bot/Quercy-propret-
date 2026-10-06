@@ -648,3 +648,144 @@ export async function invoiceRental(
     return { invoice };
   });
 }
+
+// ─────────────────────────── Chiffrage et passages ───────────────────────────
+
+const WEEKDAY_NAMES: Record<string, string> = {
+  "1": "lundi",
+  "2": "mardi",
+  "3": "mercredi",
+  "4": "jeudi",
+  "5": "vendredi",
+  "6": "samedi",
+  "0": "dimanche",
+};
+
+/** Devis brouillon depuis un chiffrage validé, sans rien ressaisir. */
+export async function quoteFromEstimate(
+  organizationId: string,
+  estimateId: string,
+  ownerId: string | null,
+) {
+  return prisma.$transaction(async (tx) => {
+    const estimate = await tx.estimate.findFirst({
+      where: { id: estimateId, organizationId, deletedAt: null },
+      include: { site: { select: { name: true } } },
+    });
+    if (!estimate) throw new SalesError("Ce chiffrage n'existe pas.");
+    if (estimate.quoteId) throw new SalesError("Le devis de ce chiffrage existe déjà.");
+    if (estimate.status !== "approved")
+      throw new SalesError("Le chiffrage doit être validé avant d'en faire un devis.");
+    if (!estimate.companyId) throw new SalesError("Choisissez le client du chiffrage.");
+    const price = estimate.priceCents ?? estimate.advisedPriceCents;
+    const settings = await salesSettings(organizationId, tx);
+    const where = estimate.site ? ` — ${estimate.site.name}` : "";
+    const days = estimate.weekdays.map((d) => WEEKDAY_NAMES[d] ?? d).join(", ");
+    const line =
+      estimate.kind === "recurring"
+        ? {
+            description: `${estimate.title}${where} : forfait mensuel${days ? ` (passages le ${days})` : ""}`,
+            quantity: 1,
+            unit: "month",
+            unitPriceCents: estimate.monthlyPriceCents ?? price,
+          }
+        : {
+            description: `${estimate.title}${where}`,
+            quantity: 1,
+            unit: "flat",
+            unitPriceCents: price,
+          };
+    const quote = await tx.salesDocument.create({
+      data: {
+        organizationId,
+        kind: "QUOTE",
+        status: "draft",
+        companyId: estimate.companyId,
+        ownerId: ownerId ?? estimate.ownerId,
+        subject: estimate.title,
+        notes: estimate.notes,
+        paymentTermsDays: settings.paymentTermsDays,
+        dueDate: addDays(startOfDayUtc(new Date()), settings.quoteValidityDays),
+      },
+    });
+    await tx.salesDocumentLine.create({
+      data: {
+        documentId: quote.id,
+        position: 0,
+        ...line,
+        discountPercent: 0,
+        vatRate: 20,
+        totalExclCents: lineTotalCents({ quantity: 1, unitPriceCents: line.unitPriceCents }),
+      },
+    });
+    await tx.estimate.update({
+      where: { id: estimate.id },
+      data: { quoteId: quote.id, status: "quoted" },
+    });
+    await storeTotals(tx, organizationId, quote.id);
+    return { quote };
+  });
+}
+
+/**
+ * Facture brouillon d'un client pour un mois de passages : une ligne par contrat et par site
+ * (ou cage), manqués déduits, extras validés ; les passages comptés sont rattachés à la
+ * facture pour ne jamais être facturés deux fois.
+ */
+export async function invoicePeriod(input: {
+  organizationId: string;
+  companyId: string;
+  period: string;
+  periodLabel: string;
+  lines: { description: string; quantity: number; unitPriceCents: number }[];
+  interventionIds: string[];
+  ownerId: string | null;
+}) {
+  return prisma.$transaction(async (tx) => {
+    const twin = await tx.salesDocument.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        companyId: input.companyId,
+        kind: "INVOICE",
+        billingPeriod: input.period,
+        deletedAt: null,
+        status: { not: "cancelled" },
+      },
+      select: { id: true },
+    });
+    if (twin) throw new SalesError("Ce client a déjà sa facture pour ce mois.");
+    if (!input.lines.length) throw new SalesError("Rien à facturer pour ce client.");
+    const settings = await salesSettings(input.organizationId, tx);
+    const invoice = await tx.salesDocument.create({
+      data: {
+        organizationId: input.organizationId,
+        kind: "INVOICE",
+        status: "draft",
+        companyId: input.companyId,
+        ownerId: input.ownerId,
+        subject: `Prestations de nettoyage — ${input.periodLabel}`,
+        billingPeriod: input.period,
+        paymentTermsDays: settings.paymentTermsDays,
+      },
+    });
+    await tx.salesDocumentLine.createMany({
+      data: input.lines.map((l, i) => ({
+        documentId: invoice.id,
+        position: i,
+        description: l.description,
+        quantity: l.quantity,
+        unit: "unit",
+        unitPriceCents: l.unitPriceCents,
+        discountPercent: 0,
+        vatRate: 20,
+        totalExclCents: lineTotalCents(l),
+      })),
+    });
+    await tx.intervention.updateMany({
+      where: { organizationId: input.organizationId, id: { in: input.interventionIds } },
+      data: { invoiceId: invoice.id },
+    });
+    await storeTotals(tx, input.organizationId, invoice.id);
+    return { invoice };
+  });
+}

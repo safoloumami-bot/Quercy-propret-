@@ -142,6 +142,17 @@ mission, repris dans `InterventionConsumable.productId`, sortis du stock par
 `apps/web/src/server/equipment/service.ts`. Routeur tRPC `assets` ; onglets dans
 `components/equipment/asset-tabs.tsx`.
 
+**Chiffrage, contrats, facturation des passages** (lot 8) : `Estimate` (saisies par passage ;
+`computeEstimate()` et `billingLines()` dans `packages/core/src/estimates.ts` ;
+`recomputeEstimates()` après chaque écriture), routeur `estimates` (enregistrer, soumettre,
+valider chef puis patron sous `SalesSettings.minMarginPct`, refuser, `quoteFromEstimate()`,
+contrat ponctuel ou récurrent, `makeRecurring`). `CleaningContract` gagne `kind`,
+`billingMode`, `visitPriceCents`, `tacitRenewal`, `priceRevisionPct`, `nextRevisionDate`
+(`reviseContracts()` dans la tâche quotidienne). Facturation : `billingPreview()`
+(`apps/web/src/server/cleaning/billing.ts`) et `invoicePeriod()` de `@quercy/documents`,
+une facture par client (`SalesDocument.billingPeriod`), passages rattachés par
+`Intervention.invoiceId` ; routeur `cleaningBilling`.
+
 ## Authentification
 
 Better Auth (`apps/web/src/server/auth.ts`), avec l'adaptateur Prisma :

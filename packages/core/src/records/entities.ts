@@ -429,6 +429,37 @@ export const INTERVENTION_STATUSES: FieldOption[] = [
   { value: "cancelled", label: "Annulée", tone: "neutral" },
 ];
 
+export const CONTRACT_KINDS: FieldOption[] = [
+  { value: "recurring", label: "Récurrent (à l'année)", tone: "primary" },
+  { value: "one_off", label: "Ponctuel", tone: "neutral" },
+];
+
+export const CONTRACT_BILLING_MODES: FieldOption[] = [
+  { value: "monthly", label: "Forfait mensuel" },
+  { value: "per_visit", label: "Au passage réalisé" },
+];
+
+export const EXTRA_STATUSES: FieldOption[] = [
+  { value: "pending", label: "Supplément à valider", tone: "warning" },
+  { value: "approved", label: "Supplément validé", tone: "success" },
+  { value: "rejected", label: "Supplément refusé", tone: "neutral" },
+];
+
+export const ESTIMATE_KINDS: FieldOption[] = [
+  { value: "one_off", label: "Ponctuel" },
+  { value: "recurring", label: "Récurrent" },
+];
+
+export const ESTIMATE_STATUSES: FieldOption[] = [
+  { value: "draft", label: "Brouillon", tone: "neutral" },
+  { value: "submitted", label: "À valider", tone: "warning" },
+  { value: "approved", label: "Validé", tone: "info" },
+  { value: "rejected", label: "Refusé", tone: "danger" },
+  { value: "quoted", label: "Devis envoyé", tone: "primary" },
+  { value: "won", label: "Contrat signé", tone: "success" },
+  { value: "lost", label: "Perdu", tone: "neutral" },
+];
+
 export const EQUIPMENT_STATUSES: FieldOption[] = [
   { value: "in_stock", label: "En stock", tone: "success" },
   { value: "assigned_agent", label: "Affecté à un salarié", tone: "info" },
@@ -1871,8 +1902,38 @@ export const ENTITIES: Record<EntityKey, EntityDef> = {
         notNull: false,
         defaultVisible: true,
       }),
+      choice("kind", "Type de contrat", CONTRACT_KINDS, {
+        defaultValue: "recurring",
+        required: true,
+        notNull: true,
+      }),
+      choice("billingMode", "Facturation", CONTRACT_BILLING_MODES, {
+        defaultValue: "monthly",
+        required: true,
+        notNull: true,
+      }),
+      amount("visitPriceCents", "Prix HT par passage"),
       date("startDate", "Début"),
       date("endDate", "Fin"),
+      {
+        key: "tacitRenewal",
+        label: "Reconduction tacite",
+        type: "boolean",
+        editable: true,
+        filterable: true,
+        notNull: true,
+        width: 140,
+      },
+      {
+        key: "priceRevisionPct",
+        label: "Révision annuelle des prix",
+        type: "percent",
+        editable: true,
+        sortable: true,
+        filterable: true,
+        width: 140,
+      },
+      date("nextRevisionDate", "Prochaine révision"),
       date("generatedUntil", "Planning généré jusqu'au", { editable: false }),
       longtext("description", "Prestations incluses"),
       owner("Responsable"),
@@ -1916,6 +1977,9 @@ export const ENTITIES: Record<EntityKey, EntityDef> = {
       relation("siteId", "Site", "site", { defaultVisible: true }),
       relation("companyId", "Client", "company"),
       relation("contractId", "Contrat", "cleaningContract"),
+      amount("extraPriceCents", "Supplément HT (hors contrat)"),
+      choice("extraStatus", "Supplément", EXTRA_STATUSES, { editable: false }),
+      relation("invoiceId", "Facturé sur", "invoice", { editable: false }),
       owner("Agent", true),
       choice("status", "Statut", INTERVENTION_STATUSES, {
         defaultValue: "planned",
@@ -2175,6 +2239,69 @@ export const ENTITIES: Record<EntityKey, EntityDef> = {
         defaultVisible: true,
       }),
       relation("invoiceId", "Facture", "invoice", { editable: false, defaultVisible: true }),
+      longtext("notes", "Notes"),
+      owner("Responsable"),
+      TAGS,
+      ...SYSTEM_FIELDS,
+    ],
+  },
+  estimate: {
+    key: "estimate",
+    module: "cleaning",
+    model: "estimate",
+    slug: "chiffrages",
+    label: "Chiffrage",
+    labelPlural: "Chiffrages",
+    feminine: false,
+    titleFields: ["title"],
+    emptyTitle: "Chiffrage",
+    subtitleFields: ["reference"],
+    searchFields: ["title", "reference", "notes"],
+    defaultSort: { field: "createdAt", direction: "desc" },
+    layouts: { board: { field: "status", sum: "advisedPriceCents" } },
+    fields: [
+      text("title", "Prestation", { required: true, defaultVisible: true, width: 260 }),
+      text("reference", "Référence", { editable: false, defaultVisible: true, width: 140 }),
+      relation("companyId", "Client", "company", { defaultVisible: true }),
+      relation("siteId", "Site", "site"),
+      choice("kind", "Type", ESTIMATE_KINDS, {
+        defaultValue: "one_off",
+        required: true,
+        notNull: true,
+        defaultVisible: true,
+        width: 110,
+      }),
+      choice("status", "Statut", ESTIMATE_STATUSES, {
+        defaultValue: "draft",
+        notNull: true,
+        editable: false,
+        defaultVisible: true,
+      }),
+      amount("costCents", "Coût de revient", {
+        editable: false,
+        notNull: true,
+        defaultVisible: true,
+      }),
+      amount("minPriceCents", "Prix minimum HT", { editable: false, notNull: true }),
+      amount("advisedPriceCents", "Prix conseillé HT", {
+        editable: false,
+        notNull: true,
+        defaultVisible: true,
+      }),
+      amount("priceCents", "Prix retenu HT"),
+      {
+        key: "marginPct",
+        label: "Marge",
+        type: "percent",
+        sortable: true,
+        filterable: true,
+        aggregate: "avg",
+        defaultVisible: true,
+        width: 100,
+      },
+      amount("monthlyPriceCents", "Prix mensuel HT", { editable: false }),
+      relation("quoteId", "Devis", "quote", { editable: false }),
+      relation("contractId", "Contrat", "cleaningContract", { editable: false }),
       longtext("notes", "Notes"),
       owner("Responsable"),
       TAGS,

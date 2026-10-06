@@ -14,6 +14,7 @@ import {
   SupplierPricesTab,
   VehicleTab,
 } from "@/components/equipment/asset-tabs";
+import { ContractRecurrenceTab, EstimateTab } from "@/components/estimates/estimate-tab";
 import { useAccess } from "@/components/shell/access-context";
 
 interface ExtraTab {
@@ -47,6 +48,22 @@ const EXTRA_TABS: Partial<Record<EntityKey, ExtraTab[]>> = {
       label: "Vue d'ensemble",
       module: "cleaning",
       render: (id) => <ClientOverview companyId={id} />,
+    },
+  ],
+  estimate: [
+    {
+      value: "calcul",
+      label: "Calcul et validation",
+      module: "cleaning",
+      render: (id) => <EstimateTab estimateId={id} />,
+    },
+  ],
+  cleaningContract: [
+    {
+      value: "recurrence",
+      label: "Récurrence",
+      module: "cleaning",
+      render: (id) => <ContractRecurrenceTab contractId={id} />,
     },
   ],
   equipment: [

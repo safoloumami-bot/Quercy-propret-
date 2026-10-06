@@ -107,16 +107,19 @@ model User {
   replacementsDone     Intervention[]          @relation("InterventionReplacement")
   interventionsActual  Intervention[]          @relation("InterventionActual")
 
-  apiKeys           ApiKey[]            @relation("ApiKeyUser")
-  equipmentOwned    Equipment[]         @relation("EquipmentOwner")
-  equipmentAssigned Equipment[]         @relation("EquipmentAssignee")
-  equipmentMoves    EquipmentMovement[] @relation("EquipmentMover")
-  vehiclesOwned     Vehicle[]           @relation("VehicleOwner")
-  vehiclesAssigned  Vehicle[]           @relation("VehicleAssignee")
-  assetReports      AssetReport[]       @relation("AssetReporter")
-  assetResolutions  AssetReport[]       @relation("AssetResolver")
-  rentalsOwned      Rental[]            @relation("RentalOwner")
-  stockHeld         StockMovement[]     @relation("StockMovementHolder")
+  apiKeys                ApiKey[]            @relation("ApiKeyUser")
+  equipmentOwned         Equipment[]         @relation("EquipmentOwner")
+  equipmentAssigned      Equipment[]         @relation("EquipmentAssignee")
+  equipmentMoves         EquipmentMovement[] @relation("EquipmentMover")
+  vehiclesOwned          Vehicle[]           @relation("VehicleOwner")
+  vehiclesAssigned       Vehicle[]           @relation("VehicleAssignee")
+  assetReports           AssetReport[]       @relation("AssetReporter")
+  assetResolutions       AssetReport[]       @relation("AssetResolver")
+  rentalsOwned           Rental[]            @relation("RentalOwner")
+  stockHeld              StockMovement[]     @relation("StockMovementHolder")
+  estimatesOwned         Estimate[]          @relation("EstimateOwner")
+  estimatesApproved      Estimate[]          @relation("EstimateApprover")
+  estimatesOwnerApproved Estimate[]          @relation("EstimateOwnerApprover")
 
   @@map("user")
 }
@@ -324,6 +327,7 @@ model Organization {
   supplierPrices     SupplierPrice[]
   purchaseOrderLines PurchaseOrderLine[]
   missionConsumables MissionConsumable[]
+  estimates          Estimate[]
 
   @@map("organization")
 }
@@ -575,6 +579,7 @@ model Company {
   cleaningContracts CleaningContract[] @relation("CleaningContractCompany")
   interventions     Intervention[]     @relation("InterventionCompany")
   rentals           Rental[]           @relation("RentalCompany")
+  estimates         Estimate[]         @relation("EstimateCompany")
 
   @@index([organizationId, deletedAt, name])
   @@index([organizationId, ownerId])
@@ -836,6 +841,8 @@ model SalesDocument {
   sourceId          String?
   /// Facture corrigée par un avoir.
   creditedInvoiceId String?
+  /// Facturation des passages : mois facturé (« 2026-10 »), une facture par client.
+  billingPeriod     String?
   /// Facturation récurrente : monthly, quarterly, yearly.
   interval          String?
   nextRunAt         DateTime?
@@ -870,6 +877,8 @@ model SalesDocument {
 
   bankTransactionInvoices BankTransaction[] @relation("BankTransactionInvoice")
   rentals                 Rental[]          @relation("RentalInvoice")
+  estimates               Estimate[]        @relation("EstimateQuote")
+  billedInterventions     Intervention[]    @relation("InterventionInvoice")
 
   @@unique([organizationId, kind, number])
   @@index([organizationId, kind, deletedAt, status])
@@ -944,6 +953,11 @@ model SalesSettings {
   creditNotePrefix       String   @default("AV")
   paymentTermsDays       Int      @default(30)
   quoteValidityDays      Int      @default(30)
+  /// Chiffrage : sous cette marge (en %), le patron valide aussi.
+  minMarginPct           Float    @default(20)
+  /// Chiffrage : valeurs proposées par défaut.
+  defaultHourlyCostCents Int?
+  defaultKmCostCents     Int?
   footer                 String?
   latePenaltyText        String?
   remindersEnabled       Boolean  @default(true)
@@ -1714,6 +1728,7 @@ model Site {
   equipment      Equipment[]         @relation("EquipmentSite")
   rentals        Rental[]            @relation("RentalSite")
   stockMovements StockMovement[]     @relation("StockMovementSite")
+  estimates      Estimate[]          @relation("EstimateSite")
 
   @@unique([organizationId, code])
   @@index([organizationId, deletedAt])
@@ -1733,6 +1748,15 @@ model CleaningContract {
   durationMinutes   Int?
   agentId           String?
   monthlyPriceCents Int?
+  /// recurring (à l'année) ou one_off (ponctuel) ; un ponctuel peut devenir récurrent.
+  kind              String    @default("recurring")
+  /// monthly (forfait mensuel, manqués déduits) ou per_visit (passages réalisés).
+  billingMode       String    @default("monthly")
+  visitPriceCents   Int?
+  tacitRenewal      Boolean   @default(false)
+  /// Révision annuelle des prix (en %), à la date anniversaire.
+  priceRevisionPct  Float?
+  nextRevisionDate  DateTime?
   startDate         DateTime?
   endDate           DateTime?
   generatedUntil    DateTime?
@@ -1751,6 +1775,7 @@ model CleaningContract {
   site          Site           @relation("CleaningContractSite", fields: [siteId], references: [id], onDelete: Cascade)
   interventions Intervention[] @relation("InterventionContract")
   serviceLines  ServiceLine[]
+  estimates     Estimate[]     @relation("EstimateContract")
 
   @@index([organizationId, deletedAt])
   @@map("cleaning_contract")
@@ -1778,6 +1803,12 @@ model Intervention {
   notes               String?
   /// Numéro du bon d'intervention, attribué à la clôture depuis l'application terrain.
   reportNumber        String?
+  /// Passage hors contrat facturé en plus : prix proposé, puis validé avant facturation.
+  extraPriceCents     Int?
+  /// pending, approved, rejected
+  extraStatus         String?
+  /// Facture qui a compté ce passage (facturation des passages).
+  invoiceId           String?
   /// Prestation contractuelle, série de récurrence et version de règle qui l'ont générée.
   serviceLineId       String?
   seriesId            String?
@@ -1814,6 +1845,7 @@ model Intervention {
   ruleVersion      RecurrenceRuleVersion?   @relation(fields: [ruleVersionId], references: [id], onDelete: NoAction)
   replacementAgent User?                    @relation("InterventionReplacement", fields: [replacementAgentId], references: [id], onDelete: SetNull)
   actualAgent      User?                    @relation("InterventionActual", fields: [actualAgentId], references: [id], onDelete: SetNull)
+  invoice          SalesDocument?           @relation("InterventionInvoice", fields: [invoiceId], references: [id], onDelete: SetNull)
   events           InterventionEvent[]
   proofs           InterventionProof[]
   anomalies        Anomaly[]
@@ -2624,4 +2656,72 @@ model MissionConsumable {
 
   @@index([sheetId, sortOrder])
   @@map("mission_consumable")
+}
+
+/// Chiffrage d'une prestation (saisies par passage) : validé par le chef, et par le patron
+/// sous la marge minimale ; il devient un devis, puis un contrat ponctuel ou récurrent.
+model Estimate {
+  id                    String    @id @default(cuid())
+  organizationId        String
+  reference             String?
+  title                 String
+  companyId             String?
+  siteId                String?
+  /// one_off (ponctuel) ou recurring
+  kind                  String    @default("one_off")
+  /// draft, submitted, approved, rejected, quoted, won, lost
+  status                String    @default("draft")
+  people                Int       @default(1)
+  hoursPerPerson        Float     @default(1)
+  hourlyCostCents       Int       @default(0)
+  km                    Float     @default(0)
+  kmCostCents           Int       @default(0)
+  travelMinutes         Int       @default(0)
+  productsCents         Int       @default(0)
+  equipmentCents        Int       @default(0)
+  rentalCents           Int       @default(0)
+  subcontractCents      Int       @default(0)
+  otherCents            Int       @default(0)
+  targetMarginPct       Float     @default(30)
+  /// Prix retenu par passage (à défaut : prix conseillé).
+  priceCents            Int?
+  weekdays              String[]  @default([])
+  startTime             String?
+  startDate             DateTime?
+  endDate               DateTime?
+  /// Calculés à chaque écriture.
+  costCents             Int       @default(0)
+  minPriceCents         Int       @default(0)
+  advisedPriceCents     Int       @default(0)
+  marginPct             Float?
+  monthlyPriceCents     Int?
+  ownerApprovalRequired Boolean   @default(false)
+  submittedAt           DateTime?
+  approvedById          String?
+  approvedAt            DateTime?
+  ownerApprovedById     String?
+  ownerApprovedAt       DateTime?
+  rejectionReason       String?
+  quoteId               String?
+  contractId            String?
+  notes                 String?
+  ownerId               String?
+  tags                  String[]  @default([])
+  customFields          Json      @default("{}")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company         Company?          @relation("EstimateCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  site            Site?             @relation("EstimateSite", fields: [siteId], references: [id], onDelete: SetNull)
+  owner           User?             @relation("EstimateOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  approvedBy      User?             @relation("EstimateApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  ownerApprovedBy User?             @relation("EstimateOwnerApprover", fields: [ownerApprovedById], references: [id], onDelete: SetNull)
+  quote           SalesDocument?    @relation("EstimateQuote", fields: [quoteId], references: [id], onDelete: SetNull)
+  contract        CleaningContract? @relation("EstimateContract", fields: [contractId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, deletedAt])
+  @@index([organizationId, status])
+  @@map("estimate")
 }

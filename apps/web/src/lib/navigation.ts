@@ -56,6 +56,8 @@ import {
   ClipboardCheckIcon,
   WrenchIcon,
   CarIcon,
+  CalculatorIcon,
+  ReceiptEuroIcon,
   CalendarClockIcon,
   CalendarRangeIcon,
   QrCodeIcon,
@@ -152,6 +154,7 @@ export const ENTITY_ICONS: Record<EntityKey, LucideIcon> = {
   equipment: WrenchIcon,
   vehicle: CarIcon,
   rental: CalendarClockIcon,
+  estimate: CalculatorIcon,
 };
 
 function entityItem(
@@ -415,6 +418,23 @@ export const MODULE_SECTIONS: NavSection[] = [
         "cleaning",
         ["récurrent", "forfait", "abonnement"],
       ),
+      entityItem(
+        "cleaning-estimates",
+        "/nettoyage/chiffrages",
+        "Chiffrages",
+        "estimate",
+        "cleaning",
+        ["devis", "prix", "marge", "coût de revient"],
+      ),
+      {
+        id: "cleaning-billing",
+        href: "/nettoyage/facturation",
+        label: "Facturation des passages",
+        icon: ReceiptEuroIcon,
+        keywords: ["facture mensuelle", "récurrent", "syndic", "suppléments", "manqués"],
+        permission: ["cleaning", "update"],
+        module: "cleaning",
+      },
       entityItem(
         "cleaning-inspections",
         "/nettoyage/controles",
