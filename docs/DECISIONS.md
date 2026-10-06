@@ -331,3 +331,21 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
       les remplaçants restent réservés aux responsables.
 105.  **Chevauchement signalé, jamais bloquant** : un remplacement ou un renfort peut être
       voulu ; le planning l'affiche, le responsable décide.
+
+## 2026-10-06 — Lot 4 de la feuille de route (application terrain, anomalies)
+
+106.  **Le relevé quitte le JSON, l'application ne change pas** : la migration reprend
+      chaque point, consommable, photo et ligne de journal (une action déjà inscrite au
+      journal des évènements reçoit seulement son libellé), puis retire ces clés de
+      `fieldData`. Le serveur reconstruit exactement la réponse attendue par le téléphone.
+107.  **Un ajout dans l'application, pas de refonte** : le bloc « Anomalie sur le site »
+      reprend les styles existants et la file d'attente hors réseau. C'est la seule
+      évolution de l'écran demandée par la feuille de route.
+108.  **Détection sans tâche toutes les 10 minutes** : les crédits Netlify sont comptés. Les
+      contrôles se font au moment du pointage et de la clôture, et la tâche quotidienne
+      rattrape les pointages synchronisés en retard (trois jours) et les passages manqués.
+109.  **Les détections automatiques restent chez les responsables** : l'agent ne voit dans
+      l'application que ce qu'il a signalé lui-même, jamais « hors créneau » ou « durée
+      anormale » (à vérifier avant d'en parler).
+110.  **Une anomalie saisie par un responsable est validée d'office** ; une anomalie rejetée
+      ou rouverte perd sa visibilité client.

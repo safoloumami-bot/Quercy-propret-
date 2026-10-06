@@ -92,6 +92,20 @@ d'ensemble client réunit les sites du client et leurs sous-sites (passages du m
 réalisation, prochains passages, anomalies, qualité). `findConflicts()` signale au planning un
 intervenant prévu à deux endroits en même temps, sans bloquer.
 
+**Relevé terrain et anomalies** (lot 4) : l'application terrain écrit dans
+`InterventionTask` (points de contrôle, ordre `sortOrder`), `InterventionConsumable`,
+`InterventionProof` (photos ; `clientRef` = identifiant du téléphone, renvoi sans doublon) et
+`InterventionEvent` (journal ; `metadata.label/detail/by` gardent le libellé affiché).
+`intervention.fieldData` ne garde que l'état propre à l'application (grille, coordonnées saisies,
+pointages hors réseau, clôture). `apps/web/src/server/terrain/chantier.ts` reconstruit la fiche
+au format d'origine. Les anomalies passent par `reportAnomalies()` (`packages/jobs`) : statut
+`reported`, clé `dedupeKey` anti-doublon, évènement au journal, notification aux responsables
+(droit de modification « tout » ou « équipe » sur le module). Le circuit (`anomalyTransition`,
+`anomalyClientEligible`, `packages/core/src/anomalies.ts`) est servi par le routeur tRPC
+`anomalies` ; `fieldRecord.get` alimente l'onglet « Relevé terrain ». Détection :
+`detectPointageAnomalies()` au pointage (application et logiciel) et `detectAnomalies()` dans
+la tâche quotidienne (rattrapage sur trois jours, passages manqués, contrôles non conformes).
+
 ## Authentification
 
 Better Auth (`apps/web/src/server/auth.ts`), avec l'adaptateur Prisma :

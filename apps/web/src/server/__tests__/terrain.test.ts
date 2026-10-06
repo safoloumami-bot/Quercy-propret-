@@ -85,6 +85,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await prisma.interventionEvent.deleteMany({ where: { organizationId: orgId } });
+  // Preuves et anomalies tiennent leurs fichiers : on les retire avant les auteurs.
+  await prisma.interventionProof.deleteMany({ where: { organizationId: orgId } });
+  await prisma.anomaly.deleteMany({ where: { organizationId: orgId } });
   await prisma.user.deleteMany({ where: { email: { endsWith: `@terrain.${slug}.invalid` } } });
   await fx.cleanup();
   await prisma.$disconnect();
@@ -344,6 +347,127 @@ describe("chantier de bout en bout", () => {
       where: { organizationId: orgId, entityId: ch.id, action: "intervention.closed" },
     });
     expect(audit).toBe(1);
+
+    // Le relevé est dans ses tables, plus dans le JSON de l'intervention.
+    expect(Object.keys(saved.fieldData as object).sort()).not.toEqual(
+      expect.arrayContaining(["pieces"]),
+    );
+    for (const key of ["pieces", "cons", "photos", "journal"])
+      expect(saved.fieldData as object).not.toHaveProperty(key);
+    const tasks = await prisma.interventionTask.findMany({
+      where: { interventionId: ch.id },
+      orderBy: { sortOrder: "asc" },
+    });
+    expect(tasks).toHaveLength(
+      ch.pieces.reduce((n: number, p: { items: unknown[] }) => n + p.items.length, 0),
+    );
+    const failedTask = tasks.find((t) => !t.done)!;
+    expect(failedTask).toMatchObject({
+      critical: true,
+      reason: "Distributeur de savon cassé, signalé au client.",
+    });
+    expect(tasks.find((t) => t.done)).toMatchObject({ doneById: memberId });
+    const consumables = await prisma.interventionConsumable.findMany({
+      where: { interventionId: ch.id },
+      orderBy: { sortOrder: "asc" },
+    });
+    expect(consumables.map((c) => c.quantity).slice(0, 3)).toEqual([2, 1, 0]);
+    const proofs = await prisma.interventionProof.findMany({ where: { interventionId: ch.id } });
+    expect(proofs).toEqual([
+      expect.objectContaining({
+        type: "photo_before",
+        clientRef: "photo-1",
+        area: "Sanitaires",
+        authorId: memberId,
+        fileId: files[0]!.id,
+      }),
+    ]);
+    // Détections automatiques : au responsable seulement, pas dans la fiche de l'agent.
+    expect(closed.data!.chantier.anomalies).toEqual([]);
+    expect(closed.data!.chantier.journal.map((j: { a: string }) => j.a)).not.toContain(
+      "Anomalie signalée",
+    );
+    const journal = closed.data!.chantier.journal as { a: string; d: string; par: string }[];
+    expect(journal.find((j) => j.a === "Réserve")).toMatchObject({ par: "Sandrine Lacombe" });
+    expect(journal.filter((j) => j.a === "Point validé").length).toBeGreaterThan(3);
+    expect(closed.data!.chantier.photos).toEqual([
+      expect.objectContaining({ id: "photo-1", piece: "Sanitaires", slot: "avant" }),
+    ]);
+
+    // Point critique non fait et durée anormale : anomalies au responsable, pas au client.
+    const anomalies = await prisma.anomaly.findMany({ where: { interventionId: ch.id } });
+    expect(anomalies.map((a) => a.type)).toEqual(
+      expect.arrayContaining(["critical_point", "abnormal_duration"]),
+    );
+    expect(anomalies.every((a) => a.status === "reported" && !a.visibleToClient)).toBe(true);
+    const notified = await prisma.notification.findMany({
+      where: { organizationId: orgId, type: "anomaly.reported" },
+    });
+    expect(notified.some((n) => n.userId === ownerId)).toBe(true);
+    expect(notified.some((n) => n.userId === memberId)).toBe(false);
+  });
+
+  it("l'agent signale une anomalie, sans doublon en cas de renvoi hors réseau", async () => {
+    const site = await prisma.site.create({
+      data: { organizationId: orgId, name: "Résidence du Lot", city: "Cahors" },
+    });
+    const day = new Date(`${dayKey(new Date())}T00:00:00.000Z`);
+    const karim = await prisma.fieldAccess.findFirstOrThrow({
+      where: { organizationId: orgId, code: "karim" },
+    });
+    // Sandrine est prévue, Karim la remplace : il voit et traite le passage.
+    const visit = await prisma.intervention.create({
+      data: {
+        organizationId: orgId,
+        title: "Entretien des parties communes",
+        siteId: site.id,
+        ownerId: memberId,
+        replacementAgentId: karim.userId,
+        date: day,
+        startTime: "08:00",
+        durationMinutes: 60,
+      },
+    });
+    const agent = phone();
+    await agent("connexion", { code: "karim", pin: "975310" });
+    const tour = (await agent(`tournee?d=${dayKey(day)}`)).data!.chantiers as { id: string }[];
+    expect(tour.map((t) => t.id)).toContain(visit.id);
+    const fiche = (await agent(`chantier?id=${visit.id}`)).data!.chantier;
+    expect(fiche.typesAnomalie.map((t: { value: string }) => t.value)).toContain("leak");
+    expect(fiche.anomalies).toEqual([]);
+
+    expect((await agent("anomalie", { id: visit.id, type: "inconnu" })).status).toBe(400);
+    expect((await agent("anomalie", { id: visit.id, type: "other" })).status).toBe(400);
+    const report = {
+      id: visit.id,
+      ref: "anom-1",
+      type: "leak",
+      lieu: "Local poubelles",
+      commentaire: "Fuite sous l'évier",
+      photo: JPEG,
+    };
+    const sent = await agent("anomalie", report);
+    expect(sent.status).toBe(200);
+    expect(sent.data!.anomalies).toEqual([
+      expect.objectContaining({ libelle: "Fuite / eau", lieu: "Local poubelles" }),
+    ]);
+    await agent("anomalie", report);
+    const rows = await prisma.anomaly.findMany({ where: { interventionId: visit.id } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      source: "agent",
+      status: "reported",
+      siteId: site.id,
+      reportedById: karim.userId,
+      visibleToClient: false,
+    });
+    expect(rows[0]!.photoFileId).toBeTruthy();
+    const notification = await prisma.notification.findFirstOrThrow({
+      where: { userId: ownerId, url: `/nettoyage/anomalies?id=${rows[0]!.id}` },
+    });
+    expect(notification.title).toBe("Anomalie à valider : Fuite / eau");
+    const journal = (await agent(`chantier?id=${visit.id}`)).data!.chantier.journal;
+    expect(journal.map((j: { a: string }) => j.a)).toContain("Anomalie signalée");
   });
 
   it("montre aussi les interventions planifiées dans le logiciel", async () => {

@@ -90,6 +90,8 @@ export async function purgeTrash(now: Date = new Date()): Promise<PurgeResult> {
         events: { none: {} },
         proofs: { none: {} },
         anomalies: { none: {} },
+        tasks: { none: {} },
+        consumables: { none: {} },
       },
     }),
     prisma.inspection.deleteMany({ where: expired }),

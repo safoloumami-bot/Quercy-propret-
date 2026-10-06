@@ -92,6 +92,7 @@ model User {
   anomaliesResolved   Anomaly[]               @relation("AnomalyResolver")
   siteInfosForAgent   SiteInfo[]              @relation("SiteInfoAgent")
   siteInfosCreated    SiteInfo[]              @relation("SiteInfoCreator")
+  interventionTasks   InterventionTask[]      @relation("InterventionTaskDoneBy")
   replacementsDone    Intervention[]          @relation("InterventionReplacement")
   interventionsActual Intervention[]          @relation("InterventionActual")
 
@@ -268,19 +269,21 @@ model Organization {
   bankTransactions BankTransaction[]
   documents        Document[]
 
-  sites              Site[]
-  cleaningContracts  CleaningContract[]
-  interventions      Intervention[]
-  inspections        Inspection[]
-  fieldAccesses      FieldAccess[]
-  serviceLines       ServiceLine[]
-  recurrenceSeries   RecurrenceSeries[]
-  ruleVersions       RecurrenceRuleVersion[]
-  siteClosures       SiteClosure[]
-  interventionEvents InterventionEvent[]
-  interventionProofs InterventionProof[]
-  anomalies          Anomaly[]
-  siteInfos          SiteInfo[]
+  sites                   Site[]
+  cleaningContracts       CleaningContract[]
+  interventions           Intervention[]
+  inspections             Inspection[]
+  fieldAccesses           FieldAccess[]
+  serviceLines            ServiceLine[]
+  recurrenceSeries        RecurrenceSeries[]
+  ruleVersions            RecurrenceRuleVersion[]
+  siteClosures            SiteClosure[]
+  interventionEvents      InterventionEvent[]
+  interventionProofs      InterventionProof[]
+  anomalies               Anomaly[]
+  siteInfos               SiteInfo[]
+  interventionTasks       InterventionTask[]
+  interventionConsumables InterventionConsumable[]
 
   automations Automation[]
   apiKeys     ApiKey[]
@@ -1721,8 +1724,9 @@ model Intervention {
   actualAgentId       String?
   /// Notes saisies sur le terrain (distinctes du compte rendu).
   fieldNotes          String?
-  /// Relevé de l'application terrain : contrôle pièce par pièce, consommables, photos,
-  /// journal, coordonnées du client, clôture.
+  /// État propre à l'application terrain : grille choisie, coordonnées saisies du client,
+  /// pointages hors réseau, clôture. Le relevé lui-même (points de contrôle, consommables,
+  /// photos, journal) est rangé dans ses propres tables.
   fieldData           Json?
   tags                String[]  @default([])
   customFields        Json      @default("{}")
@@ -1730,19 +1734,21 @@ model Intervention {
   updatedAt           DateTime  @updatedAt
   deletedAt           DateTime?
 
-  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner            User?                  @relation("InterventionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  site             Site?                  @relation("InterventionSite", fields: [siteId], references: [id], onDelete: SetNull)
-  contract         CleaningContract?      @relation("InterventionContract", fields: [contractId], references: [id], onDelete: SetNull)
-  company          Company?               @relation("InterventionCompany", fields: [companyId], references: [id], onDelete: SetNull)
-  serviceLine      ServiceLine?           @relation(fields: [serviceLineId], references: [id], onDelete: NoAction)
-  series           RecurrenceSeries?      @relation(fields: [seriesId], references: [id], onDelete: NoAction)
-  ruleVersion      RecurrenceRuleVersion? @relation(fields: [ruleVersionId], references: [id], onDelete: NoAction)
-  replacementAgent User?                  @relation("InterventionReplacement", fields: [replacementAgentId], references: [id], onDelete: SetNull)
-  actualAgent      User?                  @relation("InterventionActual", fields: [actualAgentId], references: [id], onDelete: SetNull)
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner            User?                    @relation("InterventionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  site             Site?                    @relation("InterventionSite", fields: [siteId], references: [id], onDelete: SetNull)
+  contract         CleaningContract?        @relation("InterventionContract", fields: [contractId], references: [id], onDelete: SetNull)
+  company          Company?                 @relation("InterventionCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  serviceLine      ServiceLine?             @relation(fields: [serviceLineId], references: [id], onDelete: NoAction)
+  series           RecurrenceSeries?        @relation(fields: [seriesId], references: [id], onDelete: NoAction)
+  ruleVersion      RecurrenceRuleVersion?   @relation(fields: [ruleVersionId], references: [id], onDelete: NoAction)
+  replacementAgent User?                    @relation("InterventionReplacement", fields: [replacementAgentId], references: [id], onDelete: SetNull)
+  actualAgent      User?                    @relation("InterventionActual", fields: [actualAgentId], references: [id], onDelete: SetNull)
   events           InterventionEvent[]
   proofs           InterventionProof[]
   anomalies        Anomaly[]
+  tasks            InterventionTask[]
+  consumables      InterventionConsumable[]
 
   @@unique([organizationId, slotKey])
   @@index([contractId, date])
@@ -1951,6 +1957,8 @@ model InterventionProof {
   /// Zone ou pièce concernée (hall, escalier, sanitaires…).
   area           String?
   caption        String?
+  /// Identifiant donné par le téléphone (renvoi hors réseau sans doublon).
+  clientRef      String?
   authorId       String?
   takenAt        DateTime @default(now())
   createdAt      DateTime @default(now())
@@ -1961,6 +1969,7 @@ model InterventionProof {
   file         StoredFile?  @relation(fields: [fileId], references: [id], onDelete: NoAction)
   author       User?        @relation("ProofAuthor", fields: [authorId], references: [id], onDelete: SetNull)
 
+  @@unique([interventionId, clientRef])
   @@index([organizationId, interventionId])
   @@map("intervention_proof")
 }
@@ -1991,6 +2000,8 @@ model Anomaly {
   resolvedAt      DateTime?
   /// Peut apparaître dans un rapport client (seulement après validation).
   visibleToClient Boolean   @default(false)
+  /// Clé anti-doublon : anomalie automatique (`duree:<intervention>`…) ou renvoi hors réseau.
+  dedupeKey       String?
   archivedAt      DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -2003,9 +2014,57 @@ model Anomaly {
   validatedBy  User?         @relation("AnomalyValidator", fields: [validatedById], references: [id], onDelete: SetNull)
   resolvedBy   User?         @relation("AnomalyResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
 
+  @@unique([organizationId, dedupeKey])
   @@index([organizationId, status])
   @@index([organizationId, siteId])
   @@map("anomaly")
+}
+
+/// Point de contrôle d'une intervention (pièce ou zone, élément), coché sur le terrain.
+model InterventionTask {
+  id             String    @id @default(cuid())
+  organizationId String
+  interventionId String
+  /// Pièce ou zone (hall, escalier, sanitaires…).
+  area           String
+  label          String
+  critical       Boolean   @default(false)
+  done           Boolean   @default(false)
+  doneAt         DateTime?
+  doneById       String?
+  /// Motif ou réserve quand le point n'est pas fait.
+  reason         String?
+  sortOrder      Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  intervention Intervention @relation(fields: [interventionId], references: [id], onDelete: NoAction)
+  doneBy       User?        @relation("InterventionTaskDoneBy", fields: [doneById], references: [id], onDelete: SetNull)
+
+  @@unique([interventionId, sortOrder])
+  @@index([organizationId, interventionId])
+  @@map("intervention_task")
+}
+
+/// Consommable posé pendant une intervention (sacs, recharges, papier…).
+model InterventionConsumable {
+  id             String   @id @default(cuid())
+  organizationId String
+  interventionId String
+  label          String
+  unit           String?
+  quantity       Int      @default(0)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  intervention Intervention @relation(fields: [interventionId], references: [id], onDelete: NoAction)
+
+  @@unique([interventionId, sortOrder])
+  @@index([organizationId, interventionId])
+  @@map("intervention_consumable")
 }
 
 /// Information de la fiche d'un site (accès, consignes, produits, risques…), avec sa

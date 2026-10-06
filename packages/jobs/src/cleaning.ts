@@ -1,6 +1,13 @@
-import { addDays, contractOccurrences, contractSlotKey, utcDay } from "@quercy/core";
+import {
+  addDays,
+  contractOccurrences,
+  contractSlotKey,
+  detectPointageAnomalies,
+  utcDay,
+} from "@quercy/core";
 import { prisma } from "@quercy/db";
 
+import { type AnomalyInput, reportAnomalies } from "./anomalies";
 import { recordInterventionEvents } from "./events";
 import { generateSeriesInterventions } from "./recurrence";
 
@@ -13,6 +20,7 @@ export interface CleaningDailyResult {
   contracts: number;
   created: number;
   missed: number;
+  anomalies: number;
 }
 
 /**
@@ -79,7 +87,7 @@ export async function runCleaningDaily(now: Date = new Date()): Promise<Cleaning
       status: "planned",
       date: { lt: addDays(utcDay(now), -MISSED_AFTER_DAYS) },
     },
-    select: { id: true, organizationId: true },
+    select: { id: true, organizationId: true, siteId: true, title: true, date: true },
   });
   const missed = await prisma.intervention.updateMany({
     where: { id: { in: forgotten.map((i) => i.id) }, status: "planned" },
@@ -93,5 +101,77 @@ export async function runCleaningDaily(now: Date = new Date()): Promise<Cleaning
       metadata: { source: "tâche quotidienne" },
     })),
   );
-  return { ...planned, missed: missed.count };
+  const anomalies = await detectAnomalies(now, forgotten);
+  return { ...planned, missed: missed.count, anomalies };
+}
+
+/** Fenêtre de rattrapage des anomalies de pointage (pointages synchronisés en retard). */
+const DETECTION_WINDOW_DAYS = 3;
+
+/**
+ * Anomalies automatiques : passages non réalisés, pointages hors créneau ou de durée
+ * anormale, contrôles qualité non conformes. Sans doublon (clé par intervention ou contrôle).
+ */
+export async function detectAnomalies(
+  now: Date,
+  missedVisits: {
+    id: string;
+    organizationId: string;
+    siteId: string | null;
+    title: string;
+    date: Date;
+  }[] = [],
+  options: { organizationId?: string } = {},
+): Promise<number> {
+  const since = addDays(utcDay(now), -DETECTION_WINDOW_DAYS);
+  const org = options.organizationId ? { organizationId: options.organizationId } : {};
+  const inputs: AnomalyInput[] = missedVisits.map((i) => ({
+    organizationId: i.organizationId,
+    type: "missed_visit",
+    source: "system",
+    siteId: i.siteId,
+    interventionId: i.id,
+    comment: `${i.title} — prévu le ${i.date.toISOString().slice(0, 10)}, jamais pointé.`,
+    severity: "high",
+    dedupeKey: `manque:${i.id}`,
+  }));
+  const pointed = await prisma.intervention.findMany({
+    where: { ...org, deletedAt: null, checkInAt: { gte: since } },
+    select: {
+      id: true,
+      organizationId: true,
+      siteId: true,
+      date: true,
+      startTime: true,
+      durationMinutes: true,
+      checkInAt: true,
+      checkOutAt: true,
+      series: { select: { timezone: true } },
+    },
+  });
+  for (const i of pointed)
+    for (const found of detectPointageAnomalies(i, i.series?.timezone ?? "Europe/Paris"))
+      inputs.push({
+        organizationId: i.organizationId,
+        source: "system",
+        siteId: i.siteId,
+        interventionId: i.id,
+        ...found,
+      });
+  const failed = await prisma.inspection.findMany({
+    where: { ...org, deletedAt: null, result: "non_compliant", date: { gte: since } },
+    select: { id: true, organizationId: true, siteId: true, title: true, score: true },
+  });
+  for (const c of failed)
+    inputs.push({
+      organizationId: c.organizationId,
+      type: "inspection_failed",
+      source: "inspection",
+      siteId: c.siteId,
+      comment: `${c.title} — note ${c.score ?? 0} %.`,
+      severity: "high",
+      dedupeKey: `controle:${c.id}`,
+    });
+  const reported = await reportAnomalies(inputs);
+  return reported.filter((r) => r.created).length;
 }

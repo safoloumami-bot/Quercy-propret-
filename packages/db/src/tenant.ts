@@ -52,6 +52,8 @@ export const TENANT_MODELS = [
   "InterventionProof",
   "Anomaly",
   "SiteInfo",
+  "InterventionTask",
+  "InterventionConsumable",
   "DuplicateDismissal",
   "Dashboard",
   "Report",

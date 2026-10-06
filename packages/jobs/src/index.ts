@@ -6,6 +6,7 @@ import { purgeTrash } from "./purge-trash";
 
 export {
   PLANNING_HORIZON_DAYS,
+  detectAnomalies,
   generateInterventions,
   runCleaningDaily,
   type CleaningDailyResult,
@@ -22,6 +23,12 @@ export {
   recordInterventionEvents,
   type InterventionEventInput,
 } from "./events";
+export {
+  cleaningManagerIds,
+  reportAnomalies,
+  type AnomalyInput,
+  type ReportedAnomaly,
+} from "./anomalies";
 export { WEBHOOK_QUEUE, decryptSecret, deliverWebhook, signPayload } from "./webhooks";
 
 /** Tâches quotidiennes : lancées par le worker (BullMQ) ou par la route planifiée (Netlify). */

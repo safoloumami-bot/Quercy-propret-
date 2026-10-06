@@ -284,7 +284,7 @@ input.f{border-radius:15px;padding:12px 14px}
 /* Réglages de l'entreprise, inscrits par le logiciel : adresse du serveur, nom, couleur. */
 var T = %%CONFIG%%;
 
-var S = { moi:null, date:jour(), tournee:[], ch:null, vue:"tournee", agents:[], histo:[], plie:{} };
+var S = { moi:null, date:jour(), tournee:[], ch:null, vue:"tournee", agents:[], histo:[], plie:{}, an:null };
 var file = [];                 // file d'attente hors réseau
 var enLigne = navigator.onLine !== false;
 var tmr = null, envoiEnCours = false;
@@ -419,7 +419,7 @@ function chargerTournee(){
 }
 function ouvrirChantier(id){
   api("chantier?id="+encodeURIComponent(id)).then(function(d){
-    S.ch=d.chantier; S.vue="fiche"; S.plie={};
+    S.ch=d.chantier; S.vue="fiche"; S.plie={}; S.an=null;
     ls("qp.cache",{moi:S.moi, ch:S.ch});
     rendre(); window.scrollTo(0,0);
   }).catch(function(){
@@ -572,6 +572,8 @@ function vueFiche(){
     : '<textarea class="obs" data-a="obs" placeholder="Ce que le client doit savoir : état du logement, anomalie, matériel à prévoir.">'+e(c.obs||"")+"</textarea>")+
     "</section>";
 
+  h+=blocAnomalie();
+
   if(!c.cloture){
     h+='<section class="g pad"><h3 style="font-size:16px;font-weight:600;margin-bottom:11px">Signature du client</h3>'+
       '<div class="sigbox">'+(c.signature
@@ -634,6 +636,31 @@ function bandePhotos(piece){
        '<label class="phadd"><svg viewBox="0 0 24 24"><path d="M12 7v10M7 12h10"/></svg><span>Après</span>'+
        '<input type="file" accept="image/*" capture="environment" multiple hidden data-a="phadd" data-piece="'+e(piece)+'" data-slot="apres"></label>';
   return h+"</div>";
+}
+
+/* Anomalie sur le site : transmise au responsable, jamais au client. */
+function blocAnomalie(){
+  var c=S.ch, liste=c.anomalies||[], f=S.an;
+  var attente=file.filter(function(x){ return x.route==="anomalie" && x.corps.id===c.id; }).length;
+  var h='<section class="g pad"><h3 style="font-size:16px;font-weight:600;margin-bottom:4px">Anomalie sur le site</h3>'+
+    '<p class="fine" style="margin:0 0 8px">Ampoule, fuite, encombrants… Transmise à votre responsable, jamais au client.</p>';
+  h+=liste.map(function(a){
+    return '<div class="jr"><b class="num">'+hhmm(a.ts)+"</b><span>"+e(a.libelle)+(a.lieu?" — "+e(a.lieu):"")+(a.commentaire?" : "+e(a.commentaire):"")+"</span></div>";
+  }).join("");
+  for(var i=0;i<attente;i++) h+='<div class="jr"><b class="num">…</b><span>En attente d\'envoi</span></div>';
+  if(!f) return h+'<button class="cta gh sm2" style="margin-top:10px" data-a="an-ouvrir">Signaler une anomalie</button></section>';
+  h+='<div class="champ"><label for="an_type">Type</label><select class="f" id="an_type">'+
+      (c.typesAnomalie||[]).map(function(t){ return '<option value="'+e(t.value)+'"'+(f.type===t.value?" selected":"")+">"+e(t.label)+"</option>"; }).join("")+
+    "</select></div>"+
+    '<div class="champ"><label for="an_lieu">Emplacement</label><input class="f" id="an_lieu" placeholder="Ex. : hall, 2e étage, local poubelles" value="'+e(f.lieu||"")+'"></div>'+
+    '<div class="champ"><label for="an_com">Ce que vous avez constaté</label><textarea class="obs" id="an_com">'+e(f.com||"")+"</textarea></div>"+
+    '<div class="phs">'+(f.photo
+      ? '<div class="ph"><img src="'+f.photo+'" alt="Photo de l\'anomalie"><button class="rm" data-a="an-phsup" aria-label="Retirer la photo">×</button></div>'
+      : '<label class="phadd"><svg viewBox="0 0 24 24"><path d="M12 7v10M7 12h10"/></svg><span>Photo</span>'+
+        '<input type="file" accept="image/*" capture="environment" hidden data-a="an-photo"></label>')+"</div>"+
+    '<div class="g2" style="margin-top:12px"><button class="cta gh sm2" data-a="an-annuler">Annuler</button>'+
+    '<button class="cta sm2" data-a="an-envoyer">Envoyer au responsable</button></div>';
+  return h+"</section>";
 }
 
 function vueAdmin(){
@@ -776,6 +803,15 @@ function brancher(){
       S.ch.pieces[+this.dataset.p].items[+this.dataset.i].nc=this.value; sauver().then(function(){ rendre(); });
     });
   });
+  [["an_type","type"],["an_lieu","lieu"],["an_com","com"]].forEach(function(k){
+    var el=document.getElementById(k[0]);
+    if(el) el.addEventListener("input", function(){ if(S.an) S.an[k[1]]=this.value; });
+  });
+  var anp=document.querySelector('[data-a="an-photo"]');
+  if(anp) anp.addEventListener("change", function(){
+    var f=(this.files||[])[0]; if(!f) return;
+    reduire(f).then(function(d){ if(!S.an) return; if(!d) return toast("Photo illisible ou trop lourde."); S.an.photo=d; rendre(); });
+  });
   Array.prototype.forEach.call(document.querySelectorAll('[data-a="phadd"]'), function(inp){
     inp.addEventListener("change", function(){
       var f=Array.prototype.slice.call(this.files||[]);
@@ -831,6 +867,21 @@ document.addEventListener("click", function(ev){
     var pid=el.dataset.pid;
     c.photos=(c.photos||[]).filter(function(p){ return p.id!==pid; });
     rendre(); return envoyer("photo-suppr",{id:c.id, pid:pid});
+  }
+  if(a==="an-ouvrir"){ S.an={type:((c.typesAnomalie||[])[0]||{}).value||"other"}; return rendre(); }
+  if(a==="an-annuler"){ S.an=null; return rendre(); }
+  if(a==="an-phsup"){ if(S.an) S.an.photo=null; return rendre(); }
+  if(a==="an-envoyer"){
+    var f=S.an; if(!f) return;
+    if(f.type==="other" && !String(f.com||"").trim()) return toast("Décrivez l'anomalie en quelques mots.");
+    var corps={id:c.id, ref:Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4),
+      type:f.type, lieu:f.lieu||"", commentaire:f.com||"", photo:f.photo||null};
+    S.an=null; buzz(14); rendre();
+    return envoyer("anomalie",corps).then(function(d){
+      if(d.horsLigne) return toast("Hors réseau : l'anomalie partira au retour du réseau.");
+      if(d.anomalies && S.ch && S.ch.id===corps.id){ S.ch.anomalies=d.anomalies; ls("qp.cache",{moi:S.moi,ch:S.ch}); }
+      rendre(); toast("Anomalie transmise au responsable.");
+    }).catch(function(){ S.an=f; rendre(); });
   }
   if(a==="sigclr"){ c.signature=null; rendre(); return envoyer("signature",{id:c.id, data:null}); }
   if(a==="cloturer"){

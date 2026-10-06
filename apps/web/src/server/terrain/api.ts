@@ -2,10 +2,23 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 
-import { type InterventionEventType, dayKey, inspectionOutcome, utcDay } from "@quercy/core";
+import {
+  FIELD_ANOMALY_TYPES,
+  type InterventionEventType,
+  dayKey,
+  detectPointageAnomalies,
+  inspectionOutcome,
+  utcDay,
+} from "@quercy/core";
 import type { Prisma } from "@quercy/db";
 import { prisma } from "@quercy/db";
-import { recordInterventionEvent } from "@quercy/jobs";
+import {
+  type AnomalyInput,
+  type InterventionEventInput,
+  recordInterventionEvent,
+  recordInterventionEvents,
+  reportAnomalies,
+} from "@quercy/jobs";
 import { MailNotConfiguredError, mailConfigured, sendMail } from "@quercy/mailer";
 import { TRPCError } from "@trpc/server";
 
@@ -20,13 +33,18 @@ import {
   type FieldData,
   INTERVENTION_INCLUDE,
   type InterventionRow,
-  addJournal,
+  STOP_INCLUDE,
+  type StopRow,
+  checklistOf,
   clientName,
+  freshTasks,
   inspectionChecks,
   readFieldData,
+  roomsOf,
+  tasksByRoom,
+  toAnomalyLine,
   toChantier,
   toStop,
-  withDefaults,
 } from "./chantier";
 import { type TerrainOrgRow, terrainBrandOf } from "./org";
 import {
@@ -108,9 +126,80 @@ async function loadIntervention(org: TerrainOrgRow, me: Me, id: unknown) {
     include: INTERVENTION_INCLUDE,
   })) as InterventionRow | null;
   if (!row) throw new HttpError("Chantier introuvable.", 404);
-  if (me.role !== "patron" && row.ownerId !== me.id)
+  if (me.role !== "patron" && row.ownerId !== me.id && row.replacementAgentId !== me.id)
     throw new HttpError("Ce chantier n'est pas le vôtre.", 403);
   return row;
+}
+
+/** Crée les points de contrôle de la grille si l'intervention n'en a pas encore. */
+async function ensureTasks(org: TerrainOrgRow, row: InterventionRow, data: FieldData) {
+  if (row.tasks.length) return row.tasks;
+  const list = checklistOf(row, data);
+  data.grille ??= list.key;
+  await prisma.interventionTask.createMany({
+    data: freshTasks(list).map((t, i) => ({
+      organizationId: org.id,
+      interventionId: row.id,
+      ...t,
+      sortOrder: i,
+    })),
+    skipDuplicates: true,
+  });
+  return prisma.interventionTask.findMany({
+    where: { interventionId: row.id },
+    orderBy: { sortOrder: "asc" },
+  });
+}
+
+async function ensureConsumables(org: TerrainOrgRow, row: InterventionRow, data: FieldData) {
+  if (row.consumables.length) return row.consumables;
+  const list = checklistOf(row, data);
+  data.grille ??= list.key;
+  await prisma.interventionConsumable.createMany({
+    data: list.consommables.map((c, i) => ({
+      organizationId: org.id,
+      interventionId: row.id,
+      label: c.l,
+      unit: c.u || null,
+      sortOrder: i,
+    })),
+    skipDuplicates: true,
+  });
+  return prisma.interventionConsumable.findMany({
+    where: { interventionId: row.id },
+    orderBy: { sortOrder: "asc" },
+  });
+}
+
+/**
+ * Anomalies (signalées ou détectées) : enregistrées « à valider » et envoyées aux
+ * responsables. Une détection automatique ne fait jamais échouer l'action de l'agent.
+ */
+async function raiseAnomalies(org: TerrainOrgRow, inputs: AnomalyInput[], strict = false) {
+  if (inputs.length === 0) return;
+  try {
+    const reported = await reportAnomalies(inputs);
+    for (const userId of new Set(reported.flatMap((r) => r.notified)))
+      await publish(org.id, { type: "notification", userId });
+  } catch (error) {
+    if (strict) throw error;
+    console.error(
+      JSON.stringify({ level: "error", msg: "terrain.anomaly_failed", error: String(error) }),
+    );
+  }
+}
+
+function pointageAnomalies(org: TerrainOrgRow, row: InterventionRow) {
+  return raiseAnomalies(
+    org,
+    detectPointageAnomalies(row, row.series?.timezone ?? "Europe/Paris").map((found) => ({
+      organizationId: org.id,
+      source: "system" as const,
+      siteId: row.siteId,
+      interventionId: row.id,
+      ...found,
+    })),
+  );
 }
 
 /** Évènement du journal correspondant à chaque action de l'application terrain. */
@@ -118,7 +207,6 @@ const EVENT_OF_ACTION: Record<string, InterventionEventType> = {
   "intervention.check_in": "started",
   "intervention.check_out": "finished",
   "intervention.check_out_corrected": "time_corrected",
-  "intervention.field_report": "checklist_updated",
   "intervention.signature": "signed",
   "intervention.signature_cleared": "signature_cleared",
   "intervention.photo": "photo_added",
@@ -132,7 +220,7 @@ async function saveIntervention(
   row: InterventionRow,
   data: Record<string, unknown>,
   action: string,
-  eventMetadata: Record<string, unknown> = {},
+  journal: { label?: string; detail?: string; metadata?: Record<string, unknown> } = {},
 ): Promise<InterventionRow> {
   let next: Record<string, unknown>;
   try {
@@ -163,7 +251,13 @@ async function saveIntervention(
       interventionId: row.id,
       userId: me.id,
       type: event,
-      metadata: { source: "application terrain", ...eventMetadata },
+      metadata: {
+        source: "application terrain",
+        ...(journal.label
+          ? { label: journal.label, detail: journal.detail ?? "", by: me.nom }
+          : {}),
+        ...journal.metadata,
+      },
     });
   await publish(org.id, {
     type: "record.changed",
@@ -172,6 +266,39 @@ async function saveIntervention(
     actorId: me.id,
   });
   return updated;
+}
+
+/** Range une photo du terrain dans le stockage et l'inscrit aux fichiers de l'intervention. */
+async function storePhoto(
+  org: TerrainOrgRow,
+  me: Me,
+  row: InterventionRow,
+  name: string,
+  bytes: Uint8Array,
+) {
+  const key = newStorageKey(org.id, name);
+  try {
+    await putObject(key, bytes, "image/jpeg");
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "Stockage des photos indisponible.", 503);
+  }
+  return prisma.storedFile.create({
+    data: {
+      organizationId: org.id,
+      storageKey: key,
+      name,
+      mimeType: "image/jpeg",
+      size: bytes.byteLength,
+      uploadedById: me.id,
+      entityType: "intervention",
+      entityId: row.id,
+    },
+  });
+}
+
+async function discardFile(file: { id: string; storageKey: string }) {
+  await prisma.storedFile.delete({ where: { id: file.id } });
+  await deleteObject(file.storageKey).catch(() => {});
 }
 
 async function nextNumber(organizationId: string, key: string): Promise<number> {
@@ -379,10 +506,12 @@ export async function handleTerrainApi(
           deletedAt: null,
           date: utcDay(new Date(`${d}T00:00:00.000Z`)),
           status: { not: "cancelled" },
-          ...(me.role === "patron" ? {} : { ownerId: me.id }),
+          ...(me.role === "patron"
+            ? {}
+            : { OR: [{ ownerId: me.id }, { replacementAgentId: me.id }] }),
         },
-        include: INTERVENTION_INCLUDE,
-      })) as InterventionRow[];
+        include: STOP_INCLUDE,
+      })) as StopRow[];
       const stops = rows.map(toStop).sort((a, b) => a.heure.localeCompare(b.heure));
       return json({ date: d, chantiers: stops });
     }
@@ -405,10 +534,12 @@ export async function handleTerrainApi(
       const note = offline ? `heure déclarée hors réseau, reçue à ${timeFr(server)}` : "";
       let changes: Record<string, unknown>;
       let action: string;
+      let label: string;
+      let detail = note;
       if (body.type === "arrivee") {
         if (row.checkInAt) return fail("Arrivée déjà pointée.", 409);
         data.arriveeDifferee = offline;
-        addJournal(data, "Arrivée sur site", note, me.nom);
+        label = "Arrivée sur site";
         // Intervenant réel : celui qui pointe l'arrivée (il peut remplacer l'agent prévu).
         changes = { checkInAt: at, actualAgentId: me.id };
         action = "intervention.check_in";
@@ -416,7 +547,7 @@ export async function handleTerrainApi(
         if (!row.checkInAt) return fail("Pointez d'abord l'arrivée.", 409);
         if (row.checkOutAt) return fail("Départ déjà pointé.", 409);
         data.departDiffere = offline;
-        addJournal(data, "Départ du site", note, me.nom);
+        label = "Départ du site";
         changes = { checkOutAt: at };
         action = "intervention.check_out";
       } else if (body.type === "correction") {
@@ -425,7 +556,8 @@ export async function handleTerrainApi(
         if (!value || value < row.checkInAt.getTime())
           return fail("Heure de départ invalide.", 400);
         data.corrige = true;
-        addJournal(data, "Pointage corrigé", `départ fixé à ${timeFr(value)}`, me.nom);
+        label = "Pointage corrigé";
+        detail = `départ fixé à ${timeFr(value)}`;
         changes = { checkOutAt: new Date(value) };
         action = "intervention.check_out_corrected";
       } else return fail("Type de pointage inconnu.", 400);
@@ -436,52 +568,84 @@ export async function handleTerrainApi(
         row,
         { ...changes, fieldData: data },
         action,
-        offline
-          ? {
-              offline: true,
-              declaredAt: at.toISOString(),
-              receivedAt: new Date(server).toISOString(),
-            }
-          : {},
+        {
+          label,
+          detail,
+          metadata: offline
+            ? {
+                offline: true,
+                declaredAt: at.toISOString(),
+                receivedAt: new Date(server).toISOString(),
+              }
+            : {},
+        },
       );
+      await pointageAnomalies(org, updated);
       return json({ chantier: toChantier(updated) });
     }
 
     /* ---------- relevé : contrôle, consommables, observations ---------- */
     if (route === "releve" && request.method === "POST") {
       const row = await loadIntervention(org, me, body.id);
-      const data = withDefaults(row, readFieldData(row.fieldData));
+      const data = readFieldData(row.fieldData);
       if (data.cloture) return fail("Chantier clôturé, plus modifiable.", 409);
       const changes: Record<string, unknown> = {};
+      const events: InterventionEventInput[] = [];
+      const journal = (type: InterventionEventType, label: string, detail: string) =>
+        events.push({
+          organizationId: org.id,
+          interventionId: row.id,
+          userId: me.id,
+          type,
+          metadata: { source: "application terrain", label, detail, by: me.nom },
+        });
+      const updates: Prisma.PrismaPromise<unknown>[] = [];
       if (Array.isArray(body.pieces)) {
-        data.pieces.forEach((room, ri) => {
+        const rooms = tasksByRoom(await ensureTasks(org, row, data));
+        const now = new Date();
+        rooms.forEach((tasks, ri) => {
           const src = (body.pieces as { items?: { ok?: unknown; nc?: unknown }[] }[])[ri];
           if (!src || !Array.isArray(src.items)) return;
-          room.items.forEach((it, ii) => {
+          tasks.forEach((task, ii) => {
             const s = src.items![ii];
             if (!s) return;
-            if (typeof s.ok === "boolean" && s.ok !== it.ok) {
-              it.ok = s.ok;
-              it.ts = Date.now();
-              addJournal(
-                data,
+            const change: Prisma.InterventionTaskUpdateInput = {};
+            const where = `${task.area} — ${task.label}`;
+            if (typeof s.ok === "boolean" && s.ok !== task.done) {
+              change.done = s.ok;
+              change.doneAt = s.ok ? now : null;
+              change.doneBy = s.ok ? { connect: { id: me.id } } : { disconnect: true };
+              journal(
+                s.ok ? "task_done" : "task_undone",
                 s.ok ? "Point validé" : "Point décoché",
-                `${room.n} — ${it.l}`,
-                me.nom,
+                where,
               );
             }
-            if (typeof s.nc === "string" && s.nc !== it.nc) {
-              it.nc = s.nc.slice(0, 600);
-              if (it.nc.trim()) addJournal(data, "Réserve", `${room.n} — ${it.l}`, me.nom);
+            if (typeof s.nc === "string" && s.nc.slice(0, 600) !== (task.reason ?? "")) {
+              const reason = s.nc.slice(0, 600);
+              change.reason = reason || null;
+              if (reason.trim()) journal("task_reason", "Réserve", where);
             }
+            if (Object.keys(change).length)
+              updates.push(
+                prisma.interventionTask.update({ where: { id: task.id }, data: change }),
+              );
           });
         });
       }
-      if (Array.isArray(body.cons))
-        data.cons.forEach((c, i) => {
+      if (Array.isArray(body.cons)) {
+        const consumables = await ensureConsumables(org, row, data);
+        consumables.forEach((c, i) => {
           const q = Number((body.cons as unknown[])[i]);
-          if (q >= 0) c.q = Math.min(99, Math.round(q));
+          if (!(q >= 0)) return;
+          const quantity = Math.min(99, Math.round(q));
+          if (quantity !== c.quantity)
+            updates.push(
+              prisma.interventionConsumable.update({ where: { id: c.id }, data: { quantity } }),
+            );
         });
+      }
+      if (updates.length) await prisma.$transaction(updates);
       if (typeof body.obs === "string") changes.notes = body.obs.slice(0, 3000);
       if (typeof body.signataire === "string") {
         data.signataire = body.signataire.slice(0, 120);
@@ -494,6 +658,7 @@ export async function handleTerrainApi(
         { ...changes, fieldData: data },
         "intervention.field_report",
       );
+      await recordInterventionEvents(events);
       return json({ ok: true, maj: updated.updatedAt.getTime() });
     }
 
@@ -506,7 +671,6 @@ export async function handleTerrainApi(
       if (body.data === null) {
         changes.signatureUrl = null;
         delete data.signatureTs;
-        addJournal(data, "Signature effacée", "", me.nom);
       } else {
         if (
           typeof body.data !== "string" ||
@@ -520,7 +684,6 @@ export async function handleTerrainApi(
           data.signataire = body.nom.slice(0, 120);
           changes.signedBy = data.signataire || null;
         }
-        addJournal(data, "Signature du client", data.signataire ?? "", me.nom);
       }
       await saveIntervention(
         org,
@@ -528,12 +691,18 @@ export async function handleTerrainApi(
         row,
         { ...changes, fieldData: data },
         body.data === null ? "intervention.signature_cleared" : "intervention.signature",
-        body.data === null ? {} : { signedBy: data.signataire ?? null },
+        body.data === null
+          ? { label: "Signature effacée" }
+          : {
+              label: "Signature du client",
+              detail: data.signataire ?? "",
+              metadata: { signedBy: data.signataire ?? null },
+            },
       );
       return json({ ok: true, signatureTs: data.signatureTs ?? null });
     }
 
-    /* ---------- photos : pièces jointes de l'intervention ---------- */
+    /* ---------- photos : preuves de l'intervention ---------- */
     if (route === "photo" && request.method === "POST") {
       const row = await loadIntervention(org, me, body.id);
       const data = readFieldData(row.fieldData);
@@ -542,50 +711,44 @@ export async function handleTerrainApi(
       const prefix = "data:image/jpeg;base64,";
       if (!raw.startsWith(prefix) || raw.length > 600_000)
         return fail("Photo invalide ou trop lourde.", 400);
-      const photos = data.photos ?? [];
       const pid =
         typeof body.pid === "string" && /^[\w-]{4,40}$/.test(body.pid)
           ? body.pid
           : randomBytes(9).toString("base64url");
       // Renvoi d'une photo déjà reçue (file d'attente hors réseau).
-      if (photos.some((p) => p.id === pid)) return json({ ok: true, id: pid });
-      if (photos.length >= 30) return fail("30 photos maximum par chantier.", 409);
+      if (row.proofs.some((p) => p.clientRef === pid)) return json({ ok: true, id: pid });
+      if (row.proofs.length >= 30) return fail("30 photos maximum par chantier.", 409);
       const piece = str(body.piece, 60);
       const slot = body.slot === "apres" ? "apres" : "avant";
       const bytes = new Uint8Array(Buffer.from(raw.slice(prefix.length), "base64"));
       const name = `${piece || "photo"} - ${slot === "apres" ? "après" : "avant"}.jpg`;
-      const key = newStorageKey(org.id, name);
+      const file = await storePhoto(org, me, row, name, bytes);
+      if (file instanceof Response) return file;
       try {
-        await putObject(key, bytes, "image/jpeg");
+        await prisma.interventionProof.create({
+          data: {
+            organizationId: org.id,
+            interventionId: row.id,
+            siteId: row.siteId,
+            type: slot === "apres" ? "photo_after" : "photo_before",
+            fileId: file.id,
+            area: piece || null,
+            clientRef: pid,
+            authorId: me.id,
+          },
+        });
       } catch (error) {
-        return fail(
-          error instanceof Error ? error.message : "Stockage des photos indisponible.",
-          503,
-        );
+        // Deux envois simultanés de la même photo : la première fait foi.
+        if ((error as { code?: string }).code === "P2002") {
+          await discardFile(file);
+          return json({ ok: true, id: pid });
+        }
+        throw error;
       }
-      const file = await prisma.storedFile.create({
-        data: {
-          organizationId: org.id,
-          storageKey: key,
-          name,
-          mimeType: "image/jpeg",
-          size: bytes.byteLength,
-          uploadedById: me.id,
-          entityType: "intervention",
-          entityId: row.id,
-        },
-      });
-      data.photos = [...photos, { id: pid, piece, slot, ts: Date.now(), fileId: file.id }];
-      addJournal(
-        data,
-        "Photo ajoutée",
-        `${piece} · ${slot === "apres" ? "après" : "avant"}`,
-        me.nom,
-      );
-      await saveIntervention(org, me, row, { fieldData: data }, "intervention.photo", {
-        area: piece,
-        slot,
-        fileId: file.id,
+      await saveIntervention(org, me, row, { updatedAt: new Date() }, "intervention.photo", {
+        label: "Photo ajoutée",
+        detail: `${piece} · ${slot === "apres" ? "après" : "avant"}`,
+        metadata: { area: piece, slot, fileId: file.id },
       });
       return json({ ok: true, id: pid });
     }
@@ -594,31 +757,34 @@ export async function handleTerrainApi(
       const row = await loadIntervention(org, me, body.id);
       const data = readFieldData(row.fieldData);
       if (data.cloture) return fail("Suppression impossible.", 409);
-      const photo = (data.photos ?? []).find((p) => p.id === body.pid);
-      data.photos = (data.photos ?? []).filter((p) => p.id !== body.pid);
-      if (photo) {
-        const file = await prisma.storedFile.findFirst({
-          where: { id: photo.fileId, organizationId: org.id },
-        });
-        if (file) {
-          await prisma.storedFile.delete({ where: { id: file.id } });
-          await deleteObject(file.storageKey).catch(() => {});
-        }
+      const proof = row.proofs.find((p) => p.clientRef === body.pid);
+      if (proof) {
+        await prisma.interventionProof.delete({ where: { id: proof.id } });
+        const file =
+          proof.fileId &&
+          (await prisma.storedFile.findFirst({
+            where: { id: proof.fileId, organizationId: org.id },
+          }));
+        if (file) await discardFile(file);
       }
-      addJournal(data, "Photo supprimée", "", me.nom);
-      await saveIntervention(org, me, row, { fieldData: data }, "intervention.photo_deleted");
+      await saveIntervention(
+        org,
+        me,
+        row,
+        { updatedAt: new Date() },
+        "intervention.photo_deleted",
+        { label: "Photo supprimée" },
+      );
       return json({ ok: true });
     }
 
     if (route === "photo-fichier") {
       const row = await loadIntervention(org, me, url.searchParams.get("c"));
-      const photo = readFieldData(row.fieldData).photos?.find(
-        (p) => p.id === url.searchParams.get("p"),
-      );
+      const proof = row.proofs.find((p) => p.clientRef === url.searchParams.get("p"));
       const file =
-        photo &&
+        proof?.fileId &&
         (await prisma.storedFile.findFirst({
-          where: { id: photo.fileId, organizationId: org.id, deletedAt: null },
+          where: { id: proof.fileId, organizationId: org.id, deletedAt: null },
         }));
       if (!file) return fail("Photo introuvable.", 404);
       const bytes = await readObject(file.storageKey).catch(() => null);
@@ -632,18 +798,87 @@ export async function handleTerrainApi(
       });
     }
 
+    /* ---------- anomalie : transmise aux responsables, jamais au client ---------- */
+    if (route === "anomalie" && request.method === "POST") {
+      const row = await loadIntervention(org, me, body.id);
+      const type = String(body.type ?? "");
+      if (!FIELD_ANOMALY_TYPES.some((t) => t.value === type))
+        return fail("Type d'anomalie inconnu.", 400);
+      const location = str(body.lieu, 120).trim();
+      const comment = str(body.commentaire, 1000).trim();
+      if (type === "other" && !comment) return fail("Décrivez l'anomalie en quelques mots.", 400);
+      const ref = typeof body.ref === "string" && /^[\w-]{4,40}$/.test(body.ref) ? body.ref : null;
+      const dedupeKey = ref ? `terrain:${row.id}:${ref}` : null;
+      const already =
+        dedupeKey && (await prisma.anomaly.count({ where: { organizationId: org.id, dedupeKey } }));
+      if (!already) {
+        let photoFileId: string | null = null;
+        if (body.photo) {
+          const raw = String(body.photo);
+          const prefix = "data:image/jpeg;base64,";
+          if (!raw.startsWith(prefix) || raw.length > 600_000)
+            return fail("Photo invalide ou trop lourde.", 400);
+          const bytes = new Uint8Array(Buffer.from(raw.slice(prefix.length), "base64"));
+          const file = await storePhoto(org, me, row, "Anomalie.jpg", bytes);
+          if (file instanceof Response) return file;
+          photoFileId = file.id;
+        }
+        await raiseAnomalies(
+          org,
+          [
+            {
+              organizationId: org.id,
+              type,
+              source: "agent",
+              siteId: row.siteId,
+              interventionId: row.id,
+              location,
+              comment,
+              photoFileId,
+              reportedById: me.id,
+              dedupeKey,
+            },
+          ],
+          true,
+        );
+        await prisma.auditLog.create({
+          data: {
+            organizationId: org.id,
+            actorId: me.id,
+            action: "anomaly.reported",
+            entityType: "intervention",
+            entityId: row.id,
+            metadata: { name: row.title, type, source: "application terrain" },
+          },
+        });
+      }
+      const anomalies = await prisma.anomaly.findMany({
+        where: { interventionId: row.id, archivedAt: null, source: "agent" },
+        orderBy: { reportedAt: "asc" },
+        select: {
+          id: true,
+          type: true,
+          location: true,
+          comment: true,
+          status: true,
+          reportedAt: true,
+        },
+      });
+      return json({ ok: true, anomalies: anomalies.map(toAnomalyLine) });
+    }
+
     /* ---------- clôture ---------- */
     if (route === "cloture" && request.method === "POST") {
       const row = await loadIntervention(org, me, body.id);
-      const data = withDefaults(row, readFieldData(row.fieldData));
+      const data = readFieldData(row.fieldData);
       if (data.cloture) return fail("Déjà clôturé.", 409);
       if (!row.checkOutAt || !row.checkInAt)
         return fail("Pointez le départ avant de clôturer.", 409);
       const signer = row.signedBy ?? data.signataire ?? "";
       if (!row.signatureUrl || !signer.trim())
         return fail("Signature et nom du client requis.", 409);
-      const items = data.pieces.flatMap((p) => p.items);
-      const blocking = items.filter((i) => i.crit && !i.ok && !i.nc.trim());
+      const tasks = await ensureTasks(org, row, data);
+      const blocking = tasks.filter((t) => t.critical && !t.done && !(t.reason ?? "").trim());
       if (blocking.length) return fail(`${blocking.length} point(s) critique(s) sans motif.`, 409);
 
       const year = new Date().getFullYear();
@@ -652,28 +887,31 @@ export async function handleTerrainApi(
       data.cloture = {
         ts: Date.now(),
         duree: row.checkOutAt.getTime() - row.checkInAt.getTime(),
-        ok: items.filter((i) => i.ok).length,
-        tot: items.length,
-        res: items.filter((i) => !i.ok).length,
+        ok: tasks.filter((t) => t.done).length,
+        tot: tasks.length,
+        res: tasks.filter((t) => !t.done).length,
         bon,
         par: me.nom,
       };
-      addJournal(data, "Intervention clôturée", bon, me.nom);
       const closed = await saveIntervention(
         org,
         me,
         row,
         { status: "done", reportNumber: bon, fieldData: data },
         "intervention.closed",
-        { reportNumber: bon, ok: data.cloture.ok, total: data.cloture.tot },
+        {
+          label: "Intervention clôturée",
+          detail: bon,
+          metadata: { reportNumber: bon, ok: data.cloture.ok, total: data.cloture.tot },
+        },
       );
       // Le contrôle qualité rejoint ceux du logiciel (note et résultat).
-      const checks = inspectionChecks(data.pieces);
-      const outcome = inspectionOutcome(items.map((i) => i.ok));
-      const reserves = data.pieces.flatMap((p) =>
-        p.items.filter((i) => !i.ok).map((i) => `${p.n} — ${i.l}${i.nc ? ` : ${i.nc}` : ""}`),
-      );
-      await prisma.inspection.create({
+      const checks = inspectionChecks(roomsOf(closed, data));
+      const outcome = inspectionOutcome(tasks.map((t) => t.done));
+      const reserves = tasks
+        .filter((t) => !t.done)
+        .map((t) => `${t.area} — ${t.label}${t.reason ? ` : ${t.reason}` : ""}`);
+      const inspection = await prisma.inspection.create({
         data: {
           organizationId: org.id,
           title: `Contrôle ${bon} — ${clientName(row, data)}`,
@@ -685,6 +923,32 @@ export async function handleTerrainApi(
           comments: reserves.length ? `Réserves :\n${reserves.join("\n")}` : "Aucune réserve.",
         },
       });
+      // Points critiques non faits et contrôle non conforme : au chef, pas au client.
+      const detected: AnomalyInput[] = tasks
+        .filter((t) => t.critical && !t.done)
+        .map((t) => ({
+          organizationId: org.id,
+          type: "critical_point",
+          source: "system",
+          siteId: row.siteId,
+          interventionId: row.id,
+          location: t.area,
+          comment: `${t.label}${t.reason ? ` : ${t.reason}` : ""}`,
+          severity: "high",
+          dedupeKey: `critique:${t.id}`,
+        }));
+      if (outcome.result === "non_compliant")
+        detected.push({
+          organizationId: org.id,
+          type: "inspection_failed",
+          source: "inspection",
+          siteId: row.siteId,
+          interventionId: row.id,
+          comment: `${inspection.title} — note ${outcome.score} %.`,
+          severity: "high",
+          dedupeKey: `controle:${inspection.id}`,
+        });
+      await raiseAnomalies(org, detected);
       const chantier = toChantier(closed);
       const mail = await sendReport(org, chantier);
       data.cloture.mail = mail;
@@ -806,7 +1070,6 @@ export async function handleTerrainApi(
           email: str(body.email, 120).trim(),
         },
       };
-      addJournal(data, "Chantier créé", "", me.nom);
       const created = (await prisma.intervention.create({
         data: {
           organizationId: org.id,
@@ -835,7 +1098,13 @@ export async function handleTerrainApi(
         interventionId: created.id,
         userId: me.id,
         type: "created",
-        metadata: { source: "application terrain", ref },
+        metadata: {
+          source: "application terrain",
+          ref,
+          label: "Chantier créé",
+          detail: "",
+          by: me.nom,
+        },
       });
       return json({ chantier: toChantier(created) });
     }
@@ -848,10 +1117,10 @@ export async function handleTerrainApi(
           deletedAt: null,
           date: { lte: utcDay(new Date()) },
         },
-        include: INTERVENTION_INCLUDE,
         orderBy: [{ date: "desc" }, { startTime: "desc" }],
         take: 120,
-      })) as InterventionRow[];
+        include: STOP_INCLUDE,
+      })) as StopRow[];
       return json({ chantiers: rows.map(toStop) });
     }
 

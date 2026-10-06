@@ -1,8 +1,13 @@
-import { dayKey } from "@quercy/core";
+import {
+  FIELD_ANOMALY_TYPES,
+  INTERVENTION_EVENT_TYPES,
+  anomalyTypeLabel,
+  dayKey,
+} from "@quercy/core";
 
 import { CHECKLISTS, type Checklist, checklistFor } from "./checklists";
 
-/** Point de contrôle tel que relevé sur le téléphone. */
+/** Point de contrôle tel que l'application terrain l'affiche. */
 export interface FieldItem {
   l: string;
   crit: boolean;
@@ -19,19 +24,6 @@ export interface FieldConsumable {
   u: string;
   q: number;
 }
-export interface FieldPhoto {
-  id: string;
-  piece: string;
-  slot: "avant" | "apres";
-  ts: number;
-  fileId: string;
-}
-export interface FieldJournal {
-  ts: number;
-  a: string;
-  d: string;
-  par: string;
-}
 export interface FieldClosure {
   ts: number;
   duree: number;
@@ -43,24 +35,30 @@ export interface FieldClosure {
   mail?: { envoye: boolean; raison: string };
 }
 
-/** Relevé de l'application terrain, rangé dans `intervention.fieldData`. */
+/**
+ * État propre à l'application, rangé dans `intervention.fieldData`. Le relevé lui-même
+ * (points de contrôle, consommables, photos, journal) est dans ses tables.
+ */
 export interface FieldData {
   ref?: string;
   grille?: string;
   client?: { nom?: string; contact?: string; tel?: string; email?: string };
-  pieces?: FieldRoom[];
-  cons?: FieldConsumable[];
   signataire?: string;
   signatureTs?: number;
-  photos?: FieldPhoto[];
-  journal?: FieldJournal[];
   arriveeDifferee?: boolean;
   departDiffere?: boolean;
   corrige?: boolean;
   cloture?: FieldClosure;
 }
 
-export interface InterventionRow {
+interface ContactRow {
+  name: string;
+  email: string | null;
+  phone: string | null;
+}
+
+/** Ligne de tournée : de quoi afficher l'arrêt, sans le relevé. */
+export interface StopRow {
   id: string;
   title: string;
   date: Date;
@@ -68,24 +66,74 @@ export interface InterventionRow {
   durationMinutes: number | null;
   status: string;
   ownerId: string | null;
+  replacementAgentId: string | null;
   siteId: string | null;
   checkInAt: Date | null;
   checkOutAt: Date | null;
+  fieldData: unknown;
+  site: { name: string; city: string | null; company: ContactRow | null } | null;
+  company: ContactRow | null;
+}
+
+export interface InterventionRow extends StopRow {
   signatureUrl: string | null;
   signedBy: string | null;
   notes: string | null;
-  fieldData: unknown;
   updatedAt: Date;
-  site: {
-    name: string;
-    address: string | null;
-    postalCode: string | null;
-    city: string | null;
-    surfaceM2: number | null;
-    company: { name: string; email: string | null; phone: string | null } | null;
-  } | null;
-  company: { name: string; email: string | null; phone: string | null } | null;
+  site:
+    | (NonNullable<StopRow["site"]> & {
+        address: string | null;
+        postalCode: string | null;
+        surfaceM2: number | null;
+      })
+    | null;
+  series: { timezone: string } | null;
+  tasks: {
+    id: string;
+    area: string;
+    label: string;
+    critical: boolean;
+    done: boolean;
+    doneAt: Date | null;
+    reason: string | null;
+    sortOrder: number;
+  }[];
+  consumables: {
+    id: string;
+    label: string;
+    unit: string | null;
+    quantity: number;
+    sortOrder: number;
+  }[];
+  proofs: {
+    id: string;
+    type: string;
+    area: string | null;
+    clientRef: string | null;
+    fileId: string | null;
+    takenAt: Date;
+  }[];
+  events: { type: string; at: Date; metadata: unknown; user: { name: string } | null }[];
+  anomalies: {
+    id: string;
+    type: string;
+    location: string | null;
+    comment: string | null;
+    status: string;
+    reportedAt: Date;
+  }[];
 }
+
+const CONTACT = { select: { name: true, email: true, phone: true } } as const;
+
+export const STOP_INCLUDE = {
+  site: { select: { name: true, city: true, company: CONTACT } },
+  company: CONTACT,
+} as const;
+
+/** Journal affiché dans l'application : les 200 derniers évènements. */
+export const JOURNAL_LIMIT = 200;
+export const PHOTO_TYPES = ["photo_before", "photo_after"];
 
 export const INTERVENTION_INCLUDE = {
   site: {
@@ -95,10 +143,30 @@ export const INTERVENTION_INCLUDE = {
       postalCode: true,
       city: true,
       surfaceM2: true,
-      company: { select: { name: true, email: true, phone: true } },
+      company: CONTACT,
     },
   },
-  company: { select: { name: true, email: true, phone: true } },
+  company: CONTACT,
+  series: { select: { timezone: true } },
+  tasks: { orderBy: { sortOrder: "asc" } },
+  consumables: { orderBy: { sortOrder: "asc" } },
+  proofs: {
+    where: { type: { in: PHOTO_TYPES } },
+    orderBy: { takenAt: "asc" },
+    select: { id: true, type: true, area: true, clientRef: true, fileId: true, takenAt: true },
+  },
+  events: {
+    orderBy: { at: "desc" },
+    take: JOURNAL_LIMIT,
+    select: { type: true, at: true, metadata: true, user: { select: { name: true } } },
+  },
+  // L'agent revoit ce qui a été signalé du terrain ; les détections automatiques
+  // (hors créneau, durée…) restent l'affaire des responsables.
+  anomalies: {
+    where: { archivedAt: null, source: "agent" },
+    orderBy: { reportedAt: "asc" },
+    select: { id: true, type: true, location: true, comment: true, status: true, reportedAt: true },
+  },
 } as const;
 
 export function readFieldData(value: unknown): FieldData {
@@ -106,43 +174,69 @@ export function readFieldData(value: unknown): FieldData {
 }
 
 /** Grille de l'intervention : celle déjà commencée, sinon celle de sa prestation. */
-export function checklistOf(row: Pick<InterventionRow, "title" | "site">, data: FieldData) {
+export function checklistOf(row: Pick<StopRow, "title" | "site">, data: FieldData): Checklist {
   return CHECKLISTS.find((c) => c.key === data.grille) ?? checklistFor(row.title, row.site?.name);
 }
 
-export function freshRooms(list: Checklist): FieldRoom[] {
-  return list.pieces.map((p) => ({
-    n: p.n,
-    items: p.items.map((i) => ({ ...i, ok: false, nc: "", ts: 0 })),
-  }));
+/** Points de contrôle à créer pour une intervention qui n'en a pas encore. */
+export function freshTasks(list: Checklist) {
+  return list.pieces.flatMap((p) =>
+    p.items.map((i) => ({ area: p.n, label: i.l, critical: i.crit })),
+  );
 }
 
-/** Complète le relevé (grille et consommables) s'il n'a pas encore été commencé. */
-export function withDefaults(row: Pick<InterventionRow, "title" | "site">, data: FieldData) {
-  const list = checklistOf(row, data);
-  return {
-    ...data,
-    grille: data.grille ?? list.key,
-    pieces: data.pieces ?? freshRooms(list),
-    cons: data.cons ?? list.consommables.map((c) => ({ ...c, q: 0 })),
-  } satisfies FieldData;
+/** Points de contrôle regroupés par pièce, au format de l'application. */
+export function roomsOf(
+  row: Pick<InterventionRow, "title" | "site" | "tasks">,
+  data: FieldData,
+): FieldRoom[] {
+  if (row.tasks.length === 0)
+    return checklistOf(row, data).pieces.map((p) => ({
+      n: p.n,
+      items: p.items.map((i) => ({ ...i, ok: false, nc: "", ts: 0 })),
+    }));
+  const rooms: FieldRoom[] = [];
+  for (const t of row.tasks) {
+    let room = rooms.at(-1);
+    if (!room || room.n !== t.area) {
+      room = { n: t.area, items: [] };
+      rooms.push(room);
+    }
+    room.items.push({
+      l: t.label,
+      crit: t.critical,
+      ok: t.done,
+      nc: t.reason ?? "",
+      ts: t.doneAt?.getTime() ?? 0,
+    });
+  }
+  return rooms;
 }
 
-export function plannedHours(row: Pick<InterventionRow, "durationMinutes">): number {
+export function consumablesOf(
+  row: Pick<InterventionRow, "title" | "site" | "consumables">,
+  data: FieldData,
+): FieldConsumable[] {
+  if (row.consumables.length)
+    return row.consumables.map((c) => ({ l: c.label, u: c.unit ?? "", q: c.quantity }));
+  return checklistOf(row, data).consommables.map((c) => ({ ...c, q: 0 }));
+}
+
+export function plannedHours(row: Pick<StopRow, "durationMinutes">): number {
   return row.durationMinutes ? row.durationMinutes / 60 : 2;
 }
 
-export function shortRef(row: Pick<InterventionRow, "id">, data: FieldData): string {
+export function shortRef(row: Pick<StopRow, "id">, data: FieldData): string {
   return data.ref ?? `INT-${row.id.slice(-6).toUpperCase()}`;
 }
 
-export function clientName(row: InterventionRow, data: FieldData): string {
+export function clientName(row: StopRow, data: FieldData): string {
   return (
     data.client?.nom || row.site?.name || row.site?.company?.name || row.company?.name || row.title
   );
 }
 
-export function statusOf(row: InterventionRow, data: FieldData) {
+export function statusOf(row: StopRow, data: FieldData) {
   return data.cloture
     ? "cloture"
     : row.checkOutAt
@@ -153,7 +247,7 @@ export function statusOf(row: InterventionRow, data: FieldData) {
 }
 
 /** Ligne de la tournée. */
-export function toStop(row: InterventionRow) {
+export function toStop(row: StopRow) {
   const data = readFieldData(row.fieldData);
   return {
     id: row.id,
@@ -162,15 +256,66 @@ export function toStop(row: InterventionRow) {
     client: clientName(row, data),
     ville: row.site?.city ?? "",
     prestation: row.title,
-    agentId: row.ownerId ?? "",
+    agentId: row.replacementAgentId ?? row.ownerId ?? "",
     devise: plannedHours(row),
     statut: statusOf(row, data),
   };
 }
 
+interface JournalMeta {
+  label?: string;
+  detail?: string;
+  by?: string;
+  source?: string;
+}
+
+/** Journal du chantier, du plus ancien au plus récent, tiré des évènements. */
+export function journalOf(row: Pick<InterventionRow, "events">) {
+  return (
+    [...row.events]
+      .reverse()
+      .map((e) => ({ e, meta: (e.metadata ?? {}) as JournalMeta }))
+      // Le récapitulatif « contrôle mis à jour » double les lignes point par point.
+      .filter(({ e, meta }) => e.type !== "checklist_updated" || meta.label)
+      // Les détections automatiques ne s'affichent qu'aux responsables, dans le logiciel.
+      .filter(({ e, meta }) => e.type !== "anomaly_reported" || meta.source === "agent")
+      .map(({ e, meta }) => ({
+        ts: e.at.getTime(),
+        a:
+          meta.label ??
+          INTERVENTION_EVENT_TYPES[e.type as keyof typeof INTERVENTION_EVENT_TYPES] ??
+          e.type,
+        d: meta.detail ?? "",
+        par: meta.by ?? e.user?.name ?? "",
+      }))
+  );
+}
+
+/** Anomalie signalée, telle que l'agent la voit (sans le circuit de validation). */
+export function toAnomalyLine(a: InterventionRow["anomalies"][number]) {
+  return {
+    id: a.id,
+    libelle: anomalyTypeLabel(a.type),
+    lieu: a.location ?? "",
+    commentaire: a.comment ?? "",
+    ts: a.reportedAt.getTime(),
+  };
+}
+
+/** Points de contrôle regroupés par pièce, dans l'ordre. */
+export function tasksByRoom<T extends { area: string }>(tasks: T[]): T[][] {
+  const rooms: T[][] = [];
+  for (const t of tasks) {
+    const last = rooms.at(-1);
+    if (last && last[0]!.area === t.area) last.push(t);
+    else rooms.push([t]);
+  }
+  return rooms;
+}
+
 /** Fiche complète, au format attendu par l'application terrain. */
 export function toChantier(row: InterventionRow) {
-  const data = withDefaults(row, readFieldData(row.fieldData));
+  const data = readFieldData(row.fieldData);
   const company = row.site?.company ?? row.company;
   return {
     id: row.id,
@@ -187,15 +332,22 @@ export function toChantier(row: InterventionRow) {
     date: dayKey(row.date),
     heure: row.startTime ?? "",
     devise: plannedHours(row),
-    agentId: row.ownerId ?? "",
-    pieces: data.pieces,
-    cons: data.cons,
+    agentId: row.replacementAgentId ?? row.ownerId ?? "",
+    pieces: roomsOf(row, data),
+    cons: consumablesOf(row, data),
     obs: row.notes ?? "",
     signature: row.signatureUrl,
     signataire: row.signedBy ?? data.signataire ?? "",
     signatureTs: data.signatureTs ?? null,
-    photos: (data.photos ?? []).map(({ id, piece, slot, ts }) => ({ id, piece, slot, ts })),
-    journal: data.journal ?? [],
+    photos: row.proofs.map((p) => ({
+      id: p.clientRef ?? p.id,
+      piece: p.area ?? "",
+      slot: p.type === "photo_after" ? "apres" : "avant",
+      ts: p.takenAt.getTime(),
+    })),
+    journal: journalOf(row),
+    anomalies: row.anomalies.map(toAnomalyLine),
+    typesAnomalie: FIELD_ANOMALY_TYPES,
     arrivee: row.checkInAt?.getTime() ?? null,
     depart: row.checkOutAt?.getTime() ?? null,
     arriveeDifferee: data.arriveeDifferee ?? false,
@@ -204,10 +356,6 @@ export function toChantier(row: InterventionRow) {
     cloture: data.cloture ?? null,
     maj: row.updatedAt.getTime(),
   };
-}
-
-export function addJournal(data: FieldData, a: string, d: string, par: string): void {
-  data.journal = [...(data.journal ?? []), { ts: Date.now(), a, d, par }].slice(-200);
 }
 
 /**

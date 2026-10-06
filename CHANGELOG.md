@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.6.0] — 2026-10-06 — Application terrain sur le nouveau modèle et anomalies (lot 4)
+
+### Ajouté
+
+- **Signaler une anomalie depuis l'application terrain** : type (ampoule, fuite, encombrants,
+  porte, interphone, nuisibles, dégradation, salissure, autre), emplacement, description et
+  photo ; fonctionne hors réseau, sans doublon au renvoi. Elle part au chef et au patron,
+  jamais au client.
+- **Nettoyage › Anomalies** : à valider, validées, en cours, résolues, rejetées ; le
+  responsable valide, corrige, rejette, prend en charge, résout (avec l'action menée) ou
+  rouvre ; « visible par le client » seulement une fois validée. Saisie directe d'une anomalie
+  constatée en ronde ou signalée par le client.
+- **Détection automatique** : passage non réalisé, arrivée hors créneau (autre jour ou plus de
+  deux heures d'écart), durée anormale (plus du double ou moins de la moitié du prévu), point
+  critique non fait à la clôture, contrôle qualité non conforme. Une seule fois par cas.
+- **Onglet « Relevé terrain »** sur chaque intervention : agent prévu, remplaçant et agent
+  réel, points de contrôle pièce par pièce, photos, consommables, journal, anomalies.
+- Le remplaçant voit et traite dans l'application les passages qui lui sont confiés.
+
+### Modifié
+
+- Le relevé de l'application (points de contrôle, consommables, photos, journal) est rangé
+  dans ses propres tables ; les relevés existants y ont été repris automatiquement, sans
+  perte. Les écrans de l'application ne changent pas.
+
 ## [1.5.0] — 2026-10-06 — Clients, sites et fiches de site (lot 3)
 
 ### Ajouté

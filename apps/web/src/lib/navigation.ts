@@ -57,6 +57,7 @@ import {
   CalendarRangeIcon,
   QrCodeIcon,
   CalendarSyncIcon,
+  TriangleAlertIcon,
   FileUpIcon,
   SmartphoneIcon,
   ClockIcon,
@@ -319,6 +320,15 @@ export const MODULE_SECTIONS: NavSection[] = [
           "bon d'intervention",
         ],
         permission: ["cleaning", "view"],
+        module: "cleaning",
+      },
+      {
+        id: "cleaning-anomalies",
+        href: "/nettoyage/anomalies",
+        label: "Anomalies",
+        icon: TriangleAlertIcon,
+        keywords: ["signalement", "fuite", "ampoule", "encombrants", "valider", "incident"],
+        permission: ["cleaning", "update"],
         module: "cleaning",
       },
       {

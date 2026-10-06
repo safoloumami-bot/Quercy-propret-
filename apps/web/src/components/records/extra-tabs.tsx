@@ -4,6 +4,7 @@ import type { EntityKey, ModuleKey } from "@quercy/core";
 import type * as React from "react";
 
 import { ClientOverview } from "@/components/cleaning/client-overview";
+import { FieldRecord } from "@/components/cleaning/field-record";
 import { SiteSheet } from "@/components/cleaning/site-sheet";
 import { useAccess } from "@/components/shell/access-context";
 
@@ -22,6 +23,14 @@ const EXTRA_TABS: Partial<Record<EntityKey, ExtraTab[]>> = {
       label: "Fiche de site",
       module: "cleaning",
       render: (id) => <SiteSheet siteId={id} />,
+    },
+  ],
+  intervention: [
+    {
+      value: "releve-terrain",
+      label: "Relevé terrain",
+      module: "cleaning",
+      render: (id) => <FieldRecord interventionId={id} />,
     },
   ],
   company: [

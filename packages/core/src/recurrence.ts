@@ -114,6 +114,10 @@ export const INTERVENTION_EVENT_TYPES = {
   finished: "Départ du site",
   time_corrected: "Pointage corrigé",
   checklist_updated: "Contrôle mis à jour",
+  task_done: "Point validé",
+  task_undone: "Point décoché",
+  task_reason: "Réserve",
+  consumables_updated: "Consommables mis à jour",
   photo_added: "Photo ajoutée",
   photo_removed: "Photo supprimée",
   signed: "Signature du client",
@@ -124,5 +128,6 @@ export const INTERVENTION_EVENT_TYPES = {
   rescheduled: "Intervention déplacée",
   status_changed: "Statut changé",
   missed: "Passage non réalisé",
+  note: "Note",
 } as const;
 export type InterventionEventType = keyof typeof INTERVENTION_EVENT_TYPES;

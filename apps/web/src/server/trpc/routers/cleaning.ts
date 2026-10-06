@@ -1,4 +1,5 @@
 import {
+  detectPointageAnomalies,
   ENTITIES,
   addDays,
   dayKey,
@@ -7,13 +8,13 @@ import {
   utcDay,
   weekStart,
 } from "@quercy/core";
-import { generateInterventions, recordInterventionEvent } from "@quercy/jobs";
+import { generateInterventions, recordInterventionEvent, reportAnomalies } from "@quercy/jobs";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { publish } from "../../realtime";
 import { afterRecordChange } from "../../records/after-change";
-import { entityContext } from "../../records/context";
+import { type RecordsCtx, entityContext } from "../../records/context";
 import { applyBusinessRules } from "../../records/hooks";
 import { cleaningHours, workspaceAgents } from "../../cleaning/hours";
 import { isCleaningManager, visibleSiteInfos } from "./sites";
@@ -55,6 +56,35 @@ async function saveIntervention(
   });
   await afterRecordChange(ctx, "intervention", [current.id], "updated");
   return updated;
+}
+
+/** Pointage hors créneau ou de durée anormale : anomalie aux responsables, sans bloquer. */
+async function pointageAnomalies(
+  ctx: { db: RecordsCtx["db"]; organizationId: string },
+  id: string,
+) {
+  try {
+    const row = await ctx.db.intervention.findFirst({
+      where: { id },
+      include: { series: { select: { timezone: true } } },
+    });
+    if (!row) return;
+    const reported = await reportAnomalies(
+      detectPointageAnomalies(row, row.series?.timezone ?? "Europe/Paris").map((found) => ({
+        organizationId: ctx.organizationId,
+        source: "system" as const,
+        siteId: row.siteId,
+        interventionId: row.id,
+        ...found,
+      })),
+    );
+    for (const userId of new Set(reported.flatMap((r) => r.notified)))
+      await publish(ctx.organizationId, { type: "notification", userId });
+  } catch (error) {
+    console.error(
+      JSON.stringify({ level: "error", msg: "cleaning.anomaly_failed", error: String(error) }),
+    );
+  }
 }
 
 export const cleaningRouter = createTRPCRouter({
@@ -206,6 +236,7 @@ export const cleaningRouter = createTRPCRouter({
         type: "started",
         metadata: { source: "logiciel" },
       });
+      await pointageAnomalies(ctx, current.id);
       return { ok: true };
     }),
 
@@ -249,6 +280,7 @@ export const cleaningRouter = createTRPCRouter({
         type: "finished",
         metadata: { source: "logiciel", signed: Boolean(input.signatureUrl) },
       });
+      await pointageAnomalies(ctx, current.id);
       return { ok: true };
     }),
 
