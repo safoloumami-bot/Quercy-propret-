@@ -18,7 +18,12 @@ test.describe("Assistant IA", () => {
     await expect(panel.getByText(/le chiffre d'affaires facturé est de/)).toBeVisible();
     await expect(panel.getByRole("link", { name: "Ouvrir dans les rapports" })).toBeVisible();
     await panel.getByRole("link", { name: "Voir les factures" }).click();
-    await expect(page).toHaveURL(/\/ventes\/factures\?filtre=/);
+    // Le filtre de l'adresse est appliqué au tableau (puis retiré de l'adresse) : statut et
+    // période du rapport.
+    await expect(page).toHaveURL(/\/ventes\/factures/);
+    await expect(page.getByRole("button", { name: /^Filtrer\s*2$/ })).toBeVisible({
+      timeout: 15_000,
+    });
     // Le panneau reste ouvert pendant la navigation.
     await expect(panel).toBeVisible();
 
