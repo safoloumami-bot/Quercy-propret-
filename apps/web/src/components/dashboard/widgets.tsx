@@ -57,7 +57,8 @@ function Kpi({
             <span
               className={cn(
                 "inline-flex shrink-0 items-center gap-0.5 rounded-sm px-1 font-medium whitespace-nowrap tabular-nums",
-                up && "bg-success/12 text-success",
+                // Texte en couleur du thème (contraste suffisant), la flèche garde le vert.
+                up && "bg-success/12 text-foreground [&>svg]:text-success",
                 down && "bg-destructive/10 text-destructive",
                 !up && !down && "bg-muted text-muted-foreground",
               )}
