@@ -1,5 +1,5 @@
 import { terrainServiceWorker } from "@/server/terrain/service-worker";
-import { terrainOrg } from "@/server/terrain/org";
+import { terrainBrandOf, terrainOrg } from "@/server/terrain/org";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
   const org = await terrainOrg(slug);
   if (!org) return new Response("", { status: 404 });
   const base = `/terrain/${org.slug}`;
-  return new Response(terrainServiceWorker(base), {
+  const brand = terrainBrandOf(org);
+  const worker = terrainServiceWorker(base, {
+    name: brand.name,
+    icon: brand.icon(192),
+    badge: brand.badge,
+  });
+  return new Response(worker, {
     headers: {
       "content-type": "text/javascript; charset=utf-8",
       "cache-control": "no-cache",

@@ -17,6 +17,15 @@ export async function terrainOrg(slug: string) {
   return org;
 }
 
+/** Même chose à partir de l'identifiant (tâches planifiées). */
+export async function loadTerrainOrgById(id: string) {
+  const org = await prisma.organization.findFirst({
+    where: { id, deletedAt: null },
+    include: { salesSettings: { select: { city: true, postalCode: true } } },
+  });
+  return org && org.modules.includes("cleaning") ? org : null;
+}
+
 export type TerrainOrgRow = NonNullable<Awaited<ReturnType<typeof terrainOrg>>>;
 
 /** Nom, couleur, ville et logo de l'entreprise, pris dans ses réglages du logiciel. */

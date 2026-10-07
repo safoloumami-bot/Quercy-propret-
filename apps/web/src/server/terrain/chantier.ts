@@ -53,6 +53,17 @@ export interface FieldData {
   departDiffere?: boolean;
   corrige?: boolean;
   cloture?: FieldClosure;
+  /** Saisies du planificateur de l'application (v15). */
+  consignes?: string;
+  taux?: number;
+  siren?: string;
+  annule?: { ts: number; par: string; motif: string } | false;
+  /** Réserves laissées au passage précédent chez ce client, à reprendre. */
+  reprises?: { piece: string; point: string; motif: string; date: string }[];
+  exemple?: boolean;
+  demo?: boolean;
+  /** Pointé depuis l'application : la clôture s'y fait aussi (sinon réalisée dans le logiciel). */
+  terrain?: boolean;
 }
 
 const SITE_INFO_LABEL: Record<string, string> = Object.fromEntries(
@@ -63,6 +74,7 @@ interface ContactRow {
   name: string;
   email: string | null;
   phone: string | null;
+  siren?: string | null;
 }
 
 /** Ligne de tournée : de quoi afficher l'arrêt, sans le relevé. */
@@ -78,9 +90,20 @@ export interface StopRow {
   siteId: string | null;
   checkInAt: Date | null;
   checkOutAt: Date | null;
+  workedMinutes: number | null;
+  companyId: string | null;
+  invoiceId: string | null;
   fieldData: unknown;
-  site: { name: string; city: string | null; company: ContactRow | null } | null;
+  site: {
+    name: string;
+    city: string | null;
+    address: string | null;
+    postalCode: string | null;
+    companyId: string | null;
+    company: ContactRow | null;
+  } | null;
   company: ContactRow | null;
+  review: { rating: number | null } | null;
 }
 
 /** Fiche mission affichée à l'agent (procédure, produits, consignes, infos du site). */
@@ -102,17 +125,25 @@ export interface InterventionRow extends StopRow {
   mission?: MissionInfo | null;
   planned?: PlannedTask[];
   siteInfos?: { category: string; label: string; content: string }[];
+  reportNumber: string | null;
   signatureUrl: string | null;
   signedBy: string | null;
   notes: string | null;
   updatedAt: Date;
   site:
     | (NonNullable<StopRow["site"]> & {
-        address: string | null;
-        postalCode: string | null;
         surfaceM2: number | null;
+        instructions: string | null;
       })
     | null;
+  review: {
+    token: string;
+    rating: number | null;
+    comment: string | null;
+    ratedAt: Date | null;
+    requestedAt: Date | null;
+  } | null;
+  invoice: { id: string; number: string | null } | null;
   series: { timezone: string } | null;
   tasks: {
     id: string;
@@ -151,11 +182,21 @@ export interface InterventionRow extends StopRow {
   }[];
 }
 
-const CONTACT = { select: { name: true, email: true, phone: true } } as const;
+const CONTACT = { select: { name: true, email: true, phone: true, siren: true } } as const;
 
 export const STOP_INCLUDE = {
-  site: { select: { name: true, city: true, company: CONTACT } },
+  site: {
+    select: {
+      name: true,
+      city: true,
+      address: true,
+      postalCode: true,
+      companyId: true,
+      company: CONTACT,
+    },
+  },
   company: CONTACT,
+  review: { select: { rating: true } },
 } as const;
 
 /** Journal affiché dans l'application : les 200 derniers évènements. */
@@ -170,10 +211,16 @@ export const INTERVENTION_INCLUDE = {
       postalCode: true,
       city: true,
       surfaceM2: true,
+      instructions: true,
+      companyId: true,
       company: CONTACT,
     },
   },
   company: CONTACT,
+  review: {
+    select: { token: true, rating: true, comment: true, ratedAt: true, requestedAt: true },
+  },
+  invoice: { select: { id: true, number: true } },
   series: { select: { timezone: true } },
   tasks: { orderBy: { sortOrder: "asc" } },
   consumables: { orderBy: { sortOrder: "asc" } },
@@ -268,17 +315,53 @@ export function clientName(row: StopRow, data: FieldData): string {
   );
 }
 
+/** Intervention réalisée dans le logiciel, sans passer par l'application. */
+export function doneInSoftware(row: Pick<StopRow, "status">, data: FieldData) {
+  return row.status === "done" && !data.cloture && !data.terrain;
+}
+
 export function statusOf(row: StopRow, data: FieldData) {
-  return data.cloture
-    ? "cloture"
-    : row.checkOutAt
-      ? "a-cloturer"
-      : row.checkInAt
-        ? "en-cours"
-        : "prevu";
+  return row.status === "cancelled"
+    ? "annule"
+    : data.cloture || doneInSoftware(row, data)
+      ? "cloture"
+      : row.checkOutAt
+        ? "a-cloturer"
+        : row.checkInAt
+          ? "en-cours"
+          : "prevu";
 }
 
 /** Ligne de la tournée. */
+/** Heures réellement pointées (clôture, sinon minutes travaillées), ou null. */
+export function realHours(row: StopRow, data: FieldData): number | null {
+  if (data.cloture) return data.cloture.duree / 3_600_000;
+  if (row.workedMinutes) return row.workedMinutes / 60;
+  if (row.status === "done" && row.checkInAt && row.checkOutAt)
+    return (row.checkOutAt.getTime() - row.checkInAt.getTime()) / 3_600_000;
+  return null;
+}
+
+/**
+ * Clôture affichée par l'application : celle du terrain, sinon (intervention marquée
+ * réalisée dans le logiciel) un résumé tiré de l'intervention elle-même.
+ */
+export function closureOf(row: InterventionRow, data: FieldData): FieldClosure | null {
+  if (data.cloture) return data.cloture;
+  if (!doneInSoftware(row, data)) return null;
+  const hours = realHours(row, data) ?? (row.durationMinutes ?? 0) / 60;
+  return {
+    ts: row.updatedAt.getTime(),
+    duree: Math.round(hours * 3_600_000),
+    ok: row.tasks.filter((t) => t.done).length,
+    tot: row.tasks.length,
+    res: row.tasks.filter((t) => !t.done).length,
+    bon: row.reportNumber ?? "",
+    par: "logiciel",
+    mail: { envoye: false, raison: "réalisée dans le logiciel" },
+  };
+}
+
 export function toStop(row: StopRow) {
   const data = readFieldData(row.fieldData);
   return {
@@ -287,12 +370,22 @@ export function toStop(row: StopRow) {
     heure: row.startTime ?? "",
     client: clientName(row, data),
     ville: row.site?.city ?? "",
+    adresse: row.site?.address ?? "",
+    cp: row.site?.postalCode ?? "",
     prestation: row.title,
+    modele: checklistOf(row, data).label,
     agentId: row.replacementAgentId ?? row.ownerId ?? "",
     devise: plannedHours(row),
+    taux: data.taux ?? 0,
+    arrivee: row.checkInAt?.getTime() ?? null,
+    reel: realHours(row, data),
+    note: row.review?.rating ?? null,
+    exemple: Boolean(data.exemple),
+    demo: Boolean(data.demo),
     statut: statusOf(row, data),
   };
 }
+export type Stop = ReturnType<typeof toStop>;
 
 interface JournalMeta {
   label?: string;
@@ -353,6 +446,24 @@ export function toChantier(row: InterventionRow) {
     id: row.id,
     ref: shortRef(row, data),
     client: clientName(row, data),
+    modele: checklistOf(row, data).label,
+    consignes: data.consignes ?? row.site?.instructions ?? "",
+    taux: data.taux ?? 0,
+    siren: data.siren || company?.siren || "",
+    annule: row.status === "cancelled" ? data.annule || { ts: 0, par: "", motif: "" } : false,
+    reprises: data.reprises ?? [],
+    exemple: Boolean(data.exemple),
+    demo: Boolean(data.demo),
+    avis: row.review
+      ? {
+          jeton: row.review.token,
+          note: row.review.rating,
+          commentaire: row.review.comment ?? "",
+          ts: row.review.ratedAt?.getTime() ?? null,
+          demande: row.review.requestedAt?.getTime() ?? null,
+        }
+      : null,
+    facture: row.invoice ? { id: row.invoice.id, numero: row.invoice.number ?? "brouillon" } : null,
     contact: data.client?.contact ?? "",
     tel: data.client?.tel || company?.phone || "",
     email: data.client?.email || company?.email || "",
@@ -401,7 +512,7 @@ export function toChantier(row: InterventionRow) {
     arriveeDifferee: data.arriveeDifferee ?? false,
     departDiffere: data.departDiffere ?? false,
     corrige: data.corrige ?? false,
-    cloture: data.cloture ?? null,
+    cloture: closureOf(row, data),
     maj: row.updatedAt.getTime(),
   };
 }

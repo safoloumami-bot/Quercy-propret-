@@ -107,10 +107,13 @@ describe("marque convertible", () => {
   it("met le nom, les initiales et l'adresse de l'entreprise dans la page", async () => {
     const brand = terrainBrandOf((await terrainOrg(slug))!);
     const html = renderTerrainPage(brand);
-    expect(html).toContain("<title>Net&#39;Éclat Services — Terrain</title>");
+    expect(html).toContain("<title>Net&#39;Éclat Services</title>");
     expect(html).not.toContain("%%");
-    expect(html).not.toMatch(/Quercy|Cahors/);
-    expect(html).toContain(`fetch(T.base+"api/"+route`);
+    expect(html).not.toMatch(/Quercy Propreté|terrain-quercy/);
+    expect(html).toContain(`<base href="/terrain/${slug}/">`);
+    expect(html).toContain(`var BASE = T.base+"api/";`);
+    // Sans logo : l'icône dessinée aux couleurs de l'entreprise sert de logo.
+    expect(html).toContain(`src="/terrain/${slug}/icone/512"`);
     expect(html).toContain(`"base":"/terrain/${slug}/"`);
     expect(initials("Quercy Propreté")).toBe("QP");
     expect(initials("Net'Éclat Services")).toBe("NE");
@@ -249,6 +252,8 @@ describe("chantier de bout en bout", () => {
     // Pointage : l'heure vient du serveur ; un pointage hors réseau est signalé.
     const arrival = await agent("pointage", { id: ch.id, type: "arrivee", declareA: Date.now() });
     expect(arrival.data!.chantier.arrivee).toBeGreaterThan(Date.now() - 5000);
+    // Une heure déclarée invraisemblable (plus de 12 h, ou dans le futur) est ignorée.
+    expect(arrival.data!.chantier.arriveeDifferee).toBe(false);
     expect((await agent("pointage", { id: ch.id, type: "arrivee" })).status).toBe(409);
     expect((await prisma.intervention.findUniqueOrThrow({ where: { id: ch.id } })).status).toBe(
       "in_progress",
@@ -295,8 +300,13 @@ describe("chantier de bout en bout", () => {
     expect((await agent("cloture", { id: ch.id })).data!.erreur).toBe(
       "Pointez le départ avant de clôturer.",
     );
-    // Horloge du téléphone en avance : l'heure déclarée est gardée, mais signalée.
-    await agent("pointage", { id: ch.id, type: "depart", declareA: Date.now() + 5 * 60_000 });
+    // Arrivée il y a dix minutes (corrigée en base), départ pointé hors réseau il y a cinq
+    // minutes : l'heure déclarée est gardée, mais signalée.
+    await prisma.intervention.update({
+      where: { id: ch.id },
+      data: { checkInAt: new Date(Date.now() - 10 * 60_000) },
+    });
+    await agent("pointage", { id: ch.id, type: "depart", declareA: Date.now() - 5 * 60_000 });
     expect((await agent("cloture", { id: ch.id })).data!.erreur).toBe(
       "1 point(s) critique(s) sans motif.",
     );
@@ -492,7 +502,7 @@ describe("chantier de bout en bout", () => {
     expect(tour[0]!.id).toBe(planned.id);
     const fiche = (await agent(`chantier?id=${planned.id}`)).data!.chantier;
     expect(fiche).toMatchObject({ client: "Résidence Les Tilleuls", ville: "Pradines", devise: 1 });
-    expect(fiche.pieces[0].n).toBe("Hall d'entrée");
+    expect(fiche.pieces[0].n).toBe("Hall et entrée");
   });
 
   it("refuse une entreprise sans module Nettoyage et un agent désactivé", async () => {

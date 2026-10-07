@@ -1,7 +1,8 @@
 /**
  * Grilles de contrôle qualité de l'application terrain, pièce par pièce.
  * Un point « critique » non validé bloque la clôture tant qu'un motif n'est pas écrit.
- * La grille est choisie d'après la prestation (et le nom du site).
+ * La grille est choisie d'après la prestation (et le nom du site). Contenu repris de
+ * l'application de référence (v15) : quatre modèles, mêmes consommables.
  */
 
 export interface ChecklistItem {
@@ -24,6 +25,17 @@ export interface Checklist {
 }
 
 const item = (l: string, crit = false): ChecklistItem => ({ l, crit });
+
+const CONSOMMABLES: Consumable[] = [
+  { l: "Sacs poubelle 30 L", u: "unité" },
+  { l: "Sacs poubelle 100 L", u: "unité" },
+  { l: "Papier toilette", u: "rouleau" },
+  { l: "Essuie-tout", u: "rouleau" },
+  { l: "Savon mains", u: "flacon" },
+  { l: "Gel douche", u: "flacon" },
+  { l: "Produit sol désinfectant", u: "dose" },
+  { l: "Dégraissant cuisine", u: "dose" },
+];
 
 export const CHECKLISTS: Checklist[] = [
   {
@@ -71,150 +83,144 @@ export const CHECKLISTS: Checklist[] = [
         ],
       },
     ],
-    consommables: [
-      { l: "Sacs poubelle 30 L", u: "unité" },
-      { l: "Papier toilette", u: "rouleau" },
-      { l: "Essuie-tout", u: "rouleau" },
-      { l: "Gel douche / savon", u: "flacon" },
-      { l: "Produit sol désinfectant", u: "dose" },
-    ],
+    consommables: CONSOMMABLES,
   },
   {
     key: "bureaux",
-    label: "Bureaux",
+    label: "Bureaux et locaux",
     pieces: [
       {
         n: "Postes de travail",
         items: [
-          item("Bureaux et plans dépoussiérés (sans déplacer les documents)"),
-          item("Téléphones, poignées et interrupteurs désinfectés"),
+          item("Bureaux, écrans et téléphones dépoussiérés"),
           item("Corbeilles vidées, sacs remplacés"),
+          item("Sols aspirés"),
         ],
       },
       {
         n: "Sanitaires",
         items: [
-          item("Cuvettes, urinoirs et lavabos désinfectés", true),
-          item("Distributeurs réapprovisionnés (savon, papier)", true),
-          item("Miroirs et carrelage sans traces"),
-          item("Sol lavé"),
+          item("Cuvettes et urinoirs désinfectés", true),
+          item("Lavabos, robinetterie et miroirs"),
+          item("Savon, papier et essuie-mains réapprovisionnés", true),
+          item("Sols lavés et désinfectés"),
         ],
       },
       {
-        n: "Cuisine / espace pause",
+        n: "Espace détente",
         items: [
-          item("Plan de travail, évier et tables désinfectés", true),
-          item("Micro-ondes et façade du réfrigérateur"),
+          item("Plan de travail et évier"),
+          item("Micro-ondes et réfrigérateur"),
+          item("Machine à café détartrée et vidée"),
         ],
       },
       {
-        n: "Circulations et accueil",
+        n: "Circulations",
         items: [
-          item("Sols aspirés ou balayés puis lavés"),
-          item("Portes vitrées et traces de doigts"),
+          item("Hall, couloirs et escaliers"),
+          item("Portes vitrées et traces de mains"),
+          item("Interrupteurs et points de contact désinfectés", true),
         ],
       },
       {
-        n: "Sortie",
+        n: "Fermeture",
         items: [
-          item("Tri des déchets sorti au local"),
-          item("Lumières éteintes, fenêtres fermées", true),
-          item("Alarme activée, porte verrouillée", true),
+          item("Déchets évacués au local"),
+          item("Lumières éteintes, locaux fermés", true),
+          item("Alarme réenclenchée", true),
         ],
       },
     ],
-    consommables: [
-      { l: "Sacs poubelle 50 L", u: "unité" },
-      { l: "Papier toilette", u: "rouleau" },
-      { l: "Essuie-mains", u: "paquet" },
-      { l: "Savon mains", u: "recharge" },
-      { l: "Produit sol", u: "dose" },
+    consommables: CONSOMMABLES,
+  },
+  {
+    key: "remise-en-etat",
+    label: "Remise en état",
+    pieces: [
+      {
+        n: "Cuisine",
+        items: [
+          item("Dégraissage complet des meubles hauts et bas", true),
+          item("Hotte, filtres et four décapés", true),
+          item("Placards vidés, nettoyés intérieur et extérieur"),
+          item("Carrelage mural et joints"),
+        ],
+      },
+      {
+        n: "Sanitaires",
+        items: [
+          item("Détartrage complet, robinetterie et joints", true),
+          item("Traitement des moisissures"),
+          item("Évacuations dégagées"),
+        ],
+      },
+      {
+        n: "Sols et murs",
+        items: [
+          item("Sols décapés puis protégés"),
+          item("Plinthes, portes et chambranles"),
+          item("Traces sur les murs traitées"),
+        ],
+      },
+      {
+        n: "Menuiseries",
+        items: [
+          item("Vitrages intérieurs et extérieurs accessibles"),
+          item("Rails, joints et volets"),
+        ],
+      },
+      {
+        n: "Finitions",
+        items: [
+          item("Interrupteurs, prises et radiateurs"),
+          item("Encombrants évacués", true),
+          item("Contrôle final pièce par pièce", true),
+        ],
+      },
     ],
+    consommables: CONSOMMABLES,
   },
   {
     key: "parties-communes",
     label: "Parties communes",
     pieces: [
       {
-        n: "Hall d'entrée",
+        n: "Hall et entrée",
         items: [
-          item("Sol balayé puis lavé"),
-          item("Vitres de la porte d'entrée"),
+          item("Sol lavé, paillasson nettoyé"),
           item("Boîtes aux lettres et interphone dépoussiérés"),
+          item("Portes vitrées sans traces"),
         ],
       },
       {
         n: "Escaliers et paliers",
         items: [
-          item("Marches et paliers balayés puis lavés"),
-          item("Rampes et mains courantes désinfectées"),
+          item("Marches et contremarches"),
+          item("Rampes désinfectées", true),
+          item("Paliers et portes palières"),
         ],
       },
-      { n: "Ascenseur", items: [item("Cabine, miroir et boutons nettoyés")] },
       {
         n: "Local poubelles",
         items: [
-          item("Bacs sortis ou rentrés selon le jour de collecte", true),
-          item("Sol du local lavé, odeurs contrôlées"),
+          item("Containers sortis et rentrés", true),
+          item("Sol lavé et désinfecté", true),
+          item("Local désodorisé"),
         ],
       },
       {
-        n: "Sortie",
+        n: "Abords",
+        items: [item("Entrée extérieure balayée"), item("Local vélos et parking")],
+      },
+      {
+        n: "Contrôles",
         items: [
-          item("Éclairage des communs vérifié (ampoule à signaler)"),
-          item("Portes refermées", true),
+          item("Ampoules grillées signalées"),
+          item("Dégradations relevées et photographiées"),
         ],
       },
     ],
-    consommables: [
-      { l: "Sacs poubelle 100 L", u: "unité" },
-      { l: "Produit sol", u: "dose" },
-      { l: "Désinfectant surfaces", u: "dose" },
-    ],
-  },
-  {
-    key: "remise-en-etat",
-    label: "Remise en état / fin de chantier",
-    pieces: [
-      {
-        n: "Gros œuvre",
-        items: [
-          item("Gravats et emballages évacués", true),
-          item("Traces de plâtre, peinture et colle retirées"),
-        ],
-      },
-      {
-        n: "Menuiseries et vitres",
-        items: [
-          item("Vitres, cadres et rails nettoyés"),
-          item("Étiquettes et films de protection retirés"),
-        ],
-      },
-      {
-        n: "Sanitaires et cuisine",
-        items: [
-          item("Appareils sanitaires désinfectés", true),
-          item("Meubles intérieurs et extérieurs nettoyés"),
-        ],
-      },
-      {
-        n: "Sols",
-        items: [item("Sols aspirés puis lavés deux fois"), item("Plinthes et seuils nettoyés")],
-      },
-      {
-        n: "Sortie",
-        items: [
-          item("Tour final avec le client ou le chef de chantier"),
-          item("Clés rendues, accès refermés", true),
-        ],
-      },
-    ],
-    consommables: [
-      { l: "Sacs gravats", u: "unité" },
-      { l: "Décapant", u: "flacon" },
-      { l: "Lame de grattoir", u: "unité" },
-      { l: "Produit sol", u: "dose" },
-    ],
+    consommables: CONSOMMABLES,
   },
 ];
 

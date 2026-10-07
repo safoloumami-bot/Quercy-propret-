@@ -58,7 +58,13 @@ import {
   toChantier,
   toStop,
 } from "./chantier";
+import { runTerrainAlerts } from "./alerts";
+import { COULEURS, PRESTATIONS, entrepriseConf, saveEntreprise } from "./config";
+import { handleGestion, hasAgentPhoto, journal, receiveQuoteRequest, teamOf } from "./gestion";
+import { type Body, HttpError, type Me, fail, json, str, txt } from "./http";
 import { type TerrainOrgRow, terrainBrandOf } from "./org";
+import { clearDemo, clearExamples, newChantiers, seedDemo, seedExamples } from "./planning";
+import { patronIds, sendPush } from "./push";
 import {
   SESSION_MS,
   clearAttempts,
@@ -72,31 +78,6 @@ import {
   tooManyAttempts,
   verifyToken,
 } from "./session";
-
-type Me = { id: string; nom: string; code: string; role: "patron" | "agent"; accessId: string };
-type Body = Record<string, unknown>;
-
-class HttpError extends Error {
-  constructor(
-    message: string,
-    readonly status = 400,
-  ) {
-    super(message);
-  }
-}
-
-function json(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-      ...headers,
-    },
-  });
-}
-const fail = (message: string, status = 400) => json({ erreur: message }, status);
-const str = (v: unknown, max: number) => String(v ?? "").slice(0, max);
 
 /* ------------------------------------------------------------ identité */
 
@@ -121,11 +102,30 @@ async function currentAgent(request: Request, org: TerrainOrgRow): Promise<Me | 
   };
 }
 
-const publicMe = (me: Me) => ({ id: me.id, nom: me.nom, code: me.code, role: me.role });
+/** L'agent connecté tel que l'application l'affiche (couleur et photo comprises). */
+async function publicMe(org: TerrainOrgRow, me: Me) {
+  const access = await prisma.fieldAccess.findUnique({
+    where: { id: me.accessId },
+    select: { color: true },
+  });
+  return {
+    id: me.id,
+    nom: me.nom,
+    code: me.code,
+    role: me.role,
+    couleur: access?.color ?? "#009C84",
+    photo: await hasAgentPhoto(org.id, me.id),
+  };
+}
 
-function loginResponse(org: TerrainOrgRow, me: Me): Response {
+const clientIp = (request: Request) =>
+  request.headers.get("x-nf-client-connection-ip") ??
+  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+  "?";
+
+async function loginResponse(org: TerrainOrgRow, me: Me): Promise<Response> {
   const token = signToken({ id: me.accessId, org: org.id, exp: Date.now() + SESSION_MS });
-  return json({ moi: publicMe(me) }, 200, {
+  return json({ moi: await publicMe(org, me) }, 200, {
     "set-cookie": sessionCookie(token, terrainBrandOf(org).base),
   });
 }
@@ -487,9 +487,37 @@ const READ_ROUTES = new Set([
   "tournee",
   "chantier",
   "photo-fichier",
+  "agent-photo",
   "agents",
   "historique",
+  "demandes",
+  "calendrier",
+  "historique-agent",
+  "activite",
+  "push-cle",
+  "push-abo",
+  "absences",
+  "clients",
+  "client",
+  "attestation",
+  "factures",
+  "a-facturer",
+  "pilotage",
+  "recherche",
+  "export",
 ]);
+
+/** Avis client (page publique) : nombre d'envois par adresse sur 10 minutes. */
+const reviewHits = new Map<string, number[]>();
+function tooManyReviews(key: string) {
+  const now = Date.now();
+  const hits = (reviewHits.get(key) ?? []).filter((t) => now - t < 10 * 60_000);
+  hits.push(now);
+  reviewHits.set(key, hits);
+  return hits.length > 8;
+}
+
+const REVIEW_TTL_MS = 60 * 86_400_000;
 
 /**
  * Serveur de l'application terrain, branché sur le logiciel : mêmes routes et mêmes réponses
@@ -556,26 +584,157 @@ async function myAssets(org: TerrainOrgRow, me: Me) {
   };
 }
 
+/**
+ * Corps d'un envoi : JSON (application, et formulaire du site envoyé en texte brut), sinon
+ * champs de formulaire classiques.
+ */
+async function readBody(request: Request): Promise<Body> {
+  const raw = await request.text().catch(() => "");
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? (parsed as Body) : {};
+  } catch {
+    return Object.fromEntries(new URLSearchParams(raw));
+  }
+}
+
 export async function handleTerrainApi(
   request: Request,
   org: TerrainOrgRow,
   route: string,
 ): Promise<Response> {
   const url = new URL(request.url);
-  const body: Body =
-    request.method === "POST" ? ((await request.json().catch(() => ({}))) as Body) : {};
+  const body: Body = request.method === "POST" ? await readBody(request) : {};
   try {
     if (route === "ping")
       return json({ ok: true, serveur: "en ligne", heure: new Date().toISOString() });
+
+    /* ---------- pages publiques : formulaire du site et avis du client ---------- */
+    if (route === "demande" && request.method === "OPTIONS")
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "POST, OPTIONS",
+          "access-control-allow-headers": "content-type",
+        },
+      });
+    if (route === "demande" && request.method === "POST")
+      return receiveQuoteRequest(org, body, clientIp(request));
+
+    if (route === "avis-info") {
+      const review = await prisma.clientReview.findFirst({
+        where: { organizationId: org.id, token: txt(url.searchParams.get("j"), 60) },
+        include: {
+          intervention: {
+            include: { site: { select: { name: true } }, company: { select: { name: true } } },
+          },
+        },
+      });
+      if (!review || review.intervention.deletedAt)
+        return fail("Ce lien d'avis n'est pas reconnu.", 404);
+      const cfg = await entrepriseConf(org);
+      const it = review.intervention;
+      const agentId = it.actualAgentId ?? it.replacementAgentId ?? it.ownerId;
+      const agent = agentId
+        ? await prisma.user.findUnique({ where: { id: agentId }, select: { name: true } })
+        : null;
+      const data = readFieldData(it.fieldData);
+      return json({
+        entreprise: cfg.nom,
+        ville: cfg.ville,
+        tel: cfg.tel,
+        client: data.client?.nom || it.site?.name || it.company?.name || "",
+        date: dayKey(it.date),
+        prestation: it.title,
+        agent: agent?.name ?? "",
+        note: review.rating ?? null,
+        commentaire: review.comment ?? "",
+        google: cfg.avisGoogle,
+        expire: Date.now() - review.createdAt.getTime() > REVIEW_TTL_MS,
+      });
+    }
+
+    if (route === "avis" && request.method === "POST") {
+      if (tooManyReviews(`${org.id}:${clientIp(request)}`))
+        return fail("Trop d'envois, réessayez plus tard.", 429);
+      const review = await prisma.clientReview.findFirst({
+        where: { organizationId: org.id, token: txt(body.j, 60) },
+        include: { intervention: { include: { site: { select: { name: true } } } } },
+      });
+      if (!review || review.intervention.deletedAt)
+        return fail("Ce lien d'avis n'est pas reconnu.", 404);
+      if (Date.now() - review.createdAt.getTime() > REVIEW_TTL_MS)
+        return fail("Ce lien a expiré.", 410);
+      const note = Math.round(Number(body.note));
+      if (!(note >= 1 && note <= 5)) return fail("Choisissez une note de 1 à 5 étoiles.", 400);
+      const comment = txt(body.commentaire, 600);
+      await prisma.clientReview.update({
+        where: { id: review.id },
+        data: { rating: note, comment: comment || null, ratedAt: new Date() },
+      });
+      const it = review.intervention;
+      await prisma.interventionEvent.create({
+        data: {
+          organizationId: org.id,
+          interventionId: it.id,
+          type: "note",
+          metadata: {
+            source: "avis client",
+            label: review.rating ? "Avis du client modifié" : "Avis du client",
+            detail: `${note} / 5`,
+            by: "client",
+          },
+        },
+      });
+      const cfg = await entrepriseConf(org);
+      const patrons = await patronIds(org.id);
+      const client = readFieldData(it.fieldData).client?.nom || it.site?.name || "";
+      const stars = "★".repeat(note) + "☆".repeat(5 - note);
+      await sendPush(org.id, patrons, {
+        titre: `${stars} · ${client}`,
+        corps: comment || "Nouvel avis client.",
+        onglet: "equipe",
+      });
+      const agentId = it.replacementAgentId ?? it.ownerId;
+      if (note >= 4 && agentId && !patrons.includes(agentId))
+        await sendPush(org.id, [agentId], {
+          titre: `Bravo · ${stars}`,
+          corps: `${client}${comment ? ` : « ${comment.slice(0, 120)} »` : " a apprécié votre travail."}`,
+          onglet: "tournee",
+        });
+      return json({ ok: true, google: note >= 4 ? cfg.avisGoogle : "" });
+    }
 
     const me = await currentAgent(request, org);
 
     if (route === "etat") {
       const accesses = await prisma.fieldAccess.count({ where: { organizationId: org.id } });
       const list = CHECKLISTS[0]!;
+      if (me)
+        await runTerrainAlerts(org.id).catch((error) =>
+          console.error(
+            JSON.stringify({ level: "warn", msg: "terrain.alerts", error: String(error) }),
+          ),
+        );
+      const team = me ? await teamOf(org.id) : [];
       return json({
-        moi: me ? publicMe(me) : null,
+        moi: me ? await publicMe(org, me) : null,
         installation: accesses === 0,
+        nouvelles:
+          me?.role === "patron"
+            ? await prisma.quoteRequest.count({
+                where: { organizationId: org.id, status: "nouvelle" },
+              })
+            : 0,
+        version: 3,
+        modeles: CHECKLISTS.map((c) => c.label),
+        prestations: PRESTATIONS,
+        entreprise: me ? await entrepriseConf(org) : null,
+        agents: team
+          .filter((a) => a.actif)
+          .map(({ id, nom, couleur, photo, role }) => ({ id, nom, couleur, photo, role })),
         pieces: list.pieces,
         consommables: list.consommables,
       });
@@ -603,7 +762,7 @@ export async function handleTerrainApi(
         return fail("Identifiant ou code incorrect.", 401);
       }
       clearAttempts(ip);
-      return loginResponse(org, {
+      return await loginResponse(org, {
         id: access.userId,
         nom: access.user.name,
         code: access.code,
@@ -638,10 +797,11 @@ export async function handleTerrainApi(
           userId: membership.userId,
           code: "patron",
           role: "patron",
+          color: "#009C84",
           ...newPin(pin),
         },
       });
-      return loginResponse(org, {
+      return await loginResponse(org, {
         id: membership.userId,
         nom: session!.user.name,
         code: "patron",
@@ -662,6 +822,10 @@ export async function handleTerrainApi(
           403,
         );
     }
+
+    /* ---------- gestion (v15) : demandes, calendrier, clients, factures, pilotage… ---------- */
+    const managed = await handleGestion(route, { org, me, url, body, request });
+    if (managed) return managed;
 
     /* ---------- tournée ---------- */
     if (route === "tournee") {
@@ -684,6 +848,8 @@ export async function handleTerrainApi(
       return json({
         date: d,
         chantiers: stops,
+        heures: stops.reduce((s, c) => s + (c.devise || 0), 0),
+        serveur: Date.now(),
         ...(await myAbsences(org, me)),
         materiel: await myAssets(org, me),
       });
@@ -701,8 +867,15 @@ export async function handleTerrainApi(
       if (data.cloture) return fail("Chantier déjà clôturé.", 409);
       const server = Date.now();
       const declared = Number(body.declareA) || 0;
+      // Heure déclarée hors réseau : crédible seulement entre 12 h avant et maintenant
+      // (et après l'arrivée pour un départ).
+      const floor = Math.max(
+        server - 12 * 3_600_000,
+        row.checkInAt ? row.checkInAt.getTime() + 1000 : 0,
+      );
+      const credible = declared > 0 && declared <= server + 60_000 && declared >= floor;
       // Pointage fait hors réseau : on garde l'heure déclarée et on signale l'écart.
-      const offline = declared > 0 && Math.abs(server - declared) > 120_000;
+      const offline = credible && Math.abs(server - declared) > 120_000;
       const at = new Date(offline ? declared : server);
       const note = offline ? `heure déclarée hors réseau, reçue à ${timeFr(server)}` : "";
       let changes: Record<string, unknown>;
@@ -712,6 +885,7 @@ export async function handleTerrainApi(
       if (body.type === "arrivee") {
         if (row.checkInAt) return fail("Arrivée déjà pointée.", 409);
         data.arriveeDifferee = offline;
+        data.terrain = true;
         label = "Arrivée sur site";
         // Intervenant réel : celui qui pointe l'arrivée (il peut remplacer l'agent prévu).
         changes = { checkInAt: at, actualAgentId: me.id };
@@ -726,7 +900,11 @@ export async function handleTerrainApi(
       } else if (body.type === "correction") {
         if (!row.checkInAt) return fail("Correction impossible.", 409);
         const value = Number(body.valeur);
-        if (!value || value < row.checkInAt.getTime())
+        if (
+          !value ||
+          value <= row.checkInAt.getTime() ||
+          value > row.checkInAt.getTime() + 24 * 3_600_000
+        )
           return fail("Heure de départ invalide.", 400);
         data.corrige = true;
         label = "Pointage corrigé";
@@ -1308,39 +1486,105 @@ export async function handleTerrainApi(
       return json({ chantier: toChantier(keepExtras(final, row)), mail });
     }
 
+    /* ---------- photo de profil des agents ---------- */
+    if (route === "agent-photo" && request.method === "POST") {
+      const target = txt(body.id, 40) || me.id;
+      if (target !== me.id) patronOnly();
+      if (!(await prisma.fieldAccess.count({ where: { organizationId: org.id, userId: target } })))
+        return fail("Agent introuvable.", 404);
+      const previous = await prisma.storedFile.findMany({
+        where: { organizationId: org.id, entityType: "agent-photo", entityId: target },
+      });
+      if (body.data !== null) {
+        const d = String(body.data ?? "");
+        const prefix = "data:image/jpeg;base64,";
+        if (!d.startsWith(prefix) || d.length > 300_000)
+          return fail("Photo invalide ou trop lourde.", 400);
+        const stored = await storePhoto(
+          org,
+          me,
+          { id: target },
+          `agent-${target}.jpg`,
+          new Uint8Array(Buffer.from(d.slice(prefix.length), "base64")),
+          "agent-photo",
+        );
+        if (stored instanceof Response) return stored;
+      }
+      for (const file of previous) await discardFile(file);
+      return json({ ok: true, photo: body.data !== null });
+    }
+    if (route === "agent-photo") {
+      const file = await prisma.storedFile.findFirst({
+        where: {
+          organizationId: org.id,
+          entityType: "agent-photo",
+          entityId: txt(url.searchParams.get("id"), 40),
+          deletedAt: null,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      const bytes = file && (await readObject(file.storageKey).catch(() => null));
+      if (!bytes) return fail("Pas de photo.", 404);
+      return new Response(Buffer.from(bytes), {
+        headers: {
+          "content-type": "image/jpeg",
+          "cache-control": "private, max-age=3600",
+          "x-content-type-options": "nosniff",
+        },
+      });
+    }
+
     /* ---------- espace responsable ---------- */
     if (route === "agents") {
       patronOnly();
-      const accesses = await prisma.fieldAccess.findMany({
-        where: { organizationId: org.id },
-        include: { user: { select: { name: true } } },
-        orderBy: { createdAt: "asc" },
-      });
-      return json({
-        agents: accesses.map((a) => ({
-          id: a.userId,
-          nom: a.user.name,
-          code: a.code,
-          role: a.role,
-          actif: a.active,
-        })),
-      });
+      return json({ agents: await teamOf(org.id) });
     }
 
     if (route === "agent" && request.method === "POST") {
       patronOnly();
       if (body.supprimer) {
-        if (body.supprimer === me.id)
+        const target = String(body.supprimer);
+        if (target === me.id)
           return fail("Vous ne pouvez pas désactiver votre propre compte.", 400);
         await prisma.fieldAccess.updateMany({
-          where: { organizationId: org.id, userId: String(body.supprimer) },
+          where: { organizationId: org.id, userId: target },
           data: { active: false },
         });
-        return json({ ok: true });
+        // Ses chantiers à venir passent au remplaçant choisi (rien n'est supprimé).
+        let repris = 0;
+        const replacement = txt(body.remplacant, 40);
+        if (
+          replacement &&
+          (await prisma.fieldAccess.count({
+            where: { organizationId: org.id, userId: replacement, active: true },
+          }))
+        ) {
+          const rows = await prisma.intervention.findMany({
+            where: {
+              organizationId: org.id,
+              deletedAt: null,
+              date: { gte: utcDay(new Date()) },
+              status: { notIn: ["done", "cancelled"] },
+              OR: [{ replacementAgentId: target }, { ownerId: target, replacementAgentId: null }],
+            },
+            select: { id: true },
+          });
+          if (rows.length)
+            await prisma.intervention.updateMany({
+              where: { id: { in: rows.map((r) => r.id) } },
+              data: { replacementAgentId: replacement },
+            });
+          for (const r of rows)
+            await journal(org.id, r.id, me, "Chantier réattribué", "désactivation d'un agent");
+          repris = rows.length;
+        }
+        return json({ ok: true, repris });
       }
       const code = str(body.code, 40).trim().toLowerCase();
       const pin = str(body.pin, 12);
       const name = str(body.nom, 60).trim();
+      const color = /^#[0-9a-fA-F]{6}$/.test(String(body.couleur)) ? String(body.couleur) : null;
+      const phone = body.tel !== undefined ? txt(body.tel, 25) : undefined;
       if (!/^[a-z0-9._-]{3,24}$/.test(code))
         return fail("Identifiant : 3 à 24 caractères, lettres et chiffres.", 400);
       if (!/^\d{6}$/.test(pin)) return fail("Le code doit comporter 6 chiffres.", 400);
@@ -1350,9 +1594,19 @@ export async function handleTerrainApi(
       if (existing) {
         await prisma.fieldAccess.update({
           where: { id: existing.id },
-          data: { ...newPin(pin), active: true },
+          data: {
+            ...newPin(pin),
+            active: true,
+            ...(color ? { color } : {}),
+            ...(phone !== undefined ? { phone: phone || null } : {}),
+          },
         });
-        return json({ ok: true });
+        if (name)
+          await prisma.user.updateMany({
+            where: { id: existing.userId, email: { endsWith: `@terrain.${org.slug}.invalid` } },
+            data: { name },
+          });
+        return json({ ok: true, id: existing.userId });
       }
       const withAccess = new Set(
         (
@@ -1369,92 +1623,33 @@ export async function handleTerrainApi(
         if (error instanceof AgentMemberError) return fail(error.message, error.status);
         throw error;
       }
+      const count = withAccess.size;
+      const role = body.role === "patron" ? "patron" : "agent";
+      const fields = {
+        code,
+        role,
+        active: true,
+        color: color ?? COULEURS[count % COULEURS.length]!,
+        phone: phone || null,
+        ...newPin(pin),
+      };
       await prisma.fieldAccess.upsert({
         where: { organizationId_userId: { organizationId: org.id, userId } },
-        create: { organizationId: org.id, userId, code, role: "agent", ...newPin(pin) },
-        update: { code, active: true, ...newPin(pin) },
+        create: { organizationId: org.id, userId, ...fields },
+        update: fields,
       });
-      return json({ ok: true });
+      return json({ ok: true, id: userId });
+    }
+
+    if (route === "entreprise" && request.method === "POST") {
+      patronOnly();
+      return json({ entreprise: await saveEntreprise(org, body) });
     }
 
     if (route === "chantier-nouveau" && request.method === "POST") {
       patronOnly();
-      const client = str(body.client, 120).trim();
-      if (!client) return fail("Le nom du client est obligatoire.", 400);
-      const agentId = str(body.agentId, 40);
-      if (
-        agentId &&
-        !(await prisma.fieldAccess.count({
-          where: { organizationId: org.id, userId: agentId, active: true },
-        }))
-      )
-        return fail("Agent inconnu.", 400);
-      const address = str(body.adresse, 160).trim() || null;
-      const site =
-        (await prisma.site.findFirst({
-          where: { organizationId: org.id, deletedAt: null, name: client, address },
-        })) ??
-        (await prisma.site.create({
-          data: {
-            organizationId: org.id,
-            name: client,
-            address,
-            postalCode: str(body.cp, 8).trim() || null,
-            city: str(body.ville, 60).trim() || null,
-            surfaceM2: Number(body.surface) || null,
-          },
-        }));
-      const day = /^\d{4}-\d{2}-\d{2}$/.test(String(body.date))
-        ? String(body.date)
-        : dayKey(new Date());
-      const year = day.slice(0, 4);
-      const ref = `CHT-${year}-${String(await nextNumber(org.id, `chantier-${year}`)).padStart(4, "0")}`;
-      const data: FieldData = {
-        ref,
-        client: {
-          nom: client,
-          contact: str(body.contact, 80).trim(),
-          tel: str(body.tel, 25).trim(),
-          email: str(body.email, 120).trim(),
-        },
-      };
-      const created = (await prisma.intervention.create({
-        data: {
-          organizationId: org.id,
-          title: str(body.prestation, 120).trim() || "Intervention",
-          siteId: site.id,
-          ownerId: agentId || null,
-          date: utcDay(new Date(`${day}T00:00:00.000Z`)),
-          startTime: /^\d{2}:\d{2}$/.test(String(body.heure)) ? String(body.heure) : "09:00",
-          durationMinutes: Math.round(Math.max(0.25, Number(body.devise) || 2) * 60),
-          fieldData: data as unknown as Prisma.InputJsonValue,
-        },
-        include: INTERVENTION_INCLUDE,
-      })) as InterventionRow;
-      await prisma.auditLog.create({
-        data: {
-          organizationId: org.id,
-          actorId: me.id,
-          action: "intervention.created",
-          entityType: "intervention",
-          entityId: created.id,
-          metadata: { name: created.title, source: "application terrain" },
-        },
-      });
-      await recordInterventionEvent({
-        organizationId: org.id,
-        interventionId: created.id,
-        userId: me.id,
-        type: "created",
-        metadata: {
-          source: "application terrain",
-          ref,
-          label: "Chantier créé",
-          detail: "",
-          by: me.nom,
-        },
-      });
-      return json({ chantier: toChantier(created) });
+      const { row, ...result } = await newChantiers(org, me, body);
+      return json({ ...result, chantier: toChantier(row) });
     }
 
     if (route === "historique") {
@@ -1463,13 +1658,94 @@ export async function handleTerrainApi(
         where: {
           organizationId: org.id,
           deletedAt: null,
-          date: { lte: utcDay(new Date()) },
+          date: { gte: utcDay(new Date(Date.now() - 183 * 86_400_000)), lte: utcDay(new Date()) },
         },
         orderBy: [{ date: "desc" }, { startTime: "desc" }],
-        take: 120,
+        take: 200,
         include: STOP_INCLUDE,
       })) as StopRow[];
       return json({ chantiers: rows.map(toStop) });
+    }
+
+    /* ---------- pointage par le QR affiché chez le client ---------- */
+    if (route === "pointage-qr" && request.method === "POST") {
+      const qr = await prisma.terrainToken.findFirst({
+        where: { organizationId: org.id, kind: "qr", token: txt(body.jeton, 80) },
+      });
+      if (!qr) return fail("Ce QR n'est pas reconnu.", 404);
+      const today = utcDay(new Date());
+      const rows = (await prisma.intervention.findMany({
+        where: {
+          organizationId: org.id,
+          deletedAt: null,
+          date: today,
+          status: { not: "cancelled" },
+          ...(me.role === "patron"
+            ? {}
+            : { OR: [{ ownerId: me.id }, { replacementAgentId: me.id }] }),
+        },
+        include: STOP_INCLUDE,
+        orderBy: { startTime: "asc" },
+      })) as StopRow[];
+      const wanted = qr.label.trim().toLowerCase();
+      const match = rows.find(
+        (r) =>
+          toStop(r).client.trim().toLowerCase() === wanted ||
+          (qr.companyId && (r.companyId ?? r.site?.companyId) === qr.companyId),
+      );
+      if (!match) return fail(`Aucune intervention prévue aujourd'hui chez ${qr.label}.`, 404);
+      const row = await loadIntervention(org, me, match.id);
+      const data = readFieldData(row.fieldData);
+      if (data.cloture)
+        return json({ chantier: toChantier(row), message: "Intervention déjà clôturée." });
+      const at = new Date();
+      if (!row.checkInAt) {
+        const updated = await saveIntervention(
+          org,
+          me,
+          row,
+          { checkInAt: at, actualAgentId: me.id, fieldData: { ...data, terrain: true } },
+          "intervention.check_in",
+          { label: "Arrivée sur site", detail: "QR sur place", metadata: { qr: true } },
+        );
+        await pointageAnomalies(org, updated);
+        return json({
+          chantier: toChantier(updated),
+          message: `Arrivée pointée à ${timeFr(at.getTime()).slice(0, 5)}.`,
+        });
+      }
+      if (!row.checkOutAt) {
+        const updated = await saveIntervention(
+          org,
+          me,
+          row,
+          { checkOutAt: at, fieldData: data },
+          "intervention.check_out",
+          { label: "Départ du site", detail: "QR sur place", metadata: { qr: true } },
+        );
+        await pointageAnomalies(org, updated);
+        const hours = (at.getTime() - row.checkInAt.getTime()) / 3_600_000;
+        return json({
+          chantier: toChantier(updated),
+          message: `Départ pointé. Durée : ${hours.toFixed(2).replace(".", ",")} h.`,
+        });
+      }
+      return json({ chantier: toChantier(row), message: "Arrivée et départ déjà pointés." });
+    }
+
+    /* ---------- démonstration et exemples (données fictives, effaçables) ---------- */
+    if (route === "demo" && request.method === "POST") {
+      patronOnly();
+      return json(await seedDemo(org, me));
+    }
+    if (route === "demo-effacer" && request.method === "POST") {
+      patronOnly();
+      return json(await clearDemo(org));
+    }
+    if (route === "exemples" && request.method === "POST") {
+      patronOnly();
+      if (body.effacer) return json({ ok: true, ...(await clearExamples(org)) });
+      return json({ ok: true, ...(await seedExamples(org, me)) });
     }
 
     return fail("Route inconnue.", 404);

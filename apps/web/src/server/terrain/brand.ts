@@ -27,6 +27,15 @@ export interface TerrainBrand {
   accentInk: string;
   accentInkDark: string;
   icon: (size: number) => string;
+  /** Logo affiché à la connexion et dans le menu. */
+  logo: string;
+  /** Logo de l'en-tête des PDF (même site, sinon aucun). */
+  logoPdf: string | null;
+  favicon: string;
+  /** Petite icône monochrome des notifications. */
+  badge: string;
+  /** Icône « maskable » (Android), si l'entreprise en a une. */
+  maskable: string | null;
   /** Couleur d'accent personnalisée (sinon le vert d'origine). */
   customAccent: boolean;
 }
@@ -53,6 +62,14 @@ export function publicLogo(url: string | null | undefined): string | null {
   return /^https:\/\//.test(url) || /^data:image\/(png|jpeg|webp);/.test(url) ? url : null;
 }
 
+/** Fichiers de la marque Quercy Propreté (logo, icônes) servis tels quels par le site. */
+export const QUERCY_ASSETS = "/terrain-quercy/";
+
+/** L'entreprise est Quercy Propreté (ou sa démonstration) : elle garde ses logo et icônes. */
+export function isQuercyBrand(name: string): boolean {
+  return /quercy\s*propret/i.test(name.normalize("NFD").replace(/[̀-ͯ]/g, ""));
+}
+
 /** Marque de l'application terrain pour une entreprise : tout vient de ses réglages. */
 export function terrainBrand(org: TerrainOrg): TerrainBrand {
   const customAccent = Boolean(
@@ -63,6 +80,9 @@ export function terrainBrand(org: TerrainOrg): TerrainBrand {
   const logo = publicLogo(org.logoUrl);
   const city = (org.city ?? "").trim();
   const firstWord = org.name.split(/\s+/)[0] ?? org.name;
+  const quercy = !logo && isQuercyBrand(org.name);
+  const icon = (size: number) =>
+    logo ?? (quercy ? `${QUERCY_ASSETS}icone-${size}.png` : `${base}icone/${size}`);
   return {
     name: org.name,
     shortName: (firstWord.length <= 12 ? firstWord : org.name.slice(0, 12)).trim(),
@@ -76,7 +96,18 @@ export function terrainBrand(org: TerrainOrg): TerrainBrand {
     accentDark: palette?.dark.primary ?? "#2FD3B4",
     accentInk: palette?.light.foreground ?? "#FFFFFF",
     accentInkDark: palette?.dark.foreground ?? "#04231E",
-    icon: (size) => logo ?? `${base}icone/${size}`,
+    icon,
+    logo: logo ?? (quercy ? `${QUERCY_ASSETS}logo.webp` : icon(512)),
+    logoPdf: logo
+      ? logo.startsWith("data:")
+        ? logo
+        : null
+      : quercy
+        ? `${QUERCY_ASSETS}logo-pdf.png`
+        : icon(512),
+    favicon: logo ?? (quercy ? `${QUERCY_ASSETS}favicon.png` : icon(192)),
+    badge: quercy ? `${QUERCY_ASSETS}badge-96.png` : icon(192),
+    maskable: quercy ? `${QUERCY_ASSETS}icone-maskable-512.png` : null,
     customAccent,
   };
 }
@@ -107,6 +138,11 @@ export function renderTerrainPage(brand: TerrainBrand): string {
     pied: brand.footer,
     ville: brand.city,
     acc: [r, g, b],
+    logo: brand.logo,
+    logoPdf: brand.logoPdf,
+    icone: brand.icon(180),
+    icone192: brand.icon(192),
+    badge: brand.badge,
     accFonce: [Math.round(r * 0.77), Math.round(g * 0.77), Math.round(b * 0.77)],
   };
   const style = brand.customAccent
@@ -120,6 +156,8 @@ export function renderTerrainPage(brand: TerrainBrand): string {
     .replaceAll("%%INITIALES%%", () => escapeHtml(brand.initials))
     .replaceAll("%%BASE%%", () => escapeHtml(brand.base))
     .replaceAll("%%ICONE%%", () => escapeHtml(brand.icon(180)))
+    .replaceAll("%%LOGO%%", () => escapeHtml(brand.logo))
+    .replaceAll("%%FAVICON%%", () => escapeHtml(brand.favicon))
     .replace("%%STYLE%%", () => style)
     .replace("%%CONFIG%%", () => JSON.stringify(config).replace(/</g, "\\u003c"));
 }
@@ -133,15 +171,20 @@ export function terrainManifest(brand: TerrainBrand) {
     scope: brand.base,
     display: "standalone",
     orientation: "portrait",
-    background_color: "#E9F1EF",
+    background_color: "#EDF3F1",
     theme_color: brand.accent,
     description: `Pointage, contrôle qualité et bon d'intervention pour les agents de ${brand.name}.`,
     lang: "fr",
-    icons: [192, 512].map((size) => ({
-      src: brand.icon(size),
-      sizes: `${size}x${size}`,
-      type: "image/png",
-      purpose: "any",
-    })),
+    icons: [
+      ...[192, 512].map((size) => ({
+        src: brand.icon(size),
+        sizes: `${size}x${size}`,
+        type: "image/png",
+        purpose: "any",
+      })),
+      ...(brand.maskable
+        ? [{ src: brand.maskable, sizes: "512x512", type: "image/png", purpose: "maskable" }]
+        : []),
+    ],
   };
 }

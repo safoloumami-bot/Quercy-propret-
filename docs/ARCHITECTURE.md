@@ -161,6 +161,16 @@ structure proratisés et trésorerie ; routeur `finance`. Application terrain : 
 `server/terrain/service-worker.ts`, portée = adresse de l'application via
 `Service-Worker-Allowed`), réponses gardées marquées `x-qp-memoire`.
 
+**Application terrain v15** : écran `apps/terrain/public/index.html` (v15 + blocs matériel,
+absences, fiche mission, anomalies), servi avec `<base href="/terrain/<espace>/">`. Serveur
+`apps/web/src/server/terrain/` : `api.ts` (entrée, routes de l'agent, pages publiques
+`demande`, `avis-info`, `avis`), `gestion.ts` (routes du responsable : demandes, calendrier,
+clients, factures via `@quercy/documents`, pilotage, recherche, QR, export), `planning.ts`
+(nouveaux chantiers et séries, exemples, démonstration), `alerts.ts` (alertes push,
+dédoublonnées par `TerrainAlert`), `push.ts` (web-push, clés VAPID par entreprise),
+`config.ts` (réglages = `SalesSettings` + `TerrainSettings`). Tables : `QuoteRequest`,
+`ClientReview`, `PushSubscription`, `TerrainToken`, `TerrainAlert`, `TerrainSettings`.
+
 ## Authentification
 
 Better Auth (`apps/web/src/server/auth.ts`), avec l'adaptateur Prisma :

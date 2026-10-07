@@ -46,3 +46,21 @@ Sur le téléphone, l'application s'ouvre maintenant sur un **écran d'accueil**
 du jour, le prochain chantier, le véhicule et les absences. Elle fonctionne aussi **sans
 réseau** : la tournée et les fiches du jour restent consultables dans un sous-sol ou à la
 campagne, et tout ce que l'agent saisit part dès que le réseau revient.
+
+## Application terrain v15
+
+L'application des agents a pris l'écran de la **v15** : tournée, calendrier, demandes de
+devis, équipe, clients, factures, pilotage, absences, réglages, avis clients, QR de pointage
+et notifications du téléphone. Les ajouts déjà faits restent : absences demandées par
+l'agent, véhicule et matériel, anomalies, fiche mission, consommables, hors réseau.
+
+**Tout est relié au logiciel** : un chantier planifié sur le téléphone apparaît dans le
+planning, une facture créée sur le téléphone est une vraie facture du logiciel (même
+numérotation), les réglages de l'entreprise sont ceux de Ventes › Paramètres. Rien de ce que
+fait l'application ne change le fonctionnement du logiciel.
+
+**À faire une fois** : dans le site quercy-proprete.fr, remplacer l'adresse du bloc qui
+envoie les demandes de devis (ligne `var APP`) par
+`https://radiant-vacherin-c49bd4.netlify.app/terrain/quercy-proprete/api/demande`.
+Pour les notifications : ouvrir l'application installée sur l'écran d'accueil, puis
+Mon compte › Notifications.

@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.12.0] — 2026-10-09 — Application terrain v15, reliée au logiciel
+
+### Ajouté
+
+- **L'application terrain prend l'écran de la v15** : tournée et cockpit du responsable,
+  calendrier, demandes de devis, annonces, équipe, clients, factures et devis, pilotage,
+  absences et remplacements, réglages, recherche, sauvegarde, notifications du téléphone,
+  QR de pointage, avis clients, démonstration guidée et données d'exemple. Thème clair ou
+  sombre, photos des agents, PDF (bon d'intervention, facture, attestation fiscale).
+- **Elle garde nos ajouts** : absences demandées par l'agent, véhicule et matériel (état des
+  lieux, panne), signalement d'anomalie, fiche mission et informations du site, consommables
+  du stock, fonctionnement hors réseau.
+- **Tout est dans la base du logiciel** : chantiers = interventions, clients et factures =
+  entreprises et documents de vente (numérotation légale du logiciel), réglages de
+  l'entreprise = paramètres de vente, absences = absences du logiciel, agents = membres.
+  Nouvelles tables : demandes de devis, avis clients, abonnements aux notifications, QR,
+  alertes envoyées, réglages propres à l'application.
+- **Formulaire du site** : `POST /terrain/<espace>/api/demande` (CORS ouvert, champ piège,
+  5 envois / 10 min par adresse).
+- **Alertes du téléphone** : retard d'arrivée, départ oublié, rappel de la veille, point du
+  matin, factures en retard ; une seule fois chacune, contrôle au plus toutes les 9 minutes.
+
+### Modifié
+
+- Logo, icônes et favicon de Quercy Propreté servis comme fichiers statiques
+  (`/terrain-quercy/`) ; les autres entreprises gardent leur logo ou l'icône à leurs couleurs.
+- Une intervention marquée réalisée dans le logiciel apparaît « clôturée » dans
+  l'application ; un passage pointé depuis l'application se clôture dans l'application.
+- Un pointage hors réseau n'est retenu que s'il est crédible (moins de 12 h, pas dans le
+  futur, après l'arrivée).
+
 ## [1.11.0] — 2026-10-08 — Pilotage financier et application terrain hors réseau (lot 9)
 
 ### Ajouté

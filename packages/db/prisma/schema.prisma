@@ -120,6 +120,8 @@ model User {
   estimatesOwned         Estimate[]          @relation("EstimateOwner")
   estimatesApproved      Estimate[]          @relation("EstimateApprover")
   estimatesOwnerApproved Estimate[]          @relation("EstimateOwnerApprover")
+  pushSubscriptions      PushSubscription[]
+  quoteRequestsHandled   QuoteRequest[]      @relation("QuoteRequestHandler")
 
   @@map("user")
 }
@@ -328,6 +330,12 @@ model Organization {
   purchaseOrderLines PurchaseOrderLine[]
   missionConsumables MissionConsumable[]
   estimates          Estimate[]
+  quoteRequests      QuoteRequest[]
+  clientReviews      ClientReview[]
+  pushSubscriptions  PushSubscription[]
+  terrainTokens      TerrainToken[]
+  terrainAlerts      TerrainAlert[]
+  terrainSettings    TerrainSettings?
 
   @@map("organization")
 }
@@ -580,6 +588,7 @@ model Company {
   interventions     Intervention[]     @relation("InterventionCompany")
   rentals           Rental[]           @relation("RentalCompany")
   estimates         Estimate[]         @relation("EstimateCompany")
+  terrainTokens     TerrainToken[]
 
   @@index([organizationId, deletedAt, name])
   @@index([organizationId, ownerId])
@@ -1852,6 +1861,7 @@ model Intervention {
   tasks            InterventionTask[]
   consumables      InterventionConsumable[]
   missionSheet     MissionSheet?            @relation(fields: [missionSheetId], references: [id], onDelete: NoAction)
+  review           ClientReview?
 
   @@unique([organizationId, slotKey])
   @@index([contractId, date])
@@ -1903,6 +1913,11 @@ model FieldAccess {
   /// patron (responsable : agents et chantiers) ou agent.
   role           String   @default("agent")
   active         Boolean  @default(true)
+  /// Couleur et téléphone affichés dans l'application terrain.
+  color          String?
+  phone          String?
+  /// Agent d'exemple (« Charger les exemples » de l'application), effaçable d'un geste.
+  sample         Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -2724,4 +2739,130 @@ model Estimate {
   @@index([organizationId, deletedAt])
   @@index([organizationId, status])
   @@map("estimate")
+}
+
+/// Demande de devis reçue (formulaire du site, essai) : traitée depuis l'application terrain.
+model QuoteRequest {
+  id             String    @id @default(cuid())
+  organizationId String
+  receivedAt     DateTime  @default(now())
+  /// nouvelle, vue, planifiee, sans-suite
+  status         String    @default("nouvelle")
+  /// site, essai, demo
+  source         String    @default("site")
+  firstName      String?
+  lastName       String?
+  email          String?
+  phone          String?
+  service        String?
+  message        String?
+  address        String?
+  city           String?
+  /// Intervention planifiée depuis la demande.
+  interventionId String?
+  handledById    String?
+  handledAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  handledBy    User?        @relation("QuoteRequestHandler", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@map("quote_request")
+}
+
+/// Avis du client sur une intervention : lien unique (sans compte), note de 1 à 5.
+model ClientReview {
+  id             String    @id @default(cuid())
+  organizationId String
+  interventionId String    @unique
+  token          String    @unique
+  requestedAt    DateTime?
+  rating         Int?
+  comment        String?
+  ratedAt        DateTime?
+  demo           Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  intervention Intervention @relation(fields: [interventionId], references: [id], onDelete: NoAction)
+
+  @@index([organizationId, ratedAt])
+  @@map("client_review")
+}
+
+/// Abonnement aux notifications du téléphone (Web Push) d'un membre.
+model PushSubscription {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  endpoint       String   @unique
+  keys           Json
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId])
+  @@map("push_subscription")
+}
+
+/// Jeton public de l'application terrain : QR de pointage collé chez un client.
+model TerrainToken {
+  id             String   @id @default(cuid())
+  organizationId String
+  token          String   @unique
+  /// qr
+  kind           String   @default("qr")
+  companyId      String?
+  label          String
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company      Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, kind])
+  @@map("terrain_token")
+}
+
+/// Alerte déjà envoyée (retard, rappel de la veille, point du matin…) : jamais deux fois.
+model TerrainAlert {
+  id             String   @id @default(cuid())
+  organizationId String
+  key            String
+  sentAt         DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key])
+  @@map("terrain_alert")
+}
+
+/// Réglages propres à l'application terrain (le reste vient des paramètres de vente).
+model TerrainSettings {
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  /// Tarif horaire HT des chantiers créés depuis l'application (CA estimé).
+  hourlyRateCents Int      @default(2800)
+  vatRate         Float    @default(20)
+  /// Services à la personne : numéro et date de déclaration (attestation fiscale).
+  sapNumber       String?
+  sapDate         String?
+  /// Lien « laisser un avis » Google, proposé aux clients satisfaits.
+  reviewUrl       String?
+  /// Alertes automatiques : { retard, matin, veille, factures } (vrai par défaut).
+  alerts          Json     @default("{}")
+  paymentTerms    String?
+  /// Clés des notifications du téléphone (Web Push) ; la privée est chiffrée.
+  vapidPublicKey  String?
+  vapidPrivateEnc String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("terrain_settings")
 }

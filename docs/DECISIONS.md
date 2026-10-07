@@ -432,3 +432,32 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
       envois. Les données gardées s'effacent à la déconnexion.
 139.  **La banque (Open Banking) reste pour plus tard** : la trésorerie lit les comptes et
       opérations déjà saisis ; aucun identifiant bancaire n'est stocké.
+
+## 2026-10-09 — Application terrain v15
+
+140.  **La v15 est l'écran, le logiciel est la base** : aucune donnée propre à l'application
+      hors des nouvelles tables (demandes, avis, abonnements, QR, alertes, réglages) ; tout le
+      reste est lu et écrit dans les tables du logiciel, qui n'en change pas de comportement.
+141.  **Une facture créée dans l'application est une facture du logiciel**, émise avec sa
+      numérotation légale ; elle ne s'annule pas depuis le téléphone (avoir dans le logiciel).
+      « Payée » enregistre le règlement du reste dû.
+142.  **La démonstration ne laisse aucune trace comptable** : sa facture reste en brouillon et
+      tout ce qu'elle crée (chantiers, sites, client) part en corbeille à l'effacement.
+143.  **Rien ne disparaît** : supprimer un chantier non commencé le met en corbeille ; un
+      chantier commencé s'annule. Les agents d'exemple sont désactivés, pas supprimés.
+144.  **Réglages de l'entreprise : une seule source.** Identité, coordonnées bancaires et
+      mentions sont celles des paramètres de vente ; tarif horaire, TVA par défaut, SAP, lien
+      d'avis Google et alertes sont propres à l'application (`TerrainSettings`).
+145.  **Pas de fonction planifiée de plus sur Netlify** (consommation à 80 %) : les alertes sont
+      contrôlées à l'ouverture de l'application, au plus une fois toutes les 9 minutes
+      (verrou en base), et à la demande ; le responsable rafraîchit toutes les 2 minutes.
+146.  **Clés des notifications (VAPID) créées une fois par entreprise**, la clé privée
+      chiffrée comme les autres secrets ; un abonnement expiré est retiré au premier envoi.
+147.  **Passage pointé depuis l'application** (`fieldData.terrain`) : il se clôture dans
+      l'application. Sans ce repère, une intervention « réalisée » dans le logiciel est
+      montrée clôturée, avec sa durée.
+148.  **Remplacements du responsable** : les chantiers passent au remplaçant
+      (`replacementAgentId`) et une absence validée est créée dans le logiciel ; la liste des
+      absences relit remplaçant et chantiers repris sur les interventions.
+149.  **Logo de Quercy Propreté en fichiers statiques** (pas de fonction appelée) ; une autre
+      entreprise utilise son logo public ou l'icône dessinée à ses couleurs.
