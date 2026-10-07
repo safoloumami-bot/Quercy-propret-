@@ -4049,15 +4049,16 @@ function ouvrirDemandeId(id){
 }
 function demoEtape(i){
   if(!DEMO) return;
-  DEMO.i=i;
   var e2=ETAPES[i];
+  if(!e2){ DEMO=null; return majGuide(); }
+  DEMO.i=i;
   Promise.resolve(e2.go()).then(function(){ majGuide(); });
   majGuide();
 }
 function majGuide(){
   var g=document.getElementById("guide");
   document.body.classList.toggle("guide-on", !!DEMO);
-  if(!DEMO){ g.hidden=true; g.innerHTML=""; return; }
+  if(!DEMO || !ETAPES[DEMO.i]){ g.hidden=true; g.innerHTML=""; document.body.classList.remove("guide-on"); return; }
   var e2=ETAPES[DEMO.i], dernier=DEMO.i===ETAPES.length-1;
   g.hidden=false;
   g.innerHTML='<div class="n">Démonstration '+(DEMO.i+1)+" / "+ETAPES.length+"</div>"+
@@ -4075,7 +4076,7 @@ function lancerDemo(el){
     toast(d.notifs? "Notification envoyée sur vos appareils." : "Démonstration prête.");
     return chargerEtat();
   }).then(function(){ demoEtape(0); })
-    .catch(function(x){ if(el) el.disabled=false; toast(x.message||"Démonstration impossible."); });
+    .catch(function(x){ DEMO=null; majGuide(); if(el) el.disabled=false; toast(x.message||"Démonstration impossible."); });
 }
 
 /* ============================================================ vie de l'application */
