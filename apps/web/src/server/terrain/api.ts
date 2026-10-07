@@ -58,6 +58,7 @@ import {
   toChantier,
   toStop,
 } from "./chantier";
+import { ACCUEIL_READ_ROUTES, handleAccueil } from "./accueil";
 import { runTerrainAlerts } from "./alerts";
 import { COULEURS, PRESTATIONS, entrepriseConf, saveEntreprise } from "./config";
 import { handleGestion, hasAgentPhoto, journal, receiveQuoteRequest, teamOf } from "./gestion";
@@ -505,6 +506,7 @@ const READ_ROUTES = new Set([
   "pilotage",
   "recherche",
   "export",
+  ...ACCUEIL_READ_ROUTES,
 ]);
 
 /** Avis client (page publique) : nombre d'envois par adresse sur 10 minutes. */
@@ -824,7 +826,9 @@ export async function handleTerrainApi(
     }
 
     /* ---------- gestion (v15) : demandes, calendrier, clients, factures, pilotage… ---------- */
-    const managed = await handleGestion(route, { org, me, url, body, request });
+    const managed =
+      (await handleAccueil(route, { org, me, url, body, request })) ??
+      (await handleGestion(route, { org, me, url, body, request }));
     if (managed) return managed;
 
     /* ---------- tournée ---------- */

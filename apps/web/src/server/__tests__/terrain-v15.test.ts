@@ -593,6 +593,121 @@ describe("alertes du téléphone", () => {
   });
 });
 
+describe("accueil : congés, anomalies, véhicules", () => {
+  it("le responsable valide des congés payés et confie les chantiers au remplaçant", async () => {
+    const day = (n: number) => dayKey(addDays(utcDay(new Date()), n));
+    const site = await prisma.site.create({ data: { organizationId: orgId, name: "Agence Lot" } });
+    const visit = await prisma.intervention.create({
+      data: {
+        organizationId: orgId,
+        title: "Entretien",
+        siteId: site.id,
+        ownerId: agentId,
+        date: utcDay(addDays(new Date(), 40)),
+        startTime: "08:00",
+        durationMinutes: 60,
+      },
+    });
+    const asked = await agent("absence", {
+      type: "leave",
+      debut: day(39),
+      fin: day(41),
+      commentaire: "Matin",
+    });
+    expect(asked.status).toBe(200);
+    expect(asked.data!.typesAbsence.map((t: Json) => t.label)).toContain("Congés payés");
+    const home = (await boss("accueil")).data!;
+    const conge = (home.conges as Json[]).find((c) => c.agentId === agentId && c.du === day(39))!;
+    expect(conge).toMatchObject({ chantiers: 1, jours: 3 });
+    expect(conge.libelle).toMatch(/^Congés payés du/);
+    expect((await agent("accueil")).data!.conges).toBeUndefined();
+    expect((await agent("conge-decision", { id: conge.id, valider: true })).status).toBe(403);
+
+    await boss("agent", { nom: "Paul Remplaçant", code: "paul", pin: "112233" });
+    const detail = (await boss(`conge?id=${conge.id}`)).data!;
+    expect(detail.chantiers).toHaveLength(1);
+    const paul = detail.remplacants.find((r: Json) => r.nom === "Paul Remplaçant");
+    expect(paul).toBeTruthy();
+    expect(
+      (await boss("conge-decision", { id: conge.id, valider: true, remplacant: "inconnu" })).status,
+    ).toBe(400);
+    const ok = await boss("conge-decision", { id: conge.id, valider: true, remplacant: paul.id });
+    expect(ok.data).toEqual({ ok: true, confies: 1 });
+    expect(
+      (await prisma.intervention.findUniqueOrThrow({ where: { id: visit.id } })).replacementAgentId,
+    ).toBe(paul.id);
+    expect((await prisma.absence.findUniqueOrThrow({ where: { id: conge.id } })).status).toBe(
+      "approved",
+    );
+    expect((await boss("conge-decision", { id: conge.id, valider: true })).status).toBe(409);
+  });
+
+  it("le responsable valide ou classe une anomalie signalée", async () => {
+    const a = await prisma.anomaly.create({
+      data: {
+        organizationId: orgId,
+        type: "leak",
+        comment: "Fuite sous l'évier",
+        reportedById: agentId,
+      },
+    });
+    const home = (await boss("accueil")).data!;
+    expect(
+      (home.anomalies as Json[]).some(
+        (x) => x.id === a.id && x.commentaire === "Fuite sous l'évier",
+      ),
+    ).toBe(true);
+    expect((await boss("anomalie-decision", { id: a.id, action: "validate" })).data).toEqual({
+      ok: true,
+      statut: "validated",
+    });
+    expect((await prisma.anomaly.findUniqueOrThrow({ where: { id: a.id } })).validatedById).toBe(
+      ownerId,
+    );
+    expect((await boss("anomalie-decision", { id: a.id, action: "validate" })).status).toBe(409);
+    expect((await agent("anomalie-decision", { id: a.id, action: "reject" })).status).toBe(403);
+  });
+
+  it("signale les échéances des véhicules et liste la flotte", async () => {
+    await prisma.vehicle.create({
+      data: {
+        organizationId: orgId,
+        plate: "AB-123-CD",
+        model: "Kangoo",
+        assignedUserId: agentId,
+        inspectionDueDate: utcDay(addDays(new Date(), 10)),
+      },
+    });
+    const home = (await boss("accueil")).data!;
+    expect((home.alertes as Json[])[0]).toMatchObject({
+      type: "echeance",
+      titre: "Contrôle technique dans 10 jours",
+    });
+    const flotte = (await boss("flotte")).data!;
+    expect(flotte.vehicules[0]).toMatchObject({ immat: "AB-123-CD", agent: "Julie Agent", ct: 10 });
+    expect((await agent("flotte")).status).toBe(403);
+  });
+
+  it("montre qui est sur site", async () => {
+    const site = await prisma.site.create({ data: { organizationId: orgId, name: "Sur place" } });
+    await prisma.intervention.create({
+      data: {
+        organizationId: orgId,
+        title: "Entretien",
+        siteId: site.id,
+        ownerId: agentId,
+        actualAgentId: agentId,
+        date: utcDay(new Date()),
+        checkInAt: new Date(),
+      },
+    });
+    const home = (await boss("accueil")).data!;
+    expect(
+      (home.surSite as Json[]).some((x) => x.client === "Sur place" && x.agent === "Julie Agent"),
+    ).toBe(true);
+  });
+});
+
 describe("cloisonnement", () => {
   it("un téléphone connecté ici ne lit rien d'une autre entreprise", async () => {
     const other = await prisma.organization.findFirstOrThrow({ where: { slug: otherSlug } });

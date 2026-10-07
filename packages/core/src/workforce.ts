@@ -18,7 +18,8 @@ export const WORKER_DOCUMENT_KINDS = [
 ] as const;
 
 export const ABSENCE_KINDS = [
-  { value: "leave", label: "Congé" },
+  { value: "leave", label: "Congés payés" },
+  { value: "rtt", label: "RTT" },
   { value: "sick", label: "Maladie" },
   { value: "unavailable", label: "Indisponibilité" },
   { value: "training", label: "Formation" },

@@ -19,6 +19,13 @@
   alertes envoyées, réglages propres à l'application.
 - **Formulaire du site** : `POST /terrain/<espace>/api/demande` (CORS ouvert, champ piège,
   5 envois / 10 min par adresse).
+- **Nouvel accueil de l'application** (style « appli bancaire ») : « Tournée » devient
+  « Accueil » (chiffre du jour, agents sur site, boutons ronds, cartes qui défilent), « Ma
+  tournée » à part, panneaux qui montent du bas, barre d'onglets qui se réduit, courbe du
+  chiffre d'affaires à parcourir au doigt.
+- **Congés payés et RTT** demandés depuis le téléphone ; le responsable les valide et confie
+  les chantiers au remplaçant choisi (ou proposé par le logiciel). Anomalies validées ou
+  classées depuis l'application ; page « Véhicules et matériel » (échéances, pannes, locations).
 - **Alertes du téléphone** : retard d'arrivée, départ oublié, rappel de la veille, point du
   matin, factures en retard ; une seule fois chacune, contrôle au plus toutes les 9 minutes.
 

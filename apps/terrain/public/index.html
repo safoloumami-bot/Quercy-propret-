@@ -583,6 +583,123 @@ h3.rub{font-size:13px;font-weight:600;color:var(--ink-3);text-transform:uppercas
 .couleurs button{width:44px;height:44px;border-radius:50%;border:2px solid transparent;cursor:pointer}
 .couleurs button[aria-pressed="true"]{border-color:var(--ink)}
 </style>
+<style>
+/* ============================================================ nouveau style (accueil, panneaux du bas) */
+/* En-tête de l'accueil : photo, recherche, raccourcis */
+.haut.acc{align-items:center;gap:8px}
+.haut.acc .moi{order:-1;margin:0}
+.haut.acc .gauche{display:flex;align-items:center;gap:8px}
+.cherche{flex:1;min-width:0;height:40px;border-radius:999px;border:0;background:var(--glass-2);box-shadow:inset 0 0 0 1px var(--sep);
+  display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--ink-3);font:inherit;font-size:15px;cursor:pointer;text-align:left}
+.cherche svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;flex:none}
+.salut{font-size:17px;font-weight:650;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rond-h{width:40px;height:40px;border-radius:50%;border:0;background:var(--glass-2);box-shadow:inset 0 0 0 1px var(--sep);cursor:pointer;
+  display:grid;place-items:center;color:var(--ink);flex:none}
+.rond-h svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.haut.acc .loupe{display:none}
+
+/* Le chiffre du jour, sur un halo */
+.jour-hero{position:relative;text-align:center;display:grid;justify-items:center;gap:5px;padding:18px 0 4px;isolation:isolate}
+.jour-hero::before{content:"";position:absolute;left:-30%;right:-30%;top:-70px;height:330px;z-index:-1;pointer-events:none;filter:blur(18px);opacity:.55;
+  background:radial-gradient(55% 45% at 50% 88%,color-mix(in srgb,var(--acc) 85%,#fff 0%) 0%,transparent 62%),
+             radial-gradient(45% 40% at 20% 70%,rgba(111,168,255,.9) 0%,transparent 62%),
+             radial-gradient(45% 40% at 82% 72%,rgba(182,140,255,.85) 0%,transparent 62%);
+  -webkit-mask-image:linear-gradient(180deg,#000 55%,transparent);mask-image:linear-gradient(180deg,#000 55%,transparent)}
+.jour-hero .k{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink-2);font-weight:500}
+.jour-hero .k button{width:28px;height:28px;border-radius:50%;border:0;background:none;color:var(--ink-3);cursor:pointer;display:grid;place-items:center}
+.jour-hero .k button svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.jour-hero .big{font-size:64px;font-weight:700;letter-spacing:-.05em;line-height:1;font-variant-numeric:tabular-nums}
+.jour-hero .big small{font-size:28px;letter-spacing:-.02em;font-weight:650}
+.jour-hero .sub{font-size:13.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pill-b{margin-top:8px;height:34px;padding:0 16px;border-radius:999px;border:0;background:var(--glass);box-shadow:inset 0 0 0 1px var(--sep);
+  font:inherit;font-size:13.5px;font-weight:650;color:var(--ink);cursor:pointer}
+/* présence : les visages des agents sur site, sans clignotement */
+.surs{display:inline-flex;align-items:center;gap:8px;margin-top:4px;min-height:30px;padding:3px 12px 3px 4px;border-radius:999px;border:0;
+  background:var(--glass);box-shadow:inset 0 0 0 1px var(--sep);font:inherit;font-size:13px;color:var(--ink);cursor:pointer;max-width:100%}
+.surs .faces{display:flex;flex:none}
+.surs .faces .ava{box-shadow:0 0 0 2px var(--base)}
+.surs .faces .ava + .ava{margin-left:-8px}
+.surs b{font-weight:650;white-space:nowrap}
+.surs em{font-style:normal;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Boutons ronds */
+.ronds{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:2px 0}
+.ronds button{border:0;background:none;cursor:pointer;font:inherit;color:var(--ink);display:grid;justify-items:center;gap:7px;font-size:12.5px;line-height:1.2;text-align:center}
+.ronds .r{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:var(--glass);box-shadow:inset 0 0 0 1px var(--sep);position:relative}
+.ronds .r svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ronds .r.main{background:var(--acc);color:var(--acc-ink);box-shadow:none}
+.ronds .r .pastille{position:absolute;top:-2px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--bad);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
+.ronds button:active .r{transform:scale(.93)}
+
+/* Cartes qui défilent */
+.defile{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:0 16px;scrollbar-width:none}
+.defile::-webkit-scrollbar{display:none}
+.carte{flex:0 0 100%;scroll-snap-align:center;border:0;cursor:pointer;font:inherit;color:var(--ink);text-align:left;
+  background:var(--glass);backdrop-filter:blur(24px) saturate(1.5);-webkit-backdrop-filter:blur(24px) saturate(1.5);box-shadow:inset 0 0 0 1px var(--glass-br),var(--sh);
+  border-radius:22px;padding:14px;display:grid;grid-template-columns:1fr 82px;gap:12px;align-items:center;min-height:98px}
+.carte b{display:block;font-size:15.5px;font-weight:650;letter-spacing:-.01em;margin-bottom:3px}
+.carte span{display:block;font-size:13px;color:var(--ink-2);line-height:1.35}
+.carte .art{width:82px;height:66px;border-radius:15px;display:grid;place-items:center;color:#fff}
+.carte .art svg{width:32px;height:32px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.art.a1{background:linear-gradient(135deg,#0A7A68,#2FD3B4)} .art.a2{background:linear-gradient(135deg,#3C6E9F,#8EC5FF)}
+.art.a3{background:linear-gradient(135deg,#B8553C,#F2A07B)} .art.a4{background:linear-gradient(135deg,#6B4FA8,#C9A7FF)}
+.art.a5{background:linear-gradient(135deg,#9A6A08,#E8C06A)}
+.points{display:flex;justify-content:center;gap:5px;margin-top:-6px}
+.points i{width:5px;height:5px;border-radius:3px;background:var(--ink-3);opacity:.45;transition:width .2s,opacity .2s}
+.points i.on{width:14px;opacity:1;background:var(--ink-2)}
+
+/* Listes en cartes : « Tout afficher », « Ouvrir » */
+.tout{display:block;width:100%;border:0;background:none;border-top:1px solid var(--sep);padding:13px;font:inherit;font-size:14.5px;font-weight:650;color:var(--ink);cursor:pointer}
+.ouvrir{height:30px;padding:0 13px;border-radius:999px;border:0;background:var(--glass-2);box-shadow:inset 0 0 0 1px var(--sep);font:inherit;font-size:12.5px;font-weight:650;color:var(--ink);flex:none;cursor:pointer}
+.chip-k{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+.chip-k::-webkit-scrollbar{display:none}
+
+/* Barre d'onglets : se réduit quand on descend */
+body.reduit .onglets button span{display:none}
+body.reduit .onglets{transform:translateX(-50%) scale(.92)}
+.onglets{transition:transform .25s}
+
+/* Panneau qui monte du bas */
+.voile{position:fixed;inset:0;background:rgba(5,18,16,.45);z-index:80;opacity:0;pointer-events:none;transition:opacity .28s}
+.voile.on{opacity:1;pointer-events:auto}
+.feuille{position:fixed;left:0;right:0;bottom:0;z-index:81;max-height:88vh;background:var(--base);border-radius:26px 26px 0 0;
+  transform:translateY(105%);transition:transform .34s cubic-bezier(.2,.85,.2,1);display:flex;flex-direction:column;
+  box-shadow:0 -18px 46px -18px rgba(0,0,0,.45);padding-bottom:env(safe-area-inset-bottom,0px);max-width:640px;margin:0 auto}
+.feuille.on{transform:translateY(0)}
+.feuille .poig{width:38px;height:5px;border-radius:3px;background:var(--ink-3);opacity:.4;margin:8px auto 2px;flex:none}
+.feuille .fh{display:flex;justify-content:space-between;align-items:center;padding:4px 14px}
+.feuille .fx{width:34px;height:34px;border-radius:50%;border:0;background:var(--glass-2);box-shadow:inset 0 0 0 1px var(--sep);display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+.feuille .fx svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round}
+.feuille .fb{overflow-y:auto;padding:0 16px 22px;display:flex;flex-direction:column;gap:12px}
+.feuille h2{font-size:21px;font-weight:700;letter-spacing:-.02em;margin:0 2px}
+.feuille .ident{display:grid;justify-items:center;text-align:center;gap:5px;padding:2px 0 4px}
+.feuille .ident .quand{font-size:30px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+body.feuille-on{overflow:hidden}
+.choix{display:flex;flex-wrap:wrap;gap:7px}
+.choix button{height:36px;padding:0 14px;border-radius:999px;border:0;box-shadow:inset 0 0 0 1px var(--sep);background:var(--glass-2);font:inherit;font-size:13.5px;font-weight:650;color:var(--ink-2);cursor:pointer}
+.choix button[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink);box-shadow:none}
+.lbl{font-size:12.5px;font-weight:650;color:var(--ink-2);margin:2px 2px -4px}
+.photoph{width:100%;max-height:220px;object-fit:cover;border-radius:16px;background:var(--glass-2)}
+
+/* Graphique qu'on parcourt au doigt */
+.courbe{position:relative;touch-action:pan-y;margin:10px -6px 0;cursor:crosshair}
+.courbe svg{display:block;width:100%;height:150px;overflow:visible}
+.courbe .ax{fill:var(--ink-3);font-size:10.5px;font-family:inherit}
+.courbe .ax.cur{fill:var(--ink);font-weight:650}
+
+/* Ronds des agents et tuiles de gestion */
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 6px}
+.g4 button{border:0;background:none;cursor:pointer;font:inherit;color:var(--ink);display:grid;justify-items:center;gap:5px;font-size:12px;font-weight:650;text-align:center;line-height:1.15;min-width:0}
+.g4 small{font-size:11.5px;font-weight:650;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.g4 .tile{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:var(--glass-2);box-shadow:inset 0 0 0 1px var(--sep)}
+.g4 .tile svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.g4 .nm{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (min-width:1000px){
+  #vue[data-vue="tournee"]{display:flex;max-width:760px}
+  #vue[data-vue="tournee"]>:first-child{position:static}
+  .haut.acc .moi{display:block}
+}
+</style>
 %%STYLE%%
 <script>
 /* application stable : pas de zoom au pincement ni au double appui (iOS ignore user-scalable) */
@@ -1086,15 +1203,15 @@ document.getElementById("fcx").addEventListener("submit", function(ev){
 /* ============================================================ navigation */
 function listeOnglets(){
   return patron()
-    ? [["tournee","Tournée"],["calendrier","Calendrier"],["demandes","Demandes"],["annonces","Annonces"],["equipe","Équipe"]]
-    : [["tournee","Tournée"],["calendrier","Calendrier"],["historique","Historique"]];
+    ? [["tournee","Accueil"],["calendrier","Calendrier"],["demandes","Demandes"],["annonces","Annonces"],["equipe","Équipe"]]
+    : [["tournee","Accueil"],["calendrier","Calendrier"],["historique","Historique"]];
 }
 function rendreOnglets(){
   var n=document.getElementById("onglets");
   var ent=(S.entreprise&&S.entreprise.nom)||T.nom, moi=S.moi?(agentDe(S.moi.id)||S.moi):null;
   n.innerHTML = '<div class="nav-marque"><img class="nav-logo" src="'+e(T.logo)+'" alt="" width="62" height="41"><span><b>'+e(ent)+'</b><small>Application terrain</small></span></div>'+
    listeOnglets().map(function(o){
-    return '<button data-onglet="'+o[0]+'"'+(S.onglet===o[0]?' aria-current="page"':"")+">"+svg(o[0])+"<span>"+e(o[1])+"</span>"+
+    return '<button data-onglet="'+o[0]+'"'+(S.onglet===o[0]?' aria-current="page"':"")+">"+svg(o[0]==="tournee"?"accueil":o[0])+"<span>"+e(o[1])+"</span>"+
       (o[0]==="demandes" && S.nouvelles ? '<span class="pastille">'+S.nouvelles+"</span>" : "")+"</button>";
   }).join("")+
   (moi?'<button class="nav-moi" data-a="compte"'+(S.vue==="compte"?' aria-current="page"':"")+'>'+avatar(moi,36)+
@@ -1144,7 +1261,7 @@ function revenir(){
   rendreVers("arriere");
 }
 function btnRetour(){ return ""; }
-var TITRES={tournee:"Tournée", calendrier:"Calendrier", demandes:"Demandes", annonces:"Annonces", equipe:"Équipe",
+var TITRES={tournee:"Accueil", matournee:"Ma tournée", flotte:"Véhicules et matériel", calendrier:"Calendrier", demandes:"Demandes", annonces:"Annonces", equipe:"Équipe",
   historique:"Historique", fiche:"Intervention", demande:"Demande", agent:"Historique", compte:"Mon compte", admin:"Gestion",
   planifier:"Planifier", agents:"Mon équipe", reglages:"Réglages", clients:"Clients", client:"Client",
   factures:"Facturation", facture:"Document", absences:"Absences", recherche:"Rechercher"};
@@ -1153,6 +1270,14 @@ function majHaut(){
   var h=document.getElementById("haut"), g=document.getElementById("hg"), m=document.getElementById("marque");
   var nom=m?m.textContent.trim():T.nom;
   var lp=document.getElementById("loupe"); if(lp) lp.hidden=!(patron() && RACINES[S.vue]);
+  h.classList.toggle("acc", S.vue==="tournee");
+  if(S.vue==="tournee"){
+    h.classList.remove("det");
+    g.innerHTML = patron()
+      ? '<button class="cherche" data-a="recherche">'+svg("loupe")+'Rechercher</button><button class="rond-h" data-a="onglet" data-o="equipe" aria-label="Pilotage">'+svg("graph")+"</button>"
+      : '<span class="salut">Bonjour '+e(prenom(S.moi&&S.moi.nom))+"</span>";
+    majRep(); return;
+  }
   if(RACINES[S.vue]){
     h.classList.remove("det");
     g.innerHTML='<span class="nm" id="marque"><img class="mini-logo" src="'+e(T.icone)+'" alt="">'+e(nom)+'</span><span class="titre">'+e(TITRES[S.vue])+"</span>";
@@ -1180,6 +1305,7 @@ function chargerTournee(auto){
     S.tournee=d.chantiers; S.heures=d.heures||0; S.erreurTournee=false;
     S.mesAbs=d.absences||[]; S.typesAbsence=d.typesAbsence||[]; S.materiel=d.materiel||{vehicules:[],equipements:[]};
     cacheTournee(S.date,{chantiers:d.chantiers, heures:d.heures||0});
+    chargerAccueil();
     ls("qp.moi",{moi:S.moi, equipe:S.equipe});
     if(aJour("tournee")){ S.vue="tournee"; S.ch=null; rendre(); }
   }).catch(function(){
@@ -1259,7 +1385,8 @@ function chargerFactures(){
 }
 function chargerAbsences(){
   return Promise.all([api("absences"), api("agents")])
-    .then(function(r2){ S.absences=r2[0].absences||[]; S.agents=r2[1].agents||S.agents; });
+    .then(function(r2){ S.absences=r2[0].absences||[]; S.agents=r2[1].agents||S.agents; return api("accueil"); })
+    .then(function(d){ if(d) S.acc=d; });
 }
 function ouvrirAdmin(){
   return Promise.all([api("agents"), api("historique")]).then(function(r){
@@ -1765,11 +1892,12 @@ function rendre(){
   var v=document.getElementById("vue");
   var f = {tournee:vueTournee, calendrier:vueCalendrier, demandes:vueDemandes, demande:vueDemande,
            annonces:vueAnnonces, equipe:vueEquipe, agent:vueAgent, historique:vueAgent,
-           compte:vueCompte, admin:vueAdmin, fiche:vueFiche, planifier:vuePlanifier,
+           compte:vueCompte, admin:vueAdmin, matournee:vueMaTournee, flotte:vueFlotte, fiche:vueFiche, planifier:vuePlanifier,
            agents:vueAgents, reglages:vueReglages, clients:vueClients, client:vueClient,
            factures:vueFactures, facture:vueFacture, absences:vueAbsences, recherche:vueRecherche}[S.vue] || vueTournee;
   v.innerHTML = f(); v.setAttribute("data-vue", S.vue);
   majHaut(); rendreOnglets(); brancher(); majEtat(); battre(); majGuide();
+  if(S.vue==="equipe") brancherCourbe();
   /* documents préparés à l'avance : Partager répond au premier appui */
   if(S.vue==="fiche" && S.ch && S.ch.cloture){
     preparerLienAvis(S.ch);
@@ -1926,7 +2054,7 @@ function chargerPilotage(){
 }
 
 /* ---------- tournée ---------- */
-function vueTournee(){
+function vueTourneeV15(){
   var auj = S.date===jour(), liste = S.tournee || [];
   var faits=liste.filter(function(c){ return c.statut==="cloture"; }).length;
   var live = auj && liste.length ? etatJour(liste) : null;
@@ -2097,7 +2225,7 @@ function vueEquipe(){
       stat("Heures prévues", fh(a.prevues))+stat("Heures réelles", fh(a.reelles), ecart>0.5?"neg":ecart<-0.5?"pos":"")+
       '<span class="stat" style="grid-column:1/-1"><span class="k">Chiffre d\'affaires estimé au réel</span><span class="v num">'+e(feur(a.ca))+"</span></span>"+
     "</div></section>";
-  h+=blocGraphe()+blocSatisfaction();
+  h=blocCourbe()+blocRondsEquipe()+blocTuiles()+h+blocSatisfaction();
   var parId={}; (a.agents||[]).forEach(function(x){ parId[x.id]=x; });
   var equipe=(S.agents||[]).filter(function(x){ return x.role!=="patron" && x.actif!==false; }).map(function(x){
     var s=parId[x.id]||{}; delete parId[x.id];
@@ -2199,13 +2327,13 @@ function blocMateriel(){
     return '<div class="ligne"><span class="l">'+e(v.immat)+(v.modele?" · "+e(v.modele):"")+
       (v.km?'<br><span class="u">'+e(Number(v.km).toLocaleString("fr-FR"))+" km</span>":"")+
       (v.pannes||[]).map(function(p){ return '<br><span class="u">Panne : '+e(p.note)+"</span>"; }).join("")+
-      "</span>"+(v.faitAujourdhui?'<span class="pill">État fait</span>':'<button class="cta gh mini" data-a="mat-ouvrir" data-v="'+e(v.id)+'">État des lieux</button>')+"</div>";
+      "</span>"+(v.faitAujourdhui?'<span class="pill">État fait</span>':'<button class="ouvrir" data-a="f-vehicule">État des lieux</button>')+"</div>";
   }).join("");
   h+=eq.map(function(x){
     return '<div class="ligne"><span class="l">'+e(x.nom)+(x.serie?'<br><span class="u">N° '+e(x.serie)+"</span>":"")+
       '</span><span class="pill n">'+e(x.etat)+"</span></div>";
   }).join("");
-  if(!f) return h+'<button class="cta gh sm2" style="margin-top:10px" data-a="mat-panne">Signaler une panne</button></section>';
+  if(!f) return h+'<button class="cta gh sm2" style="margin-top:10px" data-a="f-panne">Signaler une panne</button></section>';
   var cibles=vs.map(function(v){ return {id:"v:"+v.id, l:v.immat+(v.modele?" · "+v.modele:"")}; })
     .concat(eq.map(function(x){ return {id:"m:"+x.id, l:x.nom}; }));
   h+='<div class="sep" style="margin:12px 0"></div>';
@@ -2228,12 +2356,12 @@ function blocMateriel(){
 /* Mes absences : demandées ici, validées par le responsable (application ou logiciel). */
 function blocAbsences(){
   var liste=S.mesAbs||[], f=S.abs;
-  var h='<section class="g pad"><h3 class="s" style="margin-bottom:8px">Mes absences</h3>';
+  var h='<section class="g pad"><h3 class="s" style="margin-bottom:8px">Mes congés et absences</h3>';
   h+=liste.length ? liste.map(function(a){
     var cls = a.statut==="approved"?"" : a.statut==="rejected"?"b":"w";
     return '<div class="ligne"><span class="l">'+e(a.libelle)+'</span><span class="pill '+cls+'">'+e(a.statutLibelle)+"</span></div>";
   }).join("") : '<p class="meta">Aucune absence prévue.</p>';
-  if(!f) return h+'<button class="cta gh sm2" style="margin-top:10px" data-a="abs-ouvrir">Demander une absence</button></section>';
+  if(!f) return h+'<button class="cta gh sm2" style="margin-top:10px" data-a="f-absence">Demander une absence</button></section>';
   h+='<div class="sep" style="margin:12px 0"></div>'+
     '<div class="champ"><label for="mab_type">Type</label><select class="f" id="mab_type">'+
       (S.typesAbsence||[]).map(function(t){ return '<option value="'+e(t.value)+'"'+(f.type===t.value?" selected":"")+">"+e(t.label)+"</option>"; }).join("")+
@@ -2367,6 +2495,403 @@ function actionAjouts(a, el, c){
     return true;
   }
 }
+
+/* ============================================================ accueil (nouveau style) */
+var IC2 = {
+  accueil:'<path d="M4 11l8-6.5 8 6.5V20h-5v-5H9v5H4z"/>',
+  avion:'<path d="M3 12l18-7-5 16-4.5-6.5z"/><path d="M11.5 14.5L21 5"/>',
+  voiture:'<path d="M4 15.5l1.6-5A2 2 0 017.5 9h9a2 2 0 011.9 1.5l1.6 5V19h-2.5v-1.5h-11V19H4z"/><circle cx="7.5" cy="15" r=".8"/><circle cx="16.5" cy="15" r=".8"/>',
+  cle:'<path d="M14.5 6.5a4 4 0 00-5.2 5.2L4 17l3 3 5.3-5.3a4 4 0 005.2-5.2l-2.3 2.3-2.4-.6-.6-2.4z"/>',
+  photo:'<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.3"/>',
+  alerte:'<path d="M12 4l9 16H3z"/><path d="M12 10v4.5M12 17.5v.1"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  plusr:'<circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/>',
+  graph:'<path d="M5 20V11M12 20V5M19 20v-7"/>',
+  croix:'<path d="M6 6l12 12M18 6L6 18"/>'
+};
+for(var k2 in IC2) if(!IC[k2]) IC[k2]=IC2[k2];
+
+function chargerAccueil(){
+  if(S.date!==jour()) return Promise.resolve();
+  return api("accueil").then(function(d){
+    S.acc=d;
+    if(S.vue==="tournee" && aJour("tournee")) rendre();
+  }).catch(function(){});
+}
+function prenom(n){ return String(n||"").trim().split(/\s+/)[0]||""; }
+
+function surSiteHtml(){
+  var l=((S.acc||{}).surSite)||[];
+  if(S.date!==jour() || !l.length) return "";
+  var faces=l.slice(0,3).map(function(x){ return avatar(agentDe(x.agentId)||{nom:x.agent}, 24); }).join("");
+  var txt = l.length===1
+    ? (patron() ? "<b>"+e(prenom(l[0].agent))+"</b><em>sur site · depuis "+hhmm(l[0].depuis)+" · "+e(l[0].client)+"</em>"
+                : "<b>Sur site</b><em>"+e(l[0].client)+" · depuis "+hhmm(l[0].depuis)+"</em>")
+    : "<b>"+l.length+" agents</b><em>sur site en ce moment</em>";
+  return '<button class="surs" data-a="ouvrir" data-id="'+e(l[0].id)+'"><span class="faces">'+faces+"</span>"+txt+"</button>";
+}
+
+function ronds(){
+  var R = patron()
+    ? [["planifier","plus","Planifier",1],["f-qr","qr","Pointer par QR"],["onglet:demandes","demandes","Demandes",0,S.nouvelles],["gestion","plusr","Plus"]]
+    : [["maTournee","route","Ma tournée",1],["f-qr","qr","Pointer par QR"],["f-absence","avion","Congés"],["f-vehicule","voiture","Véhicule"]];
+  return '<div class="ronds">'+R.map(function(r){
+    var p=r[0].split(":"), attr='data-a="'+p[0]+'"'+(p[1]?' data-o="'+p[1]+'"':"");
+    return "<button "+attr+'><span class="r'+(r[3]?" main":"")+'">'+svg(r[1])+(r[4]?'<span class="pastille">'+r[4]+"</span>":"")+"</span>"+e(r[2])+"</button>";
+  }).join("")+"</div>";
+}
+
+function cartesAccueil(liste){
+  var A=S.acc||{}, P=S.pilot, c=[];
+  var mes=patron()?liste:liste.filter(function(x){ return x.agentId===S.moi.id; });
+  var proch=mes.filter(function(x){ return x.statut==="prevu"; })[0];
+  if(proch){
+    var ag=agentDe(proch.agentId);
+    c.push(["a1","horloge",(patron()?"Prochaine intervention · ":"Prochain passage · ")+proch.heure, proch.client+(patron()&&ag?", avec "+prenom(ag.nom):"")+(proch.ville?" · "+proch.ville:""), 'data-a="ouvrir" data-id="'+e(proch.id)+'"']);
+  }
+  if(patron()){
+    if(S.nouvelles) c.push(["a2","demandes",pl(S.nouvelles,"demande")+" de devis","Arrivées de votre site, à rappeler vite.",'data-a="onglet" data-o="demandes"']);
+    (A.conges||[]).slice(0,2).forEach(function(x){
+      c.push(["a4","avion",x.libelle.replace(/ du .*| le .*/,"")+" · "+prenom(x.agent),x.libelle.replace(/^[^ ]+( payés)? /,"")+" · "+pl(x.chantiers,"chantier")+" à confier.",'data-a="f-conge" data-id="'+e(x.id)+'"']);
+    });
+    if((A.anomalies||[]).length){ var an=A.anomalies[0];
+      c.push(["a3","alerte",pl(A.anomalies.length,"anomalie")+" à valider",an.type+(an.site?" · "+an.site:"")+(an.par?" · signalée par "+prenom(an.par):""),'data-a="f-anomalie" data-id="'+e(an.id)+'"']); }
+    if(P && P.retard && P.retard.n) c.push(["a3","euro",pl(P.retard.n,"facture")+" en retard",feur(P.retard.montant)+" TTC à relancer.",'data-a="vFactures"']);
+    if((A.alertes||[]).length) c.push(["a5","voiture",A.alertes[0].titre,A.alertes[0].detail,'data-a="vFlotte"']);
+    var av=P&&P.avis&&(P.avis.derniers||[]).filter(function(x){ return x.note>=4 && x.commentaire; })[0];
+    if(av) c.push(["a4","etoile","★".repeat(av.note)+" · "+av.client,"« "+av.commentaire.slice(0,90)+(av.commentaire.length>90?"…":"")+" »",'data-a="onglet" data-o="equipe"']);
+  } else {
+    var veh=((S.materiel||{}).vehicules||[]).filter(function(v){ return !v.faitAujourdhui; })[0];
+    if(veh) c.push(["a2","voiture","État des lieux du véhicule",veh.immat+(veh.modele?" · "+veh.modele:"")+" : pas encore fait aujourd'hui.",'data-a="f-vehicule"']);
+    var att=(S.mesAbs||[]).filter(function(a){ return a.statut==="requested"; })[0];
+    if(att) c.push(["a4","avion","Votre demande d'absence",att.libelle+" · en attente de validation.",'data-a="f-absence"']);
+  }
+  if(!c.length) return "";
+  return '<div class="defile" id="defile">'+c.map(function(x){
+    return '<button class="carte" '+x[4]+'><span><b>'+e(x[2])+"</b><span>"+e(x[3])+'</span></span><span class="art '+x[0]+'">'+svg(x[1])+"</span></button>";
+  }).join("")+'</div><div class="points" id="points">'+(c.length>1?c.map(function(_,i){ return "<i"+(i?"":' class="on"')+"></i>"; }).join(""):"")+"</div>";
+}
+
+function aTraiterExtra(){
+  var A=S.acc||{}, l=[];
+  (A.conges||[]).forEach(function(x){ l.push(ligneAFaire('data-a="f-conge" data-id="'+e(x.id)+'"', x.agent+" · "+x.libelle, pl(x.chantiers,"chantier")+" à confier · "+pl(x.jours,"jour"), "avion", "w")); });
+  if((A.anomalies||[]).length) l.push(ligneAFaire('data-a="f-anomalie" data-id="'+e(A.anomalies[0].id)+'"', pl(A.anomalies.length,"anomalie")+" à valider", A.anomalies.map(function(a){ return a.type+(a.site?" · "+a.site:""); }).slice(0,2).join(", "), "alerte", "b"));
+  (A.alertes||[]).slice(0,2).forEach(function(x){ l.push(ligneAFaire('data-a="vFlotte"', x.titre, x.detail, "voiture", x.type==="panne"||x.jours<7?"b":"w")); });
+  return l.join("");
+}
+
+function vueTournee(){
+  var auj=S.date===jour(), liste=S.tournee||[];
+  var mes=patron()?liste:liste.filter(function(c){ return c.agentId===S.moi.id; });
+  var live=etatJour(mes), nAg=0, vus={};
+  liste.forEach(function(c){ if(c.agentId && !vus[c.agentId]){ vus[c.agentId]=1; nAg++; } });
+  var heures=mes.reduce(function(s,c){ return s+(c.devise||0); },0);
+  var P=S.pilot, cur=P&&P.serie?P.serie[P.serie.length-1]:null;
+  var bouton = patron()
+    ? (cur?'<button class="pill-b" data-a="onglet" data-o="equipe"><span class="cap" style="display:inline-block">'+e(moisLong(cur.mois))+"</span>&nbsp;· "+e(feur(cur.ca))+" réalisés</button>":"")
+    : (function(){ var x=mes.filter(function(c){ return c.statut==="en-cours"; })[0]||mes.filter(function(c){ return c.statut==="prevu"; })[0];
+        return x?'<button class="pill-b" data-a="ouvrir" data-id="'+e(x.id)+'">'+(x.statut==="en-cours"?"Reprendre la fiche":"Ouvrir la prochaine · "+e(x.heure))+"</button>":""; })();
+  var h='<section class="jour-hero">'+
+    '<div class="k"><button data-a="jour" data-n="-1" aria-label="Jour précédent">'+svg("retour")+'</button><span class="cap">'+(auj?"Aujourd'hui · ":"")+e(fdate(S.date))+'</span><button data-a="jour" data-n="1" aria-label="Jour suivant">'+svg("suite")+"</button></div>"+
+    '<div class="big">'+mes.length+"<small> "+(patron()?(mes.length>1?"interventions":"intervention"):(mes.length>1?"passages":"passage"))+"</small></div>"+
+    '<div class="sub">'+(mes.length?fh(heures)+" prévues"+(patron()?" · "+pl(nAg,"agent"):"")+" · "+live.termines+" terminée"+(live.termines>1?"s":"")+(live.retard?" · "+live.retard+" en retard":""):"Rien de prévu ce jour-là")+"</div>"+
+    surSiteHtml()+bouton+(auj?"":'<button class="pill-b" data-a="aujourdhui">Revenir à aujourd\'hui</button>')+"</section>";
+  h+=ronds();
+  if(S.erreurTournee==="cache") h+='<p class="avis">Hors réseau : tournée enregistrée sur le téléphone.</p>';
+  if(S.tournee===null) return h+sq(3);
+  if(S.erreurTournee===true)
+    return h+'<section class="g pad"><p class="vide">La journée n\'a pas pu être chargée.</p><button class="cta gh sm2" data-a="reessayer">Réessayer</button></section>';
+  if(auj) h+=cartesAccueil(liste);
+  h+='<div class="bloc"><div class="grp"><h3>La journée</h3></div><section class="g lst">'+
+    (mes.length?listeChantiers(mes):'<p class="vide">Aucune intervention ce jour-là.</p>')+
+    '<button class="tout" data-a="maTournee">'+(patron()?"Toute la tournée":"Ma tournée · itinéraire")+"</button></section></div>";
+  if(patron()){
+    if(auj){
+      var extra=aTraiterExtra();
+      var bl=blocAFaire();
+      if(extra) bl=bl.replace('<section class="g lst"><div class="liste">','<section class="g lst"><div class="liste">'+extra).replace(/<div class="mrow" style="cursor:default">.*?<\/div>/,"");
+      h+='<div class="bloc">'+bl+"</div>";
+    }
+    h+=blocMois();
+  } else if(auj){
+    h+=blocMateriel()+blocAbsences();
+  }
+  return h;
+}
+
+/* Ma tournée : les passages dans l'ordre, avec l'itinéraire de la journée */
+function vueMaTournee(){
+  var liste=S.tournee||[], mes=patron()?liste:liste.filter(function(c){ return c.agentId===S.moi.id; });
+  var h='<section class="g pad"><div class="jourt"><div class="q"><div class="lab">'+(S.date===jour()?"Aujourd'hui":e(fdate(S.date,{year:"numeric"})))+'</div><h2 class="t"><span class="cap">'+e(fdate(S.date))+"</span></h2></div>"+
+    '<button class="nav-r" data-a="jour" data-n="-1" aria-label="Jour précédent">'+svg("retour")+"</button>"+
+    '<button class="nav-r" data-a="jour" data-n="1" aria-label="Jour suivant">'+svg("suite")+"</button></div>"+
+    '<div class="stats" style="margin-top:14px">'+stat("Passages",String(mes.length))+stat("Heures",mes.length?fh(mes.reduce(function(s,c){ return s+(c.devise||0); },0)):"—")+
+    stat("Terminés",mes.filter(function(c){ return c.statut==="cloture"; }).length+" / "+mes.length)+"</div></section>";
+  h+='<section class="g lst">'+(mes.length?listeChantiers(mes):'<p class="vide">Aucun passage ce jour-là.</p>')+"</section>";
+  var lien=S.date===jour()?lienJournee(liste):"";
+  return h+(lien||"")+'<p class="foot">Les heures de passage viennent du planning du logiciel.</p>';
+}
+
+/* ---------- panneau du bas ---------- */
+function feuille(html){
+  var v=document.getElementById("voile"), f=document.getElementById("feuille");
+  if(!v){
+    v=document.createElement("div"); v.id="voile"; v.className="voile"; document.body.appendChild(v);
+    f=document.createElement("div"); f.id="feuille"; f.className="feuille"; f.setAttribute("role","dialog"); f.setAttribute("aria-modal","true"); document.body.appendChild(f);
+    v.addEventListener("click", fermerFeuille);
+    var y0=null;
+    f.addEventListener("pointerdown",function(ev){ if(ev.target.closest(".fb") && f.querySelector(".fb").scrollTop>0) return; if(ev.target.closest("input,textarea,select,button")) return; y0=ev.clientY; f.style.transition="none"; });
+    window.addEventListener("pointermove",function(ev){ if(y0===null) return; f.style.transform="translateY("+Math.max(0,ev.clientY-y0)+"px)"; });
+    window.addEventListener("pointerup",function(ev){ if(y0===null) return; var d=ev.clientY-y0; y0=null; f.style.transition=""; f.style.transform=""; if(d>90) fermerFeuille(); });
+  }
+  f.innerHTML='<div class="poig"></div><div class="fh"><button class="fx" data-a="f-fermer" aria-label="Fermer">'+svg("croix")+'</button></div><div class="fb">'+html+"</div>";
+  requestAnimationFrame(function(){ v.classList.add("on"); f.classList.add("on"); document.body.classList.add("feuille-on"); });
+  brancherFeuille(f);
+}
+function fermerFeuille(){
+  var v=document.getElementById("voile"), f=document.getElementById("feuille");
+  if(!v) return; v.classList.remove("on"); f.classList.remove("on"); document.body.classList.remove("feuille-on"); S.feuille=null;
+}
+function choix(nom, options, actif){
+  return '<div class="choix" data-choix="'+e(nom)+'">'+options.map(function(o){
+    var v=typeof o==="string"?o:o[0], l=typeof o==="string"?o:o[1];
+    return '<button type="button" data-a="f-choix" data-v="'+e(v)+'" aria-pressed="'+(v===actif)+'">'+e(l)+"</button>";
+  }).join("")+"</div>";
+}
+function valChoix(nom){ var b=document.querySelector('[data-choix="'+nom+'"] [aria-pressed="true"]'); return b?b.dataset.v:""; }
+function brancherFeuille(f){
+  var ph=f.querySelector('[data-a="f-photo"]');
+  if(ph) ph.addEventListener("change",function(){
+    var file=(this.files||[])[0]; if(!file) return;
+    reduire(file).then(function(d){ if(!d) return toast("Photo illisible ou trop lourde."); S.fPhoto=d;
+      var p=f.querySelector(".f-apercu"); if(p) p.innerHTML='<img class="photoph" src="'+d+'" alt="Photo">'; });
+  });
+}
+
+function fQR(){
+  feuille('<div class="ident"><span class="tile" style="width:64px;height:64px;border-radius:20px;display:grid;place-items:center;background:var(--acc-soft);color:var(--acc)">'+svg("qr")+"</span>"+
+    "<h2>Pointer par QR</h2><p class=\"meta\">Ouvrez l'appareil photo du téléphone et visez le QR collé chez le client. L'arrivée, puis le départ, sont pointés tout seuls, à l'heure du serveur.</p></div>"+
+    (patron()?'<button class="cta gh sm2" data-a="vClients">Imprimer le QR d\'un client</button>':""));
+}
+function fAbsence(){
+  S.fPhoto=null;
+  var types=(S.typesAbsence||[]).map(function(t){ return [t.value,t.label]; });
+  var att=(S.mesAbs||[]);
+  feuille("<h2>Demander une absence</h2>"+
+    '<div class="lbl">Type</div>'+choix("type",types,(types[0]||[""])[0])+
+    '<div class="g2"><div class="champ"><label for="fa_du">Du</label><input class="f" id="fa_du" type="date" value="'+e(jour())+'"></div>'+
+    '<div class="champ"><label for="fa_au">Au</label><input class="f" id="fa_au" type="date" value="'+e(jour())+'"></div></div>'+
+    '<div class="lbl">Journée</div>'+choix("demi",[["","Journée entière"],["Matin","Matin"],["Après-midi","Après-midi"]],"")+
+    '<div class="champ"><label for="fa_com">Commentaire (facultatif)</label><input class="f" id="fa_com"></div>'+
+    '<button class="cta" data-a="f-absence-ok">'+svg("avion")+"Envoyer la demande</button>"+
+    '<p class="fine">Votre responsable valide la demande et confie vos chantiers à votre remplaçant.</p>'+
+    (att.length?'<section class="g lst"><div class="liste">'+att.map(function(a){
+      return '<div class="mrow" style="cursor:default">'+svg("avion","mic"+(a.statut==="requested"?" w":a.statut==="rejected"?" b":""))+'<span class="c"><span class="n">'+e(a.libelle)+'</span><span class="p">'+e(a.statutLibelle)+"</span></span></div>";
+    }).join("")+"</div></section>":""));
+}
+function fVehicule(){
+  S.fPhoto=null;
+  var vs=(S.materiel||{}).vehicules||[];
+  if(!vs.length) return feuille("<h2>Véhicule</h2><p class=\"meta\">Aucun véhicule ne vous est confié pour l'instant. Votre responsable l'attribue dans le logiciel.</p>"+
+    (((S.materiel||{}).equipements||[]).length?'<button class="cta gh sm2" data-a="f-panne">'+svg("cle")+"Signaler une panne de matériel</button>":""));
+  feuille("<h2>État des lieux du véhicule</h2>"+
+    (vs.length>1?'<div class="lbl">Véhicule</div>'+choix("veh",vs.map(function(v){ return [v.id,v.immat]; }),vs[0].id):'<p class="meta">'+e(vs[0].immat+(vs[0].modele?" · "+vs[0].modele:""))+(vs[0].faitAujourdhui?" · déjà fait aujourd'hui":"")+"</p>")+
+    '<div class="champ"><label for="fv_km">Kilométrage du compteur</label><input class="f" id="fv_km" inputmode="numeric" placeholder="'+e(vs[0].km?String(vs[0].km):"")+'"></div>'+
+    '<div class="lbl">Carburant</div>'+choix("carbu",["Réserve","1/4","1/2","3/4","Plein"],"")+
+    '<div class="lbl">Propreté</div>'+choix("propre",["Propre","À laver"],"Propre")+
+    '<div class="lbl">Voyants ou dégâts</div>'+choix("degat",["Rien à signaler","Voyant allumé","Rayure ou choc"],"Rien à signaler")+
+    '<div class="champ"><label for="fv_note">Remarques</label><input class="f" id="fv_note" placeholder="Ex. : pneu avant gauche à regonfler"></div>'+
+    '<div class="f-apercu"></div><label class="cta gh sm2" style="cursor:pointer">'+svg("photo")+'Ajouter une photo<input type="file" accept="image/*" capture="environment" hidden data-a="f-photo"></label>'+
+    '<button class="cta" data-a="f-vehicule-ok">'+svg("ok")+"Enregistrer l'état des lieux</button>"+
+    '<button class="cta gh sm2" data-a="f-panne">'+svg("cle")+"Signaler une panne</button>");
+}
+function fPanne(){
+  S.fPhoto=null;
+  var m=S.materiel||{}, cibles=(m.vehicules||[]).map(function(v){ return ["v:"+v.id,v.immat]; }).concat((m.equipements||[]).map(function(x){ return ["m:"+x.id,x.nom]; }));
+  if(!cibles.length) return feuille("<h2>Signaler une panne</h2><p class=\"meta\">Aucun véhicule ni matériel ne vous est confié.</p>");
+  feuille("<h2>Signaler une panne</h2>"+'<div class="lbl">Sur quoi</div>'+choix("cible",cibles,cibles[0][0])+
+    '<div class="champ"><label for="fp_note">Ce qui ne va pas</label><textarea class="f" id="fp_note"></textarea></div>'+
+    '<div class="lbl">Urgence</div>'+choix("urg",["Bloquant","Peut attendre"],"Peut attendre")+
+    '<div class="f-apercu"></div><label class="cta gh sm2" style="cursor:pointer">'+svg("photo")+'Ajouter une photo<input type="file" accept="image/*" capture="environment" hidden data-a="f-photo"></label>'+
+    '<button class="cta" data-a="f-panne-ok">Envoyer au responsable</button>');
+}
+function fConge(id){
+  feuille('<h2>Demande d\'absence</h2>'+sq(2));
+  api("conge?id="+encodeURIComponent(id)).then(function(d){
+    S.feuille={conge:d};
+    var opts=[["auto","Proposition du logiciel"]].concat(d.remplacants.map(function(r){
+      var rang={replacement1:"remplaçant n°1",replacement2:"remplaçant n°2",subcontractor:"sous-traitant"}[r.rang]||"";
+      return [r.id, r.nom+(rang?" · "+rang:"")+(r.conflits?" · "+pl(r.conflits,"conflit"):" · libre")];
+    }));
+    feuille('<div class="ident">'+avatar(agentDe(d.chantiers.length?"":"")||{nom:d.agent},56)+"<h2>"+e(d.agent)+'</h2><span class="meta">'+e(d.libelle)+"</span></div>"+
+      '<section class="g lst"><div class="liste">'+(d.chantiers.length?d.chantiers.slice(0,8).map(function(c){
+        return '<div class="mrow" style="cursor:default">'+svg("calendrier","mic")+'<span class="c"><span class="n">'+e(c.site)+'</span><span class="p">'+e(fdate(c.jour,{weekday:"short",day:"numeric",month:"short"}))+(c.heure?" · "+e(c.heure):"")+"</span></span></div>";
+      }).join(""):'<div class="mrow" style="cursor:default"><span class="c"><span class="n">Aucun chantier à confier</span></span></div>')+"</div></section>"+
+      (d.chantiers.length?'<div class="lbl">Confier ses chantiers à</div>'+choix("remp",opts,"auto")+
+        '<p class="fine">« Proposition du logiciel » choisit, chantier par chantier, le remplaçant prévu dans la fiche de l\'agent, sinon quelqu\'un de libre, sinon un sous-traitant.</p>':"")+
+      '<button class="cta" data-a="f-conge-ok" data-v="1">'+svg("ok")+(d.chantiers.length?"Valider et confier":"Valider")+"</button>"+
+      '<button class="cta gh sm2" data-a="f-conge-ok" data-v="0">Refuser</button>');
+  }).catch(function(x){ fermerFeuille(); toast(x.message||"Chargement impossible."); });
+}
+function fAnomalie(id){
+  var a=((S.acc||{}).anomalies||[]).filter(function(x){ return x.id===id; })[0]; if(!a) return;
+  feuille((a.photo?'<img class="photoph" src="'+BASE+"anomalie-photo?id="+e(a.id)+'" alt="Photo de l\'anomalie">':"")+
+    '<div class="ident"><h2>'+e(a.type)+'</h2><span class="meta">'+e([a.site,a.lieu].filter(Boolean).join(" · "))+'</span><span class="meta">'+(a.par==="Détection automatique"?"Détectée automatiquement · ":a.par?"Signalée par "+e(a.par)+" · ":"")+e(depuis(a.ts))+"</span></div>"+
+    (a.commentaire?'<section class="g pad"><p class="meta">« '+e(a.commentaire)+" »</p></section>":"")+
+    '<p class="fine">Une anomalie n\'est jamais montrée au client sans votre validation. Validée, elle peut figurer au rapport du client.</p>'+
+    '<button class="cta" data-a="f-anomalie-ok" data-id="'+e(a.id)+'" data-v="validate">'+svg("ok")+"Valider l'anomalie</button>"+
+    '<button class="cta gh sm2" data-a="f-anomalie-ok" data-id="'+e(a.id)+'" data-v="reject">Classer sans suite</button>');
+}
+
+/* ---------- véhicules et matériel (responsable) ---------- */
+function chargerFlotte(){ return api("flotte").then(function(d){ S.flotte=d; if(S.vue==="flotte") rendre(); }); }
+function vueFlotte(){
+  var d=S.flotte; if(!d) return sq(2)+sq(3);
+  var j=function(n,l){ return n==null?"":n<0?l+" dépassé":n<=30?l+" dans "+n+" j":""; };
+  var h='<div class="grp"><h3>Véhicules</h3></div><section class="g lst"><div class="liste">'+(d.vehicules.length?d.vehicules.map(function(v){
+    var al=[j(v.ct,"CT"),j(v.assurance,"Assurance"),j(v.entretien,"Entretien")].filter(Boolean);
+    var ton=v.panne?" b":al.length?" w":"";
+    return '<div class="mrow" style="cursor:default">'+svg("voiture","mic"+ton)+'<span class="c"><span class="n">'+e(v.modele?v.modele+" · "+v.immat:v.immat)+'</span><span class="p">'+
+      e([v.agent||"Non attribué", v.km?Number(v.km).toLocaleString("fr-FR")+" km":"", v.etatDuJour?"état fait aujourd'hui":""].filter(Boolean).join(" · "))+
+      (v.panne?"<br>Panne : "+e(v.panne):"")+"</span></span>"+(al.length?'<span class="badge'+ton+'">'+e(al[0])+"</span>":"")+"</div>";
+  }).join(""):'<p class="vide">Aucun véhicule. Ajoutez-les dans le logiciel.</p>')+"</div></section>";
+  h+='<div class="grp"><h3>Matériel</h3></div><section class="g lst"><div class="liste">'+(d.materiel.length?d.materiel.map(function(m){
+    return '<div class="mrow" style="cursor:default">'+svg("cle","mic"+(m.panne?" b":""))+'<span class="c"><span class="n">'+e(m.nom)+'</span><span class="p">'+
+      e(m.location?"Loué à "+m.location.client+" · retour le "+m.location.fin.slice(8)+"/"+m.location.fin.slice(5,7):m.agent?"Confié à "+m.agent:"Au dépôt")+
+      (m.panne?"<br>Panne : "+e(m.panne):"")+"</span></span></div>";
+  }).join(""):'<p class="vide">Aucun matériel enregistré.</p>')+"</div></section>";
+  return h+'<p class="foot">Les véhicules et le matériel se gèrent dans le logiciel (Matériel). Les états des lieux et pannes des agents y arrivent.</p>';
+}
+
+/* ---------- Équipe : graphique au doigt, ronds des agents, tuiles de gestion ---------- */
+function blocCourbe(){
+  var p=S.pilot; if(!p||!p.serie) return "";
+  var cur=p.serie[p.serie.length-1];
+  return '<section class="g pad"><div class="lab" id="cb-l"><span class="cap" style="display:inline-block">'+e(moisLong(cur.mois))+"</span> · réalisé hors taxes</div>"+
+    '<div class="kpi"><span class="gros num" id="cb-v">'+e(feur(cur.ca))+'</span><span class="var" id="cb-s">'+e(fh(cur.heures))+" · "+e(pl(cur.n,"intervention"))+"</span></div>"+
+    '<div class="courbe" id="courbe"></div><p class="fine" style="margin-top:4px">Glissez le doigt sur la courbe pour voir chaque mois.</p></section>';
+}
+function brancherCourbe(){
+  var w=document.getElementById("courbe"), p=S.pilot; if(!w||!p||!p.serie) return;
+  var s=p.serie, W=320, H=150, pad=14, max=Math.max.apply(null,s.map(function(x){ return x.ca; }).concat([1]));
+  var X=function(i){ return pad+i*(W-2*pad)/Math.max(1,s.length-1); }, Y=function(v){ return H-28-(v/max)*(H-48); };
+  var d=s.map(function(x,i){ return (i?"L":"M")+X(i).toFixed(1)+" "+Y(x.ca).toFixed(1); }).join(" ");
+  w.innerHTML='<svg viewBox="0 0 '+W+" "+H+'" preserveAspectRatio="none" role="img" aria-label="Chiffre d\'affaires des six derniers mois">'+
+    '<defs><linearGradient id="cbg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--acc)" stop-opacity=".28"/><stop offset="1" stop-color="var(--acc)" stop-opacity="0"/></linearGradient></defs>'+
+    '<path d="'+d+" L"+X(s.length-1)+" "+(H-28)+" L"+X(0)+" "+(H-28)+' Z" fill="url(#cbg)"/>'+
+    '<path d="'+d+'" fill="none" stroke="var(--acc)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>'+
+    s.map(function(x,i){ return '<text class="ax'+(i===s.length-1?" cur":"")+'" x="'+X(i).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle">'+e(moisCourt(x.mois))+"</text>"; }).join("")+
+    '<line id="cb-c" x1="0" x2="0" y1="6" y2="'+(H-28)+'" stroke="var(--ink-3)" stroke-width="1" opacity="0"/>'+
+    '<circle id="cb-p" r="5.5" fill="var(--acc)" stroke="var(--base)" stroke-width="2.5" cx="'+X(s.length-1)+'" cy="'+Y(s[s.length-1].ca)+'"/></svg>';
+  var svgEl=w.querySelector("svg"), c=w.querySelector("#cb-c"), pt=w.querySelector("#cb-p");
+  function montre(i, actif){
+    var x=s[i]; pt.setAttribute("cx",X(i)); pt.setAttribute("cy",Y(x.ca));
+    c.setAttribute("x1",X(i)); c.setAttribute("x2",X(i)); c.setAttribute("opacity",actif?"1":"0");
+    document.getElementById("cb-v").textContent=feur(x.ca);
+    document.getElementById("cb-s").textContent=fh(x.heures)+" · "+pl(x.n,"intervention")+(x.encaisse?" · "+feur(x.encaisse)+" encaissés":"");
+    document.getElementById("cb-l").innerHTML='<span class="cap" style="display:inline-block">'+e(moisLong(x.mois))+"</span> · réalisé hors taxes";
+  }
+  function at(ev){ var r=svgEl.getBoundingClientRect(), xx=(ev.clientX-r.left)/r.width*W;
+    montre(Math.max(0,Math.min(s.length-1,Math.round((xx-pad)/((W-2*pad)/Math.max(1,s.length-1))))), true); }
+  w.addEventListener("pointerdown",function(ev){ at(ev); });
+  w.addEventListener("pointermove",function(ev){ if(ev.buttons||ev.pointerType==="mouse") at(ev); });
+  w.addEventListener("pointerleave",function(){ montre(s.length-1,false); });
+  w.addEventListener("pointerup",function(ev){ if(ev.pointerType!=="mouse") montre(s.length-1,false); });
+}
+function blocRondsEquipe(){
+  var a=S.activite||{agents:[]}, par={}; (a.agents||[]).forEach(function(x){ par[x.id]=x; });
+  var l=(S.agents||[]).filter(function(x){ return x.actif!==false && x.role!=="patron"; }).slice(0,8);
+  if(!l.length) return "";
+  return '<section class="g pad"><div class="lab" style="margin-bottom:12px">L\'équipe ce mois-ci</div><div class="g4">'+l.map(function(x){
+    var s=par[x.id]||{}, ec=(s.reelles||0)-(s.prevues||0);
+    return '<button data-a="agentVoir" data-id="'+e(x.id)+'">'+avatar(x,52)+'<span class="nm">'+e(prenom(x.nom))+'</span><small style="color:'+(ec>0.5?"var(--bad)":"var(--acc)")+'">'+(s.clotures?(ec>0.5?"▲ ":"▼ ")+fh(Math.abs(ec)):fh(s.reelles||0))+"</small></button>";
+  }).join("")+"</div></section>";
+}
+function blocTuiles(){
+  var T2=[["planifier","plus","Planifier"],["vAgents","equipe","Mon équipe"],["vClients","client","Clients"],["vFactures","euro","Factures"],
+          ["vAbsences","avion","Congés"],["vFlotte","voiture","Véhicules"],["vReglages","auto","Réglages"],["gestion","plusr","Plus"]];
+  return '<section class="g pad"><div class="lab" style="margin-bottom:12px">Gestion</div><div class="g4">'+T2.map(function(t){
+    return '<button data-a="'+t[0]+'"><span class="tile">'+svg(t[1])+'</span><span class="nm">'+e(t[2])+"</span></button>";
+  }).join("")+"</div></section>";
+}
+
+/* ---------- liens des panneaux ---------- */
+function actionFeuille(a, el){
+  if(a==="f-fermer"){ fermerFeuille(); return true; }
+  if(a==="f-choix"){ Array.prototype.forEach.call(el.parentNode.children,function(x){ x.setAttribute("aria-pressed",String(x===el)); }); return true; }
+  if(a==="f-qr"){ fQR(); return true; }
+  if(a==="f-absence"){ fAbsence(); return true; }
+  if(a==="f-vehicule"){ fVehicule(); return true; }
+  if(a==="f-panne"){ fPanne(); return true; }
+  if(a==="f-conge"){ fConge(el.dataset.id); return true; }
+  if(a==="f-anomalie"){ fAnomalie(el.dataset.id); return true; }
+  if(a==="maTournee"){ empilerVue(); S.vue="matournee"; rendreVers("avant"); return true; }
+  if(a==="vFlotte"){ fermerFeuille(); if(S.vue!=="flotte"){ empilerVue(); S.vue="flotte"; } rendreVers("avant"); chargerFlotte().catch(function(x){ toast(x.message||"Chargement impossible."); }); return true; }
+  if(a==="f-absence-ok"){
+    var du=val("fa_du"), au=val("fa_au")||du, demi=valChoix("demi"), com=val("fa_com");
+    if(!du) { toast("Indiquez la date de début."); return true; }
+    el.disabled=true;
+    api("absence",{type:valChoix("type"), debut:du, fin:au, commentaire:(demi?demi+(com?" · ":""):"")+com}).then(function(d){
+      S.mesAbs=d.absences||S.mesAbs; fermerFeuille(); buzz(14); toast("Demande envoyée au responsable."); rendre();
+    }).catch(function(x){ el.disabled=false; toast(x.message||"Envoi impossible : réessayez avec du réseau."); });
+    return true;
+  }
+  if(a==="f-vehicule-ok"){
+    var vs=(S.materiel||{}).vehicules||[], vid=valChoix("veh")||(vs[0]||{}).id, km=val("fv_km").replace(/\D/g,"");
+    if(!km){ toast("Indiquez le kilométrage du compteur."); return true; }
+    var note=["Carburant : "+(valChoix("carbu")||"non noté"), valChoix("propre"), valChoix("degat"), val("fv_note")].filter(Boolean).join(" · ");
+    el.disabled=true;
+    api("etat-materiel",{type:"etat", vehicule:vid, km:km, note:note, photo:S.fPhoto||null}).then(function(d){
+      S.materiel=d.materiel||S.materiel; fermerFeuille(); buzz(14); toast("État des lieux enregistré."); rendre();
+    }).catch(function(x){ el.disabled=false; toast(x.message||"Envoi impossible : réessayez avec du réseau."); });
+    return true;
+  }
+  if(a==="f-panne-ok"){
+    var cible=valChoix("cible"), txt0=val("fp_note");
+    if(!txt0){ toast("Décrivez la panne en quelques mots."); return true; }
+    var cm={type:"panne", note:(valChoix("urg")==="Bloquant"?"BLOQUANT · ":"")+txt0, km:"", photo:S.fPhoto||null};
+    if(cible.indexOf("v:")===0) cm.vehicule=cible.slice(2); else cm.materiel=cible.slice(2);
+    el.disabled=true;
+    api("etat-materiel",cm).then(function(d){
+      S.materiel=d.materiel||S.materiel; fermerFeuille(); buzz(14); toast("Panne transmise au responsable."); rendre();
+    }).catch(function(x){ el.disabled=false; toast(x.message||"Envoi impossible : réessayez avec du réseau."); });
+    return true;
+  }
+  if(a==="f-conge-ok"){
+    var d0=(S.feuille||{}).conge; if(!d0) return true;
+    el.disabled=true;
+    api("conge-decision",{id:d0.id, valider:el.dataset.v==="1", remplacant:valChoix("remp")||"auto"}).then(function(r){
+      fermerFeuille(); buzz(14);
+      toast(el.dataset.v==="1"?(r.confies?"Validé · "+pl(r.confies,"chantier")+" confié"+(r.confies>1?"s":""):"Absence validée."):"Demande refusée.");
+      return chargerAccueil();
+    }).catch(function(x){ el.disabled=false; toast(x.message); });
+    return true;
+  }
+  if(a==="f-anomalie-ok"){
+    el.disabled=true;
+    api("anomalie-decision",{id:el.dataset.id, action:el.dataset.v}).then(function(){
+      fermerFeuille(); buzz(14); toast(el.dataset.v==="validate"?"Anomalie validée.":"Anomalie classée."); return chargerAccueil();
+    }).catch(function(x){ el.disabled=false; toast(x.message); });
+    return true;
+  }
+}
+
+/* La barre d'onglets se réduit quand on descend, revient quand on remonte. */
+(function(){
+  var dernier=0;
+  window.addEventListener("scroll",function(){
+    var y=window.scrollY;
+    if(y>dernier+6 && y>90) document.body.classList.add("reduit");
+    else if(y<dernier-6 || y<40) document.body.classList.remove("reduit");
+    dernier=y;
+  },{passive:true});
+})();
+/* Cartes qui défilent : le point actif suit la carte. */
+document.addEventListener("scroll",function(ev){
+  var t=ev.target; if(!t || t.id!=="defile") return;
+  var i=Math.round(t.scrollLeft/Math.max(1,t.clientWidth-20));
+  Array.prototype.forEach.call(document.querySelectorAll("#points i"),function(d,k){ d.classList.toggle("on",k===i); });
+},true);
 
 function vueFiche(){
   var c=S.ch, b=bilan(), el=ecoule(), a=agentDe(c.agentId);
@@ -2699,7 +3224,8 @@ function vueAdmin(){
     ligneMenu("vAgents","Mon équipe","Agents, codes d'accès, photos","equipe")+
     ligneMenu("vClients","Carnet clients","Historique, QR de pointage, attestation fiscale","tournee")+
     ligneMenu("vFactures","Devis et factures","À facturer, suivi des règlements","demandes")+
-    ligneMenu("vAbsences","Absences et remplacements","Confier les chantiers d'un agent absent","historique")+
+    ligneMenu("vAbsences","Congés et absences","Demandes à valider, remplacements","historique")+
+    ligneMenu("vFlotte","Véhicules et matériel","Échéances, pannes, matériel confié ou loué","voiture")+
     ligneMenu("vReglages","Réglages de l'entreprise","Coordonnées, facturation, SAP, avis, alertes","auto")+
     ligneMenu("sauvegarde","Sauvegarde","Tout enregistrer sur cet appareil","ext")+
     "</div></section>";
@@ -2949,7 +3475,11 @@ function vueFacture(){
 /* ---------- absences et remplacements ---------- */
 function vueAbsences(){
   var ags=(S.agents||[]).filter(function(a){ return a.actif; });
-  var h='<p class="intro">Un agent absent : ses interventions passent à un collègue, et celui-ci est prévenu.</p>'+
+  var av=((S.acc||{}).conges)||[];
+  var h=(av.length?'<div class="bloc"><div class="grp"><h3>À valider</h3></div><section class="g lst"><div class="liste">'+av.map(function(x){
+      return ligneAFaire('data-a="f-conge" data-id="'+e(x.id)+'"', x.agent+" · "+x.libelle, pl(x.chantiers,"chantier")+" à confier", "avion", "w");
+    }).join("")+"</div></section></div>":"")+
+    '<p class="intro">Un agent absent : ses interventions passent à un collègue, et celui-ci est prévenu.</p>'+
     '<section class="g pad">'+
     '<div class="champ"><label for="ab_de">Agent absent</label><select class="f" id="ab_de">'+
       ags.map(function(a){ return '<option value="'+e(a.id)+'">'+e(a.nom)+"</option>"; }).join("")+"</select></div>"+
@@ -3136,6 +3666,7 @@ document.addEventListener("click", function(ev){
   var el=ev.target.closest("[data-a]"); if(!el) return;
   var a=el.dataset.a, c=S.ch;
   if(actionAjouts(a, el, c)) return;
+  if(actionFeuille(a, el)) return;
   if(a==="ouvrir") return ouvrirChantier(el.dataset.id);
   if(a==="retour") return revenir();
   if(a==="compte"){ if(S.vue==="compte") return; empilerVue(); S.vue="compte"; return rendreVers("avant"); }
