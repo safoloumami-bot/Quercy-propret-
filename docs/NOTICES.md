@@ -60,7 +60,7 @@ numérotation), les réglages de l'entreprise sont ceux de Ventes › Paramètre
 fait l'application ne change le fonctionnement du logiciel.
 
 **À faire une fois** : dans le site quercy-proprete.fr, remplacer l'adresse du bloc qui
-envoie les demandes de devis (ligne `var APP`) par
-`https://radiant-vacherin-c49bd4.netlify.app/terrain/quercy-proprete/api/demande`.
+envoie les demandes de devis (ligne `var APP`) par l'adresse du logiciel suivie de
+`/terrain/quercy-proprete/api/demande`.
 Pour les notifications : ouvrir l'application installée sur l'écran d'accueil, puis
 Mon compte › Notifications.
