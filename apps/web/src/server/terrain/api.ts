@@ -712,28 +712,32 @@ export async function handleTerrainApi(
     const me = await currentAgent(request, org);
 
     if (route === "etat") {
-      const accesses = await prisma.fieldAccess.count({ where: { organizationId: org.id } });
       const list = CHECKLISTS[0]!;
-      if (me)
-        await runTerrainAlerts(org.id).catch((error) =>
-          console.error(
-            JSON.stringify({ level: "warn", msg: "terrain.alerts", error: String(error) }),
-          ),
-        );
-      const team = me ? await teamOf(org.id) : [];
+      // Requêtes lancées ensemble : une seule attente réseau au lieu de six à la suite.
+      const [accesses, team, moi, nouvelles, entreprise] = await Promise.all([
+        prisma.fieldAccess.count({ where: { organizationId: org.id } }),
+        me ? teamOf(org.id) : Promise.resolve([]),
+        me ? publicMe(org, me) : Promise.resolve(null),
+        me?.role === "patron"
+          ? prisma.quoteRequest.count({ where: { organizationId: org.id, status: "nouvelle" } })
+          : Promise.resolve(0),
+        me ? entrepriseConf(org) : Promise.resolve(null),
+        me
+          ? runTerrainAlerts(org.id).catch((error) =>
+              console.error(
+                JSON.stringify({ level: "warn", msg: "terrain.alerts", error: String(error) }),
+              ),
+            )
+          : Promise.resolve(),
+      ]);
       return json({
-        moi: me ? await publicMe(org, me) : null,
+        moi,
         installation: accesses === 0,
-        nouvelles:
-          me?.role === "patron"
-            ? await prisma.quoteRequest.count({
-                where: { organizationId: org.id, status: "nouvelle" },
-              })
-            : 0,
+        nouvelles,
         version: 3,
         modeles: CHECKLISTS.map((c) => c.label),
         prestations: PRESTATIONS,
-        entreprise: me ? await entrepriseConf(org) : null,
+        entreprise,
         agents: team
           .filter((a) => a.actif)
           .map(({ id, nom, couleur, photo, role }) => ({ id, nom, couleur, photo, role })),
@@ -836,26 +840,30 @@ export async function handleTerrainApi(
       const d = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get("d") ?? "")
         ? url.searchParams.get("d")!
         : dayKey(new Date());
-      const rows = (await prisma.intervention.findMany({
-        where: {
-          organizationId: org.id,
-          deletedAt: null,
-          date: utcDay(new Date(`${d}T00:00:00.000Z`)),
-          status: { not: "cancelled" },
-          ...(me.role === "patron"
-            ? {}
-            : { OR: [{ ownerId: me.id }, { replacementAgentId: me.id }] }),
-        },
-        include: STOP_INCLUDE,
-      })) as StopRow[];
+      const [rows, absences, materiel] = await Promise.all([
+        prisma.intervention.findMany({
+          where: {
+            organizationId: org.id,
+            deletedAt: null,
+            date: utcDay(new Date(`${d}T00:00:00.000Z`)),
+            status: { not: "cancelled" },
+            ...(me.role === "patron"
+              ? {}
+              : { OR: [{ ownerId: me.id }, { replacementAgentId: me.id }] }),
+          },
+          include: STOP_INCLUDE,
+        }) as Promise<StopRow[]>,
+        myAbsences(org, me),
+        myAssets(org, me),
+      ]);
       const stops = rows.map(toStop).sort((a, b) => a.heure.localeCompare(b.heure));
       return json({
         date: d,
         chantiers: stops,
         heures: stops.reduce((s, c) => s + (c.devise || 0), 0),
         serveur: Date.now(),
-        ...(await myAbsences(org, me)),
-        materiel: await myAssets(org, me),
+        ...absences,
+        materiel,
       });
     }
 

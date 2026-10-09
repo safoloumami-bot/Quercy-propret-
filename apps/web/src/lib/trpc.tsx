@@ -1,6 +1,7 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { toast } from "@quercy/ui/components/toaster";
 import { createTRPCClient, httpBatchLink, loggerLink } from "@trpc/client";
 import { createTRPCContext } from "@trpc/tanstack-react-query";
 import type * as React from "react";
@@ -11,8 +12,34 @@ import type { AppRouter } from "@/server/trpc/root";
 
 export const { TRPCProvider, useTRPC, useTRPCClient } = createTRPCContext<AppRouter>();
 
+/** Vrai si le serveur a refusé l'action faute de droits. */
+export function isForbiddenError(error: unknown): boolean {
+  return (error as { data?: { code?: string } } | null)?.data?.code === "FORBIDDEN";
+}
+
+/** Un refus de droits ne reste jamais muet : l'utilisateur sait à qui s'adresser. */
+function notifyForbidden(error: unknown) {
+  toast.error("Accès réservé", {
+    id: "acces-reserve",
+    description: `${errorMessage(error)} Un administrateur peut vous donner l'accès (Réglages › Rôles).`,
+  });
+}
+
 function makeQueryClient() {
   return new QueryClient({
+    queryCache: new QueryCache({
+      onError: (error) => {
+        if (typeof window !== "undefined" && isForbiddenError(error)) notifyForbidden(error);
+      },
+    }),
+    mutationCache: new MutationCache({
+      // Une action sans gestion d'erreur propre affiche quand même pourquoi elle a échoué.
+      onError: (error, _variables, _context, mutation) => {
+        if (mutation.options.onError) return;
+        if (isForbiddenError(error)) notifyForbidden(error);
+        else toast.error(errorMessage(error));
+      },
+    }),
     defaultOptions: {
       queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: 1 },
     },

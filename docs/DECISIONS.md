@@ -465,3 +465,11 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
       annulés avant construction (`ignore` de `netlify.toml`, `scripts/netlify-ignore.sh`) ;
       seule la mise en ligne de production est construite. Les vérifications se font en local
       et dans la CI GitHub.
+151.  **Latence** : chaque requête à la base traversait l'Atlantique (fonctions Netlify dans
+      l'Ohio, base Neon à Francfort), soit ~0,1 s par requête et 1 à 3 s par écran. La région
+      des fonctions n'est modifiable que sur les offres payantes de Netlify ; la base est donc
+      copiée dans la région des fonctions (us-east-2) par `copy-database.mjs`, une seule fois,
+      dans une transaction (clés étrangères différées le temps de la copie). L'ancienne base
+      reste intacte.
+152.  **Retour visuel immédiat** plutôt qu'attente muette : barre de chargement (logiciel et
+      application), refus de droits toujours expliqué, fiches du jour préchargées pour l'agent.

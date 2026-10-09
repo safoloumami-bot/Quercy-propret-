@@ -9,6 +9,7 @@ import { AssistantProvider } from "../assistant/assistant-context";
 import { AssistantPanel } from "../assistant/assistant-panel";
 import { RealtimeListener } from "../realtime-listener";
 import { CommandPalette } from "./command-palette";
+import { NavigationProgress } from "./navigation-progress";
 import { OfflineStatus } from "./offline-status";
 import { RecordTabsBar, RecordTabsProvider } from "./record-tabs";
 import { AccessProvider } from "./access-context";
@@ -75,6 +76,9 @@ export function AppShell({
       <AccessProvider modules={modules} permissions={permissions}>
         <RecordTabsProvider>
           <AssistantProvider>
+            <React.Suspense fallback={null}>
+              <NavigationProgress />
+            </React.Suspense>
             <GlobalShortcuts />
             <RealtimeListener />
             <a

@@ -699,6 +699,16 @@ body.feuille-on{overflow:hidden}
   #vue[data-vue="tournee"]>:first-child{position:static}
   .haut.acc .moi{display:block}
 }
+
+/* Réponse au toucher : l'appui se voit tout de suite, même si le réseau est lent */
+html{-webkit-tap-highlight-color:transparent}
+button,[data-a],[data-onglet],a,label{touch-action:manipulation}
+button:active,[data-a]:active,[data-onglet]:active,.appui{opacity:.78;transition:opacity .05s}
+button:active,.appui{transform:scale(.97)}
+#charge{position:fixed;top:0;left:0;right:0;height:3px;z-index:300;pointer-events:none;opacity:0;transition:opacity .15s;overflow:hidden}
+#charge.on{opacity:1}
+#charge::before{content:"";position:absolute;top:0;bottom:0;left:0;width:40%;background:var(--acc);border-radius:0 3px 3px 0;animation:charge 1s ease-in-out infinite}
+@keyframes charge{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
 </style>
 %%STYLE%%
 <script>
@@ -941,10 +951,26 @@ function appliquerTheme(t){
 
 /* ============================================================ transport */
 function api(route, corps){ return appel(BASE+route, corps); }
+var dernierAppui=0, enCours=0, minuteur=null;
+document.addEventListener("touchstart", function(){}, {passive:true});   /* :active sur iPhone */
+document.addEventListener("pointerdown", function(ev){
+  dernierAppui=Date.now();
+  var b=ev.target && ev.target.closest && ev.target.closest("button,[data-a],[data-onglet]");
+  if(b){ b.classList.add("appui"); setTimeout(function(){ b.classList.remove("appui"); }, 450); }
+}, {passive:true, capture:true});
+function barre(on){
+  var b=document.getElementById("charge");
+  if(!b){ b=document.createElement("div"); b.id="charge"; b.setAttribute("aria-hidden","true"); document.body.appendChild(b); }
+  if(on){ enCours++; if(!minuteur) minuteur=setTimeout(function(){ if(enCours) b.classList.add("on"); }, 90); }
+  else { enCours=Math.max(0,enCours-1); if(!enCours){ clearTimeout(minuteur); minuteur=null; b.classList.remove("on"); } }
+}
 function appel(url, corps){
   var opt = corps ? {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(corps)} : {};
   opt.credentials = "same-origin";
-  return fetch(url, opt).then(function(r){
+  var vu = Date.now()-dernierAppui < 1500;   /* appel demandé par un toucher : on montre la barre */
+  if(vu) barre(true);
+  var fin=function(x){ if(vu) barre(false); return x; };
+  return fetch(url, opt).then(function(r){ fin(); return r; }, function(x){ fin(); throw x; }).then(function(r){
     var type = r.headers.get("content-type")||"";
     if(type.indexOf("application/json")<0){
       var e1=new Error("La partie serveur de l'application n'est pas installée sur Netlify.");
@@ -1306,6 +1332,7 @@ function chargerTournee(auto){
     S.mesAbs=d.absences||[]; S.typesAbsence=d.typesAbsence||[]; S.materiel=d.materiel||{vehicules:[],equipements:[]};
     cacheTournee(S.date,{chantiers:d.chantiers, heures:d.heures||0});
     chargerAccueil();
+    prechargerFiches(d.chantiers);
     ls("qp.moi",{moi:S.moi, equipe:S.equipe});
     if(aJour("tournee")){ S.vue="tournee"; S.ch=null; rendre(); }
   }).catch(function(){
@@ -1350,6 +1377,14 @@ function chargerHistorique(id, commeOnglet, sansEmpiler){
 }
 function ouvrirChantier(id){
   var cache=ficheCache(id);
+  if(cache && enLigne){
+    /* la fiche gardée sur le téléphone s'affiche tout de suite, puis se met à jour */
+    empilerVue(); S.ch=cache; S.vue="fiche"; S.plie={}; rendreVers("avant");
+    return api("chantier?id="+encodeURIComponent(id)).then(function(d){
+      cacheFiche(d.chantier);
+      if(S.vue==="fiche" && S.ch && S.ch.id===id){ S.ch=d.chantier; rendre(); }
+    }).catch(function(){});
+  }
   return api("chantier?id="+encodeURIComponent(id)).then(function(d){
     empilerVue();
     S.ch=d.chantier; S.vue="fiche"; S.plie={};
@@ -1359,6 +1394,18 @@ function ouvrirChantier(id){
     if(cache){ empilerVue(); S.ch=cache; S.vue="fiche"; S.plie={}; rendreVers("avant"); toast("Hors réseau : fiche en mémoire."); }
     else toast("Chantier indisponible hors réseau.");
   });
+}
+/* Les fiches du jour de l'agent sont gardées d'avance : elles s'ouvrent sans attendre. */
+var prechargees={};
+function prechargerFiches(liste){
+  if(patron() || S.date!==jour() || !enLigne) return;
+  var ids=(liste||[]).map(function(c){ return c.id; }).filter(function(id){ return id && !prechargees[id]; }).slice(0,8);
+  (function suivant(){
+    var id=ids.shift(); if(!id) return;
+    prechargees[id]=1;
+    appel(BASE+"chantier?id="+encodeURIComponent(id)).then(function(d){ cacheFiche(d.chantier); })
+      .catch(function(){}).then(function(){ setTimeout(suivant, 250); });
+  })();
 }
 function recharger(id){
   return api("chantier?id="+encodeURIComponent(id)).then(function(d){

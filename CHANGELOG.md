@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.13.0] — 2026-10-10 — Réactivité, nouveau logo
+
+### Ajouté
+
+- **Nouveau logo et nouvelle icône** (QP) : logiciel, application terrain (écran d'accueil du
+  téléphone, notifications, PDF).
+- **Un clic n'est jamais muet** : barre de chargement dès qu'on clique (logiciel) ou qu'on
+  touche (application) ; un refus de droits affiche « Accès réservé » et indique qu'un
+  administrateur peut donner l'accès (Réglages › Rôles) ; une action en échec affiche
+  toujours son message.
+- **Application terrain plus rapide** : réaction visible au toucher (iPhone compris), fiches
+  du jour gardées d'avance sur le téléphone de l'agent et ouvertes sans attendre, requêtes
+  de l'ouverture et de la tournée lancées ensemble.
+- **Copie de la base vers une autre région** (`packages/db/scripts/copy-database.mjs`), lancée
+  une seule fois à la construction quand `DB_COPY_FROM` est renseignée : rapproche la base
+  du serveur (les fonctions Netlify tournent dans l'Ohio).
+
 ## [1.12.0] — 2026-10-09 — Application terrain v15, reliée au logiciel
 
 ### Ajouté

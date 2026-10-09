@@ -1,1 +1,17 @@
 @import "@quercy/ui/globals.css";
+
+/* Barre de chargement en haut de l'écran (components/shell/navigation-progress.tsx). */
+@keyframes quercy-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(260%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[quercy-progress_1s_ease-in-out_infinite\] {
+    animation: none;
+    width: 100%;
+  }
+}

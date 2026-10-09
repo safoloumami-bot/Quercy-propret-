@@ -20,7 +20,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="w-full max-w-sm">{children}</div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Vos données sont hébergées en Europe et isolées par entreprise.
+          Vos données circulent chiffrées et restent isolées par entreprise.
         </p>
       </main>
       <aside className="relative hidden overflow-hidden border-l border-border bg-sidebar lg:flex lg:flex-col lg:justify-center lg:px-16">
