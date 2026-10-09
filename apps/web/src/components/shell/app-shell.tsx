@@ -8,6 +8,7 @@ import type { WorkspaceSummary } from "@/lib/workspace";
 import { AssistantProvider } from "../assistant/assistant-context";
 import { AssistantPanel } from "../assistant/assistant-panel";
 import { RealtimeListener } from "../realtime-listener";
+import { ClipboardGuard } from "./clipboard-guard";
 import { CommandPalette } from "./command-palette";
 import { NavigationProgress } from "./navigation-progress";
 import { OfflineStatus } from "./offline-status";
@@ -79,6 +80,7 @@ export function AppShell({
             <React.Suspense fallback={null}>
               <NavigationProgress />
             </React.Suspense>
+            <ClipboardGuard />
             <GlobalShortcuts />
             <RealtimeListener />
             <a

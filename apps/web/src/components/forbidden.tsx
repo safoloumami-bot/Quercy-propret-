@@ -10,8 +10,8 @@ export function Forbidden({ what }: { what: string }) {
       <div className="max-w-sm space-y-1">
         <h1 className="text-base font-semibold">Accès réservé</h1>
         <p className="text-sm text-muted-foreground">
-          Votre rôle ne donne pas accès à {what}. Demandez à un administrateur de l&apos;espace si
-          vous en avez besoin.
+          Votre rôle ne donne pas accès {what}. Un administrateur de l&apos;espace peut vous le
+          donner (Réglages › Rôles) si vous en avez besoin.
         </p>
       </div>
     </div>
