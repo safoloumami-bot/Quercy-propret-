@@ -461,3 +461,7 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
       absences relit remplaçant et chantiers repris sur les interventions.
 149.  **Logo de Quercy Propreté en fichiers statiques** (pas de fonction appelée) ; une autre
       entreprise utilise son logo public ou l'icône dessinée à ses couleurs.
+150.  **Quota Netlify** : les aperçus (deploy previews) et les déploiements de branche sont
+      annulés avant construction (`ignore` de `netlify.toml`, `scripts/netlify-ignore.sh`) ;
+      seule la mise en ligne de production est construite. Les vérifications se font en local
+      et dans la CI GitHub.
