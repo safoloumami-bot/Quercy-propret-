@@ -118,7 +118,8 @@ describe("marque convertible", () => {
     expect(initials("Quercy Propreté")).toBe("QP");
     expect(initials("Net'Éclat Services")).toBe("NE");
     const manifest = terrainManifest(brand);
-    expect(manifest.start_url).toBe(`/terrain/${slug}/`);
+    expect(manifest.start_url).toBe(`/terrain/${slug}`);
+    expect(manifest.scope).toBe(`/terrain/${slug}`);
     expect(manifest.icons[0]!.src).toBe(`/terrain/${slug}/icone/192`);
   });
 

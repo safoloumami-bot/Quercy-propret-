@@ -13,6 +13,12 @@
 - **Application terrain plus rapide** : réaction visible au toucher (iPhone compris), fiches
   du jour gardées d'avance sur le téléphone de l'agent et ouvertes sans attendre, requêtes
   de l'ouverture et de la tournée lancées ensemble.
+- **L'application terrain s'ouvre tout de suite** : l'écran gardé sur le téléphone s'affiche
+  immédiatement puis se met à jour. Le service worker n'était jamais actif (l'adresse de
+  l'application est servie sans « / » final, il était enregistré pour l'adresse avec « / ») :
+  il l'est désormais. Sur un réseau qui ne répond pas, la page gardée sert au bout de 2,5 s
+  (au lieu d'attendre jusqu'à une minute). Les alertes du téléphone sont calculées à part,
+  sans retarder l'ouverture ; l'envoi d'une notification est limité à 5 s.
 - **Copie de la base vers une autre région** (`packages/db/scripts/copy-database.mjs`), lancée
   une seule fois à la construction quand `DB_COPY_FROM` est renseignée : rapproche la base
   du serveur (les fonctions Netlify tournent dans l'Ohio).

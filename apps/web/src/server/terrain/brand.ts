@@ -167,8 +167,9 @@ export function terrainManifest(brand: TerrainBrand) {
   return {
     name: `${brand.name} — Terrain`,
     short_name: brand.shortName,
-    start_url: brand.base,
-    scope: brand.base,
+    // Adresse sans « / » final : c'est celle que sert le logiciel (l'autre y redirige).
+    start_url: brand.base.replace(/\/$/, ""),
+    scope: brand.base.replace(/\/$/, ""),
     display: "standalone",
     orientation: "portrait",
     background_color: "#EDF3F1",

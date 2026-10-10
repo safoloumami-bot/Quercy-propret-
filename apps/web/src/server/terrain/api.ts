@@ -713,7 +713,8 @@ export async function handleTerrainApi(
 
     if (route === "etat") {
       const list = CHECKLISTS[0]!;
-      // Requêtes lancées ensemble : une seule attente réseau au lieu de six à la suite.
+      // Requêtes lancées ensemble : une seule attente réseau au lieu de six à la suite. Les
+      // alertes ne retardent plus l'ouverture : l'application les demande à part (« alertes »).
       const [accesses, team, moi, nouvelles, entreprise] = await Promise.all([
         prisma.fieldAccess.count({ where: { organizationId: org.id } }),
         me ? teamOf(org.id) : Promise.resolve([]),
@@ -722,13 +723,6 @@ export async function handleTerrainApi(
           ? prisma.quoteRequest.count({ where: { organizationId: org.id, status: "nouvelle" } })
           : Promise.resolve(0),
         me ? entrepriseConf(org) : Promise.resolve(null),
-        me
-          ? runTerrainAlerts(org.id).catch((error) =>
-              console.error(
-                JSON.stringify({ level: "warn", msg: "terrain.alerts", error: String(error) }),
-              ),
-            )
-          : Promise.resolve(),
       ]);
       return json({
         moi,
@@ -744,6 +738,18 @@ export async function handleTerrainApi(
         pieces: list.pieces,
         consommables: list.consommables,
       });
+    }
+
+    /* ---------- alertes du téléphone : demandées en arrière-plan après l'ouverture ---------- */
+    if (route === "alertes" && request.method === "POST") {
+      if (!me) return fail("Session expirée.", 401);
+      const result = await runTerrainAlerts(org.id).catch((error) => {
+        console.error(
+          JSON.stringify({ level: "warn", msg: "terrain.alerts", error: String(error) }),
+        );
+        return null;
+      });
+      return json({ ok: true, ...(result ?? {}) });
     }
 
     if (route === "deconnexion")

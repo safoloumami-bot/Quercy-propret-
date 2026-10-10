@@ -1077,7 +1077,9 @@ function majEtat(){
 /* ============================================================ hors réseau et notifications */
 function installerSW(){
   if(!("serviceWorker" in navigator)) return Promise.resolve(null);
-  return navigator.serviceWorker.register("sw.js").catch(function(){ return null; });
+  return navigator.serviceWorker.register("sw.js", {scope: T.base.replace(/\/$/, "")}).catch(function(){
+    return navigator.serviceWorker.register("sw.js");
+  }).catch(function(){ return null; });
 }
 navigator.serviceWorker && navigator.serviceWorker.addEventListener("message", function(ev){
   if(ev.data && ev.data.onglet && S.moi) ouvrirCible(ev.data.onglet);
@@ -1144,7 +1146,7 @@ function chargerEtat(){
   return api("etat").then(function(d){
     S.moi=d.moi; S.entreprise=d.entreprise; S.equipe=d.agents||[];
     S.modeles=d.modeles||[]; S.prestations=d.prestations||[]; S.nouvelles=d.nouvelles||0;
-    if(d.entreprise) document.getElementById("marque").textContent=d.entreprise.nom||T.nom;
+    var mq=document.getElementById("marque"); if(d.entreprise && mq) mq.textContent=d.entreprise.nom||T.nom;
     majPastille();
     return d;
   });
@@ -1165,12 +1167,22 @@ function demarrer(){
   file = ls("qp.file") || [];
   installerSW();
   if(ARRIVEE.avis){ trouverServeur().catch(function(){}).then(function(){ ecranAvis(ARRIVEE.avis); }); return; }
+  var memo = ls("qp.moi"), tm = tourneeCache(jour()), dejaVu = false;
+  if(memo && memo.moi && !ARRIVEE.qr){
+    S.moi=memo.moi; S.equipe=memo.equipe||[];
+    if(tm){ S.tournee=tm.chantiers; S.heures=tm.heures||0; }
+    S.vue="tournee"; S.onglet="tournee"; ecran("ecran"); majEtat(); rendre(); dejaVu=true;
+  }
   trouverServeur().catch(function(){}).then(function(){
     chargerEtat().then(function(d){
       if(d.installation) return ecran("inst");
       if(!S.moi) return ecran("cx");
-      ouvrirApp();
+      /* déjà affiché depuis la mémoire et l'agent navigue : on ne le ramène pas à l'accueil */
+      if(dejaVu && (S.onglet!=="tournee" || S.pile.length || S.vue!=="tournee")){ majEtat(); rendreOnglets(); viderFile(); }
+      else ouvrirApp();
+      setTimeout(function(){ api("alertes",{}).catch(function(){}); }, 1500);
     }).catch(function(err){
+      if(dejaVu){ S.erreurTournee="cache"; rendre(); toast("Réseau faible : écran gardé sur le téléphone."); return; }
       var c = ls("qp.moi"), t = tourneeCache(jour());
       if(c && c.moi && t && !err.serveurAbsent){
         S.moi=c.moi; S.equipe=c.equipe||[]; S.tournee=t.chantiers; S.heures=t.heures||0;
@@ -3886,7 +3898,7 @@ document.addEventListener("click", function(ev){
       sap:val("e_sap"), sapDate:val("e_sapdate"), avisGoogle:lienG
     }).then(function(d){
       S.entreprise=d.entreprise; oublierDocs();
-      document.getElementById("marque").textContent=d.entreprise.nom||T.nom;
+      var mq2=document.getElementById("marque"); if(mq2) mq2.textContent=d.entreprise.nom||T.nom;
       toast("Entreprise enregistrée."); rendre();
     }).catch(function(x){ toast(x.message); });
   }

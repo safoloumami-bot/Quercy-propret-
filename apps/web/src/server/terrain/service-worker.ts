@@ -1,8 +1,9 @@
 /**
  * Code du service worker de l'application terrain (une entreprise = une adresse) :
- * - l'écran (page, manifeste, icônes) : réseau d'abord, copie gardée pour le hors-réseau ;
+ * - l'écran (page, manifeste, icônes) : réseau d'abord, mais la copie gardée sert si le
+ *   réseau ne répond pas en 2,5 s (ouverture rapide même avec peu de réseau) ;
  * - les lectures de données (état, tournée, fiche) : réseau d'abord, dernière réponse gardée,
- *   rendue hors réseau avec l'en-tête `x-qp-memoire` (heure de la copie) ;
+ *   rendue si le réseau tarde (6 s) ou manque, avec l'en-tête `x-qp-memoire` (heure de la copie) ;
  * - les envois (POST) ne passent jamais par le cache : la file d'attente de l'application
  *   les rejoue au retour du réseau ;
  * - les polices et la bibliothèque PDF (sites externes) : copie gardée pour le hors-réseau ;
@@ -19,7 +20,7 @@ var BASE = ${b};
 var NOM = ${JSON.stringify(brand.name)};
 var ICONE = ${JSON.stringify(brand.icon)};
 var BADGE = ${JSON.stringify(brand.badge)};
-var SHELL = "qp-ecran-v2";
+var SHELL = "qp-ecran-v3";
 var EXTERNES = ["fonts.googleapis.com", "fonts.gstatic.com", "cdnjs.cloudflare.com"];
 var DATA = "qp-donnees";
 var READS = ["etat", "tournee", "chantier"];
@@ -83,19 +84,35 @@ self.addEventListener("fetch", function (event) {
   if (url.pathname.indexOf(BASE + "/api/") === 0 && !isRead(url)) return;
   var cacheName = isRead(url) ? DATA : SHELL;
   var key = req.mode === "navigate" ? BASE : req;
+  // Réseau faible : la copie gardée sert au bout de quelques secondes au lieu d'attendre
+  // jusqu'à une minute que le téléphone abandonne. La réponse du réseau, si elle arrive,
+  // est gardée pour la fois suivante.
+  var patience = req.mode === "navigate" ? 2500 : isRead(url) ? 6000 : 0;
+  var net = fetch(req).then(function (res) {
+    return remember(cacheName, key, res);
+  });
+  event.waitUntil(net.catch(function () {}));
   event.respondWith(
-    fetch(req).then(function (res) {
-      return remember(cacheName, key, res);
-    }).catch(function () {
-      return caches.open(cacheName).then(function (c) { return c.match(key); }).then(function (hit) {
-        return hit || new Response(JSON.stringify({ erreur: "Hors réseau." }), {
-          status: 503,
-          headers: { "content-type": "application/json; charset=utf-8" },
+    caches.open(cacheName).then(function (c) { return c.match(key); }).then(function (hit) {
+      if (!hit || !patience) return net.catch(function () { return hit || horsReseau(); });
+      return new Promise(function (ok) {
+        var fini = false;
+        var minuteur = setTimeout(function () { if (!fini) { fini = true; ok(hit); } }, patience);
+        net.then(function (res) {
+          if (!fini) { fini = true; clearTimeout(minuteur); ok(res); }
+        }, function () {
+          if (!fini) { fini = true; clearTimeout(minuteur); ok(hit); }
         });
       });
     })
   );
 });
+function horsReseau() {
+  return new Response(JSON.stringify({ erreur: "Hors réseau." }), {
+    status: 503,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
 
 /* Notifications : le message arrive ici même quand l'application est fermée. */
 self.addEventListener("push", function (event) {

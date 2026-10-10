@@ -65,6 +65,8 @@ export async function sendPush(
                 privateKey: keys.privateKey,
               },
               TTL: 3600,
+              // Un service de notification qui ne répond pas ne doit rien bloquer.
+              timeout: 5000,
             },
           );
           sent++;

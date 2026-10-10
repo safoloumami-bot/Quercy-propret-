@@ -473,3 +473,7 @@ Chaque choix ambigu est noté ici : la date, la décision et sa raison.
       reste intacte.
 152.  **Retour visuel immédiat** plutôt qu'attente muette : barre de chargement (logiciel et
       application), refus de droits toujours expliqué, fiches du jour préchargées pour l'agent.
+153.  **Ouverture de l'application terrain** : la portée du service worker et du manifeste
+      est l'adresse sans « / » final (celle que sert le logiciel). Page et lectures : réseau
+      d'abord, mais la copie gardée répond au bout de 2,5 s (page) ou 6 s (données). Les
+      alertes passent par `POST api/alertes`, appelé après l'ouverture.
