@@ -15,12 +15,12 @@ else
   # ne gérant pas les verrous utilisés par Prisma Migrate.
   DIRECT_URL="$(printf '%s' "$DATABASE_URL" | sed -E 's/-pooler\././')"
   DATABASE_URL="$DIRECT_URL" pnpm --filter @quercy/db exec prisma migrate deploy
-  # Changement de région de la base : copie unique depuis l'ancienne (DB_COPY_FROM), seulement
-  # si la nouvelle est vide. Une erreur arrête la construction : la version en ligne ne change pas.
-  if [ -n "${DB_COPY_FROM:-}" ]; then
-    FROM_DIRECT="$(printf '%s' "$DB_COPY_FROM" | sed -E 's/-pooler\././')"
-    (cd packages/db && DB_COPY_FROM="$FROM_DIRECT" DATABASE_URL="$DIRECT_URL" node scripts/copy-database.mjs)
-  fi
+  # Changement de région de la base : copie unique depuis l'ancienne (DB_COPY_FROM, ou lien
+  # « quercy_ancienne » préparé dans la nouvelle base), seulement si la nouvelle est vide. Le
+  # script arrête aussi la construction si la base de production est vide. Une erreur arrête la
+  # construction : la version en ligne ne change pas.
+  FROM_DIRECT="$(printf '%s' "${DB_COPY_FROM:-}" | sed -E 's/-pooler\././')"
+  (cd packages/db && DB_COPY_FROM="$FROM_DIRECT" DATABASE_URL="$DIRECT_URL" node scripts/copy-database.mjs)
 fi
 
 pnpm --filter @quercy/web build
