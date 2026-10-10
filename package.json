@@ -1,0 +1,43 @@
+{
+  "name": "quercy",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev --filter=@quercy/web",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "e2e": "pnpm --filter @quercy/web e2e",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:up": "docker compose up -d postgres redis",
+    "db:generate": "pnpm --filter @quercy/db generate",
+    "db:migrate": "pnpm --filter @quercy/db migrate:dev",
+    "db:deploy": "pnpm --filter @quercy/db migrate:deploy",
+    "seed": "pnpm --filter @quercy/db seed",
+    "desktop": "pnpm --filter @quercy/desktop dev",
+    "prepare": "husky",
+    "stripe:setup": "pnpm --filter @quercy/web stripe:setup",
+    "worker": "pnpm --filter @quercy/worker dev",
+    "terrain:generer": "node apps/terrain/generer.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.0",
+    "eslint-config-prettier": "^10.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.0",
+    "prettier": "^3.6.0",
+    "prettier-plugin-tailwindcss": "^0.7.0",
+    "turbo": "^2.6.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs,json,md,css,yml,yaml}": "prettier --write"
+  }
+}

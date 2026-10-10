@@ -1,0 +1,13 @@
+legacy/
+pnpm-lock.yaml
+**/generated/
+**/.next/
+**/dist/
+**/src-tauri/target/
+**/src-tauri/gen/
+coverage/
+playwright-report/
+test-results/
+packages/documents/src/fonts.generated.ts
+apps/web/src/server/terrain/template.generated.ts
+apps/terrain/public

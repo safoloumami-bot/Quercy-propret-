@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Quercy</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+      body { display: grid; place-items: center; height: 100vh; margin: 0; background: Canvas; color: CanvasText; }
+      main { max-width: 26rem; text-align: center; }
+      button { font: inherit; padding: 0.5rem 1rem; border-radius: 0.375rem; border: 1px solid #0f766e; background: #0f766e; color: white; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Quercy est injoignable</h1>
+      <p>Vérifiez votre connexion internet. Les écrans déjà consultés restent disponibles hors ligne une fois l'application chargée.</p>
+      <button type="button" onclick="window.__TAURI_INTERNALS__.invoke('reload_app')">Réessayer</button>
+    </main>
+  </body>
+</html>
