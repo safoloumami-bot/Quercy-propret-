@@ -604,3 +604,230 @@ export function tradeDefinition(key: string | null | undefined): TradeDefinition
   const parsed = tradeKeySchema.safeParse(key);
   return parsed.success ? TRADES[parsed.data] : null;
 }
+
+/* ───────────── Reconnaissance du métier à partir d'une description libre ───────────── */
+
+/**
+ * Mots qui désignent chaque métier (« plombier à Toulouse, salles de bain » → plomberie).
+ * Comparaison sans accents ni majuscules, sur des mots entiers (pluriels acceptés).
+ */
+export const TRADE_KEYWORDS: Record<TradeKey, string[]> = {
+  cleaning: [
+    "nettoyage",
+    "menage",
+    "proprete",
+    "entretien de bureaux",
+    "entretien des locaux",
+    "vitrerie",
+    "laveur de vitres",
+    "lavage de vitres",
+    "agent d'entretien",
+    "agents d'entretien",
+    "desinfection",
+    "parties communes",
+    "fin de chantier",
+    "fins de chantier",
+    "remise en etat",
+  ],
+  plumbing: [
+    "plombier",
+    "plomberie",
+    "chauffagiste",
+    "chauffage",
+    "chaudiere",
+    "sanitaire",
+    "salle de bain",
+    "salles de bain",
+    "pompe a chaleur",
+    "pac",
+    "fuite",
+    "canalisation",
+    "debouchage",
+    "chauffe-eau",
+    "ballon d'eau chaude",
+    "climatisation",
+    "genie climatique",
+    "frigoriste",
+  ],
+  electrical: [
+    "electricien",
+    "electricite",
+    "electrique",
+    "domotique",
+    "tableau electrique",
+    "borne de recharge",
+    "bornes de recharge",
+    "cablage",
+    "photovoltaique",
+    "panneaux solaires",
+    "alarme",
+    "videosurveillance",
+    "courant faible",
+    "eclairage",
+  ],
+  masonry: [
+    "macon",
+    "maconnerie",
+    "gros oeuvre",
+    "gros-oeuvre",
+    "beton",
+    "terrassement",
+    "fondation",
+    "extension",
+    "mur porteur",
+    "entreprise generale",
+    "tous corps d'etat",
+    "renovation complete",
+    "batiment",
+    "construction de maisons",
+  ],
+  painting: [
+    "peintre",
+    "peinture",
+    "platrier",
+    "platrerie",
+    "plaquiste",
+    "placo",
+    "papier peint",
+    "ravalement",
+    "facadier",
+    "enduit",
+    "carreleur",
+    "carrelage",
+    "revetement de sol",
+    "revetements",
+    "decoration interieure",
+  ],
+  carpentry: [
+    "menuisier",
+    "menuiserie",
+    "ebeniste",
+    "ebenisterie",
+    "agencement",
+    "cuisiniste",
+    "cuisine sur mesure",
+    "parquet",
+    "fenetre",
+    "porte",
+    "dressing",
+    "escalier",
+    "volet",
+    "meuble sur mesure",
+  ],
+  roofing: [
+    "couvreur",
+    "couverture",
+    "toiture",
+    "toit",
+    "charpente",
+    "charpentier",
+    "zinguerie",
+    "zingueur",
+    "gouttiere",
+    "etancheite",
+    "isolation des combles",
+    "demoussage",
+    "ardoise",
+    "tuile",
+  ],
+  landscaping: [
+    "paysagiste",
+    "paysage",
+    "jardinier",
+    "jardinage",
+    "jardin",
+    "espaces verts",
+    "elagage",
+    "elagueur",
+    "tonte",
+    "arrosage",
+    "amenagement paysager",
+    "taille de haies",
+  ],
+  multiservice: [
+    "multiservice",
+    "multi-service",
+    "multiservices",
+    "homme toutes mains",
+    "bricolage",
+    "petits travaux",
+    "depannage a domicile",
+    "serrurier",
+    "serrurerie",
+    "montage de meubles",
+    "homme a tout faire",
+    "conciergerie",
+  ],
+};
+
+/** Secteurs reconnus quand aucun corps de métier ne correspond. */
+const INDUSTRY_KEYWORDS: Record<string, string[]> = {
+  retail: ["boutique", "magasin", "commerce", "vente en ligne", "e-commerce", "negoce", "epicerie"],
+  agency: ["agence", "conseil", "consultant", "freelance", "cabinet", "communication", "graphiste"],
+  software: ["logiciel", "saas", "application", "developpeur", "startup", "informatique"],
+  industry: ["usine", "fabrication", "production", "industrie", "atelier de production"],
+  services: ["services", "prestataire", "formation", "transport", "evenementiel"],
+};
+
+/** Minuscules, sans accents ni ligatures, espaces normalisés. */
+export function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/œ/g, "oe")
+    .replace(/æ/g, "ae")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[’`]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function matches(text: string, word: string): boolean {
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${escaped}(s|x|es)?($|[^a-z0-9])`).test(text);
+}
+
+function score(text: string, words: readonly string[]): { hits: number; longest: number } {
+  let hits = 0;
+  let longest = 0;
+  for (const w of words) {
+    if (matches(text, w)) {
+      hits++;
+      longest = Math.max(longest, w.length);
+    }
+  }
+  return { hits, longest };
+}
+
+export interface DetectedActivity {
+  /** Corps de métier reconnu, ou null. */
+  trade: TradeKey | null;
+  /** Secteur d'activité (celui du métier, ou deviné à partir des mots), ou null. */
+  industry: string | null;
+}
+
+/**
+ * Reconnaît le métier décrit en quelques mots. Le métier qui a le plus de mots reconnus
+ * l'emporte (puis le mot le plus long) : « nettoyage de toiture, démoussage » → couverture.
+ */
+export function detectActivity(description: string): DetectedActivity {
+  const text = normalizeText(description);
+  if (text.length < 3) return { trade: null, industry: null };
+
+  let best: { key: TradeKey; hits: number; longest: number } | null = null;
+  for (const key of TRADE_KEYS) {
+    const s = score(text, TRADE_KEYWORDS[key]);
+    if (s.hits === 0) continue;
+    if (!best || s.hits > best.hits || (s.hits === best.hits && s.longest > best.longest))
+      best = { key, ...s };
+  }
+  if (best) return { trade: best.key, industry: TRADES[best.key].industry };
+
+  let industry: string | null = null;
+  let top = 0;
+  for (const [key, words] of Object.entries(INDUSTRY_KEYWORDS)) {
+    const s = score(text, words);
+    if (s.hits > top) [industry, top] = [key, s.hits];
+  }
+  return { trade: null, industry };
+}

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { MODULE_KEYS } from "../modules";
 import { PRODUCT_UNITS, VAT_RATES } from "../records/entities";
 import { INDUSTRIES, createOrganizationSchema } from "../schemas";
-import { TRADES, TRADE_KEYS, tradeDefinition } from "../trades";
+import { TRADES, TRADE_KEYS, detectActivity, tradeDefinition } from "../trades";
 
 const units = PRODUCT_UNITS.map((u) => u.value);
 const rates = VAT_RATES.map((r) => r.value);
@@ -58,5 +58,47 @@ describe("Corps de métier", () => {
     expect(createOrganizationSchema.safeParse({ ...base, trade: "astronaute" }).success).toBe(
       false,
     );
+  });
+});
+
+describe("Reconnaissance du métier", () => {
+  it.each([
+    ["Plombier chauffagiste à Toulouse, dépannages et salles de bain", "plumbing"],
+    ["Électricien, mise aux normes et bornes de recharge", "electrical"],
+    ["Entreprise de nettoyage de bureaux et de parties communes", "cleaning"],
+    ["Société de ménage chez les particuliers", "cleaning"],
+    ["Démoussage et nettoyage de toiture, zinguerie", "roofing"],
+    ["Maçon, gros œuvre et extensions de maisons", "masonry"],
+    ["Peintre en bâtiment et plaquiste", "painting"],
+    ["Carreleur à Lyon", "painting"],
+    ["Menuisier : cuisines et dressings sur mesure", "carpentry"],
+    ["Paysagiste, entretien de jardins et élagage", "landscaping"],
+    ["Multiservice, petits travaux et serrurerie", "multiservice"],
+    ["Pompe à chaleur et climatisation", "plumbing"],
+  ])("%s → %s", (text, trade) => {
+    expect(detectActivity(text).trade).toBe(trade);
+  });
+
+  it("donne le secteur du métier reconnu", () => {
+    expect(detectActivity("plombier").industry).toBe("construction");
+    expect(detectActivity("nettoyage").industry).toBe("cleaning");
+  });
+
+  it("devine le secteur quand aucun métier ne correspond", () => {
+    expect(detectActivity("Boutique de vêtements en ligne")).toEqual({
+      trade: null,
+      industry: "retail",
+    });
+    expect(detectActivity("Cabinet de conseil en stratégie")).toEqual({
+      trade: null,
+      industry: "agency",
+    });
+    expect(detectActivity("Je fais des choses")).toEqual({ trade: null, industry: null });
+  });
+
+  it("ignore les mots inclus dans d'autres mots", () => {
+    // « pac » ne doit pas être reconnu dans « capacité » ni « toit » dans « toiletteur »
+    expect(detectActivity("capacité d'accueil").trade).toBeNull();
+    expect(detectActivity("toiletteur pour chiens").trade).toBeNull();
   });
 });

@@ -4,7 +4,8 @@ Une notice courte par lot, pour un utilisateur non technicien.
 
 ## Corps de métier
 
-À la création de votre espace, choisissez votre **métier** (nettoyage, plomberie, électricité,
+À la création de votre espace, décrivez votre activité en quelques mots (« plombier à
+Toulouse ») ou choisissez votre **métier** (nettoyage, plomberie, électricité,
 maçonnerie, peinture, menuiserie, couverture, paysage, multiservice). Le logiciel active les
 modules utiles, remplit votre **catalogue** avec des prestations types (prix et TVA à ajuster)
 et prépare vos **devis** : la mention de votre assurance décennale et, pour les travaux dans

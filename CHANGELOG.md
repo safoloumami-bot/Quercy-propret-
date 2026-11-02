@@ -8,6 +8,10 @@
   chauffage, électricité, maçonnerie, peinture et plâtrerie, menuiserie, couverture,
   paysage, multiservice (ou « Autre activité »). Le métier présélectionne les modules utiles
   et règle le secteur.
+- **Le métier se reconnaît dans une phrase** : « plombier chauffagiste à Toulouse » choisit
+  la plomberie, « démoussage et nettoyage de toiture » la couverture (`detectActivity`, sans
+  appel à l'IA). Sans métier reconnu, le secteur est deviné (commerce, conseil…). La
+  personne peut toujours choisir une autre carte.
 - **Préréglage du métier** (`packages/core/src/trades.ts`) : catalogue de prestations types
   (unité, prix indicatif, taux de TVA le plus courant, avec une note quand le taux dépend du
   chantier), mentions des devis et factures, contexte de l'assistant IA. Il n'ajoute que ce

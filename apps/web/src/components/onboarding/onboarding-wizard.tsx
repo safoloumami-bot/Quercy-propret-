@@ -11,6 +11,7 @@ import {
   SYSTEM_ROLE_LABELS,
   TRADES,
   type TradeKey,
+  detectActivity,
   accentPalette,
   createOrganizationSchema,
   emailSchema,
@@ -58,6 +59,24 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
   const [industry, setIndustry] = React.useState<string>("");
   /** undefined : pas encore choisi ; null : « Autre activité ». */
   const [trade, setTrade] = React.useState<TradeKey | null | undefined>(undefined);
+  /** Description libre (« plombier à Toulouse ») : elle choisit le métier tant que la
+   * personne n'a pas cliqué elle-même sur une carte. */
+  const [activity, setActivity] = React.useState("");
+  const [pickedByHand, setPickedByHand] = React.useState(false);
+  const detected = React.useMemo(() => detectActivity(activity), [activity]);
+
+  function describe(text: string) {
+    setActivity(text);
+    if (pickedByHand) return;
+    const found = detectActivity(text);
+    if (found.trade) chooseTrade(found.trade);
+    else if (found.industry) {
+      setTrade(null);
+      setIndustry(found.industry);
+      const preset = INDUSTRIES.find((i) => i.value === found.industry);
+      setModules(preset ? [...preset.modules] : []);
+    }
+  }
   const [size, setSize] = React.useState<string>("");
   const [modules, setModules] = React.useState<ModuleKey[]>([]);
   const [accent, setAccent] = React.useState(DEFAULT_ACCENT);
@@ -178,12 +197,37 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
               />
             </FormField>
             <div className="space-y-2">
-              <p className="text-sm font-medium">Votre métier</p>
+              <label htmlFor="org-activity" className="text-sm font-medium">
+                Votre métier
+              </label>
               <p className="text-xs text-muted-foreground">
-                Nous préparons le catalogue de prestations, les mentions des devis et les modules
-                utiles à votre métier. Tout reste modifiable.
+                Décrivez votre activité en quelques mots, ou choisissez une carte : nous préparons
+                le catalogue de prestations, les mentions des devis et les modules utiles. Tout
+                reste modifiable.
               </p>
-              <TradePicker value={trade} onChange={chooseTrade} other />
+              <Input
+                id="org-activity"
+                aria-label="Votre activité en quelques mots"
+                value={activity}
+                onChange={(e) => describe(e.target.value)}
+                placeholder="Ex. : plombier chauffagiste à Toulouse, dépannages et salles de bain"
+                maxLength={200}
+              />
+              {activity.trim().length >= 3 ? (
+                <p className="text-xs text-muted-foreground" aria-live="polite">
+                  {detected.trade
+                    ? `Reconnu : ${TRADES[detected.trade].label}. Vous pouvez choisir un autre métier ci-dessous.`
+                    : "Aucun métier du bâtiment ou du nettoyage reconnu : choisissez ci-dessous, ou « Autre activité »."}
+                </p>
+              ) : null}
+              <TradePicker
+                value={trade}
+                onChange={(value) => {
+                  setPickedByHand(true);
+                  chooseTrade(value);
+                }}
+                other
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               {trade === null ? (
