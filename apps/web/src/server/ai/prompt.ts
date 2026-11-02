@@ -7,6 +7,8 @@ import {
   OPERATORS_BY_TYPE,
   PERIOD_PRESETS,
   type AiScreenContext,
+  type TradeKey,
+  TRADES,
 } from "@quercy/core";
 
 /** Schéma compact des données (entités, champs, valeurs possibles), identique pour tous. */
@@ -76,6 +78,8 @@ const clock = (timeZone: string) =>
 /** Contexte fourni par l'application avec chaque question (jamais par la personne elle-même). */
 export function contextBlock(input: {
   organization: string;
+  /** Corps de métier de l'entreprise : vocabulaire et règles à connaître. */
+  trade?: TradeKey | null;
   user: string;
   role: string;
   timeZone: string;
@@ -86,6 +90,12 @@ export function contextBlock(input: {
     `Date et heure : ${clock(input.timeZone)} (${input.timeZone}).`,
     `Espace : ${input.organization}. Personne connectée : ${input.user} (rôle : ${input.role}).`,
   ];
+  if (input.trade) {
+    const t = TRADES[input.trade];
+    lines.push(
+      `Métier de l'entreprise : ${t.label}. ${t.assistant} Appuie-toi sur ces règles pour conseiller, rédiger et vérifier les devis ; rappelle qu'elles sont à confirmer en cas de doute, sans en faire trop.`,
+    );
+  }
   if (input.screen) {
     lines.push(
       `Écran ouvert : ${input.screen.title ?? input.screen.path} (${input.screen.path})` +

@@ -2,6 +2,20 @@
 
 Une notice courte par lot, pour un utilisateur non technicien.
 
+## Corps de métier
+
+À la création de votre espace, choisissez votre **métier** (nettoyage, plomberie, électricité,
+maçonnerie, peinture, menuiserie, couverture, paysage, multiservice). Le logiciel active les
+modules utiles, remplit votre **catalogue** avec des prestations types (prix et TVA à ajuster)
+et prépare vos **devis** : la mention de votre assurance décennale et, pour les travaux dans
+un logement de plus de deux ans, la mention de TVA réduite que votre client certifie en
+signant. Vous pouvez choisir ou changer de métier plus tard dans **Réglages › Général**.
+
+Pensez à compléter la mention d'assurance dans **Ventes › Paramètres › Mentions des
+travaux** (nom et adresse de l'assureur, couverture géographique). L'**assistant IA** connaît
+désormais les règles de votre métier : demandez-lui par exemple quel taux de TVA appliquer à
+un chantier, ou de vérifier un devis avant de l'envoyer.
+
 ## Lot 7 — Matériel, véhicules, stock et location
 
 Dans le menu **Matériel & véhicules**, chaque machine a sa fiche : où elle est (au dépôt,

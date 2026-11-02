@@ -10,6 +10,7 @@ import {
   localeSchema,
   themeSchema,
 } from "./preferences";
+import { tradeKeySchema } from "./trades";
 
 /** Secteurs proposés à l'accueil ; ils servent à présélectionner des modules. */
 export const INDUSTRIES = [
@@ -106,6 +107,8 @@ export const inviteSchema = z.object({
 export const createOrganizationSchema = z.object({
   name: organizationNameSchema,
   industry: industrySchema,
+  /** Corps de métier choisi à l'accueil (null : aucun préréglage). */
+  trade: tradeKeySchema.nullable().default(null),
   size: companySizeSchema,
   modules: z.array(moduleKeySchema).min(1, { error: "Activez au moins un module." }),
   accentColor: hexColorSchema,

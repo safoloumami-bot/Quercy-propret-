@@ -226,6 +226,8 @@ model Organization {
   slug        String    @unique
   logoUrl     String?
   industry    String?
+  /// Corps de métier (voir TRADE_KEYS dans @quercy/core) : catalogue, mentions et assistant adaptés.
+  trade       String?
   size        String?
   plan        Plan      @default(FREE)
   trialEndsAt DateTime?
@@ -969,6 +971,10 @@ model SalesSettings {
   defaultKmCostCents     Int?
   footer                 String?
   latePenaltyText        String?
+  /// Assurance professionnelle (décennale) imprimée sur les devis et factures.
+  insuranceMention       String?
+  /// Ajoute la mention de certification client pour la TVA réduite des travaux (10 % et 5,5 %).
+  renovationVatMention   Boolean  @default(false)
   remindersEnabled       Boolean  @default(true)
   /// Jours après l'échéance où une relance part.
   reminderDays           Int[]    @default([7, 15, 30])

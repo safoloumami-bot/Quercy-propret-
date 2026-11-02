@@ -232,6 +232,10 @@ export const salesSettingsSchema = z.object({
   quoteValidityDays: z.number().int().min(1).max(365),
   footer: z.string().trim().max(500).nullable(),
   latePenaltyText: z.string().trim().max(1000).nullable(),
+  /** Assurance professionnelle (décennale) : mention imprimée sur les devis et factures. */
+  insuranceMention: z.string().trim().max(600).nullable().default(null),
+  /** Travaux dans des logements : mention de certification client pour la TVA à 10 % et 5,5 %. */
+  renovationVatMention: z.boolean().default(false),
   remindersEnabled: z.boolean(),
   reminderDays: z.array(z.number().int().min(1).max(365)).min(1).max(5),
   /** Chiffrage : marge minimale (sous elle, le patron valide) et coûts proposés. */

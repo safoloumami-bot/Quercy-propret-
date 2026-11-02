@@ -3,6 +3,7 @@ import {
   DEFAULT_LATE_PENALTY_TEXT,
   DOCUMENT_TITLES,
   PRODUCT_UNITS,
+  RENOVATION_VAT_MENTION,
   VAT_EXEMPT_MENTION,
 } from "@quercy/core";
 import {
@@ -18,6 +19,21 @@ import {
 import { FACTURX_FILENAME, buildFacturXml, facturXmp } from "./facturx";
 import { GEIST_REGULAR, GEIST_SEMIBOLD } from "./fonts.generated";
 import type { DocumentData } from "./types";
+
+/**
+ * Mentions propres aux métiers du bâtiment, sur les devis et les factures : assurance
+ * décennale, et certification du client quand une ligne est à un taux réduit de travaux.
+ */
+export function tradeMentions(doc: DocumentData): string[] {
+  if (doc.kind !== "QUOTE" && doc.kind !== "INVOICE") return [];
+  const mentions: string[] = [];
+  const insurance = doc.seller.insuranceMention?.trim();
+  if (insurance) mentions.push(insurance);
+  const reducedRate = doc.lines.some((l) => l.vatRate === 10 || l.vatRate === 5.5);
+  if (doc.seller.renovationVatMention && !doc.seller.vatExempt && reducedRate)
+    mentions.push(RENOVATION_VAT_MENTION);
+  return mentions;
+}
 
 const A4 = { width: 595.28, height: 841.89 };
 const MARGIN = 48;
@@ -340,6 +356,7 @@ export async function renderDocumentPdf(
     });
   const legal: string[] = [];
   if (doc.seller.vatExempt) legal.push(VAT_EXEMPT_MENTION);
+  legal.push(...tradeMentions(doc));
   if (doc.kind === "INVOICE") legal.push(doc.seller.latePenaltyText || DEFAULT_LATE_PENALTY_TEXT);
   if (legal.length) blocks.push({ title: "Mentions légales", body: legal.join("\n") });
 

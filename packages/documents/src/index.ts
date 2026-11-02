@@ -1,7 +1,7 @@
 export { type DailySalesResult, runDailySales } from "./daily";
 export { FACTURX_FILENAME, FACTURX_PROFILE, buildFacturXml, countryCode } from "./facturx";
 export { documentEmailHtml, emailDocument, publicDocumentUrl } from "./mail";
-export { renderDocumentPdf, wrap } from "./pdf";
+export { renderDocumentPdf, tradeMentions, wrap } from "./pdf";
 export {
   renderReportPdf,
   type ReportColumn,

@@ -131,6 +131,7 @@ export async function runChat(input: ChatInput): Promise<void> {
         type: "text",
         text: contextBlock({
           organization: workspace.organization.name,
+          trade: workspace.organization.trade,
           user: user.name,
           role: workspace.role.name,
           timeZone: workspace.organization.preferences.timezone,

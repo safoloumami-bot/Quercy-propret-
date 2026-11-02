@@ -5,6 +5,7 @@ import { Forbidden } from "@/components/forbidden";
 import { PageHeader } from "@/components/page-header";
 import { ExportSection, LeaveSection } from "@/components/settings/workspace/data-sections";
 import { ModulesSection } from "@/components/settings/workspace/modules-section";
+import { TradeSection } from "@/components/settings/workspace/trade-section";
 import { WorkspaceGeneralForm } from "@/components/settings/workspace/general-form";
 import { requireWorkspaceContext } from "@/lib/workspace";
 
@@ -35,6 +36,7 @@ export default async function WorkspaceSettingsPage() {
           locale: organization.preferences.locale,
         }}
       />
+      <TradeSection current={organization.trade} canEdit={canEdit} />
       <ModulesSection enabled={organization.modules} canEdit={isAdmin} />
       {isAdmin ? <ExportSection /> : null}
       <LeaveSection organizationName={organization.name} />

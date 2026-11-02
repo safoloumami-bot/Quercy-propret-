@@ -19,6 +19,10 @@ export interface SellerInfo extends PartyInfo {
   vatExempt: boolean;
   footer?: string | null;
   latePenaltyText?: string | null;
+  /** Assurance professionnelle (décennale), imprimée sur les devis et factures. */
+  insuranceMention?: string | null;
+  /** Mention de certification client quand une ligne est à 10 % ou 5,5 % (travaux). */
+  renovationVatMention?: boolean;
 }
 
 export interface DocumentLine {

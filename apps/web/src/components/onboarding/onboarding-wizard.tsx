@@ -9,6 +9,8 @@ import {
   MODULE_KEYS,
   type ModuleKey,
   SYSTEM_ROLE_LABELS,
+  TRADES,
+  type TradeKey,
   accentPalette,
   createOrganizationSchema,
   emailSchema,
@@ -30,6 +32,7 @@ import { CheckIcon, CircleAlertIcon, PlusIcon, XIcon } from "lucide-react";
 import * as React from "react";
 
 import { FormField } from "@/components/form-field";
+import { TradePicker } from "@/components/trades/trade-picker";
 import { errorMessage, useTRPC } from "@/lib/trpc";
 
 const STEPS = ["Entreprise", "Modules", "Apparence", "Équipe"] as const;
@@ -53,6 +56,8 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
   const [step, setStep] = React.useState(0);
   const [name, setName] = React.useState("");
   const [industry, setIndustry] = React.useState<string>("");
+  /** undefined : pas encore choisi ; null : « Autre activité ». */
+  const [trade, setTrade] = React.useState<TradeKey | null | undefined>(undefined);
   const [size, setSize] = React.useState<string>("");
   const [modules, setModules] = React.useState<ModuleKey[]>([]);
   const [accent, setAccent] = React.useState(DEFAULT_ACCENT);
@@ -65,6 +70,17 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
     setIndustry(value);
     const preset = INDUSTRIES.find((i) => i.value === value);
     if (preset && modules.length === 0) setModules([...preset.modules]);
+  }
+
+  function chooseTrade(value: TradeKey | null) {
+    setTrade(value);
+    if (value) {
+      setIndustry(TRADES[value].industry);
+      setModules([...TRADES[value].modules]);
+    } else {
+      setIndustry("");
+      setModules([]);
+    }
   }
 
   function toggleModule(key: ModuleKey) {
@@ -84,7 +100,7 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
   }
 
   const stepValid = [
-    name.trim().length >= 2 && industry !== "" && size !== "",
+    name.trim().length >= 2 && trade !== undefined && industry !== "" && size !== "",
     modules.length > 0,
     true,
     true,
@@ -95,6 +111,7 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
     const input = createOrganizationSchema.safeParse({
       name,
       industry,
+      trade: trade ?? null,
       size,
       modules,
       accentColor: accent,
@@ -160,21 +177,31 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
                 maxLength={80}
               />
             </FormField>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Votre métier</p>
+              <p className="text-xs text-muted-foreground">
+                Nous préparons le catalogue de prestations, les mentions des devis et les modules
+                utiles à votre métier. Tout reste modifiable.
+              </p>
+              <TradePicker value={trade} onChange={chooseTrade} other />
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <FormField id="org-industry" label="Secteur d'activité">
-                <Select value={industry} onValueChange={chooseIndustry}>
-                  <SelectTrigger id="org-industry">
-                    <SelectValue placeholder="Choisir…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INDUSTRIES.map((i) => (
-                      <SelectItem key={i.value} value={i.value}>
-                        {i.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
+              {trade === null ? (
+                <FormField id="org-industry" label="Secteur d'activité">
+                  <Select value={industry} onValueChange={chooseIndustry}>
+                    <SelectTrigger id="org-industry">
+                      <SelectValue placeholder="Choisir…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDUSTRIES.map((i) => (
+                        <SelectItem key={i.value} value={i.value}>
+                          {i.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              ) : null}
               <FormField id="org-size" label="Taille">
                 <Select value={size} onValueChange={setSize}>
                   <SelectTrigger id="org-size">

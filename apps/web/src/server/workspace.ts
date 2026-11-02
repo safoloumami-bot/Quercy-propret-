@@ -6,6 +6,8 @@ import {
   moduleKeySchema,
   organizationPreferencesSchema,
   permissionMatrixSchema,
+  type TradeKey,
+  tradeKeySchema,
 } from "@quercy/core";
 import { prisma } from "@quercy/db";
 
@@ -18,6 +20,7 @@ export interface ResolvedWorkspace {
     slug: string;
     logoUrl: string | null;
     industry: string | null;
+    trade: TradeKey | null;
     size: string | null;
     plan: string;
     trialEndsAt: Date | null;
@@ -75,6 +78,7 @@ export async function resolveWorkspace(
       slug: org.slug,
       logoUrl: org.logoUrl,
       industry: org.industry,
+      trade: tradeKeySchema.safeParse(org.trade).data ?? null,
       size: org.size,
       plan: org.plan,
       trialEndsAt: org.trialEndsAt,

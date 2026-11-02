@@ -480,6 +480,7 @@ export const salesRouter = createTRPCRouter({
       email: input.email || null,
       siret: input.siret || null,
       iban: input.iban || null,
+      insuranceMention: input.insuranceMention || null,
       reminderDays: [...new Set(input.reminderDays)].sort((a, b) => a - b),
     };
     await ctx.db.salesSettings.update({ where: { organizationId: ctx.organizationId }, data });

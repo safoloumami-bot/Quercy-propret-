@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.14.0] — 2026-11-02 — Corps de métier
+
+### Ajouté
+
+- **Choix du métier à la création de l'espace** : nettoyage et propreté, plomberie et
+  chauffage, électricité, maçonnerie, peinture et plâtrerie, menuiserie, couverture,
+  paysage, multiservice (ou « Autre activité »). Le métier présélectionne les modules utiles
+  et règle le secteur.
+- **Préréglage du métier** (`packages/core/src/trades.ts`) : catalogue de prestations types
+  (unité, prix indicatif, taux de TVA le plus courant, avec une note quand le taux dépend du
+  chantier), mentions des devis et factures, contexte de l'assistant IA. Il n'ajoute que ce
+  qui manque et ne remplace rien de ce que l'entreprise a saisi.
+- **Réglages › Général › Métier** : choisir ou changer de métier dans un espace existant ;
+  les modules conseillés non activés sont signalés.
+- **Mentions des travaux** (Ventes › Paramètres) : assurance décennale imprimée sur les
+  devis et factures, et mention de certification client ajoutée automatiquement quand une
+  ligne est à 10 % ou 5,5 % (elle remplace les attestations Cerfa depuis la loi de finances
+  pour 2025). Nouvelles colonnes `organization.trade`, `sales_settings.insuranceMention` et
+  `sales_settings.renovationVatMention` (migration `20261102120000_trades`).
+- **Assistant IA** : il connaît le métier de l'entreprise (vocabulaire, taux de TVA des
+  travaux, décennale, devis obligatoire des dépannages au-delà de 150 € TTC…).
+- Démonstration : l'espace « Quercy Propreté » a le métier « Nettoyage et propreté ».
+- Tests : cohérence des préréglages (modules, unités, taux) et des mentions imprimées.
+
 ## [1.13.0] — 2026-10-10 — Réactivité, nouveau logo
 
 ### Ajouté

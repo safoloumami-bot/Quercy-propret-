@@ -2,7 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  DEFAULT_INSURANCE_MENTION,
   DEFAULT_LATE_PENALTY_TEXT,
+  RENOVATION_VAT_MENTION,
   type SalesSettingsInput,
   salesSettingsSchema,
 } from "@quercy/core";
@@ -219,6 +221,48 @@ function Form({ defaults, canEdit }: { defaults: SalesSettingsInput; canEdit: bo
               />
             </FormField>
           </div>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        id="trade-mentions"
+        title="Mentions des travaux"
+        description="Pour les métiers du bâtiment : ces mentions s'impriment sur les devis et les factures."
+        footer={footer}
+      >
+        <div className="space-y-4">
+          <FormField
+            id="s-insuranceMention"
+            label="Assurance professionnelle (décennale)"
+            hint="Obligatoire si votre activité est soumise à l'assurance décennale : assureur, coordonnées et couverture géographique. Joignez aussi l'attestation d'assurance à vos devis."
+            error={errors.insuranceMention?.message}
+          >
+            <Textarea
+              {...fieldAria("s-insuranceMention", errors.insuranceMention?.message, true)}
+              {...form.register("insuranceMention")}
+              placeholder={DEFAULT_INSURANCE_MENTION}
+              rows={3}
+              disabled={!canEdit}
+            />
+          </FormField>
+          <FormField
+            id="s-renovationVatMention"
+            label="TVA réduite des travaux (10 % et 5,5 %)"
+            hint={`Ajoute automatiquement, sur les devis et factures qui ont une ligne à 10 % ou 5,5 %, la mention que le client certifie (elle remplace les attestations Cerfa depuis 2025) : « ${RENOVATION_VAT_MENTION} »`}
+          >
+            <Controller
+              control={form.control}
+              name="renovationVatMention"
+              render={({ field }) => (
+                <Switch
+                  id="s-renovationVatMention"
+                  checked={field.value ?? false}
+                  onCheckedChange={field.onChange}
+                  disabled={!canEdit}
+                />
+              )}
+            />
+          </FormField>
         </div>
       </SettingsSection>
 
@@ -472,6 +516,8 @@ export function SalesSettingsForm() {
           quoteValidityDays: s.quoteValidityDays,
           footer: s.footer ?? "",
           latePenaltyText: s.latePenaltyText ?? "",
+          insuranceMention: s.insuranceMention ?? "",
+          renovationVatMention: s.renovationVatMention,
           remindersEnabled: s.remindersEnabled,
           reminderDays: s.reminderDays,
           minMarginPct: s.minMarginPct,

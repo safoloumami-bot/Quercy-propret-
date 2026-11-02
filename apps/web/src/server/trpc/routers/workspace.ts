@@ -9,6 +9,8 @@ import {
   moduleKeySchema,
   moduleLimitError,
   slugify,
+  tradeKeySchema,
+  TRADES,
   updateOrganizationSchema,
 } from "@quercy/core";
 import { SYSTEM_ROLE_SEEDS, prisma } from "@quercy/db";
@@ -18,6 +20,7 @@ import { z } from "zod";
 import { syncSeats } from "../../billing/seats";
 import { PlanLimitError } from "../../billing/state";
 import { createInvitations } from "../../invitations";
+import { applyTradePreset } from "../../trades";
 import { parsePreferences } from "../../workspace";
 import { authedProcedure, authorize, createTRPCRouter, orgProcedure, recordAudit } from "../init";
 
@@ -61,6 +64,7 @@ export const workspaceRouter = createTRPCRouter({
           name: input.name,
           slug,
           industry: input.industry,
+          trade: input.trade,
           size: input.size,
           plan: "BUSINESS",
           trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
@@ -78,6 +82,7 @@ export const workspaceRouter = createTRPCRouter({
       await tx.membership.create({
         data: { organizationId: created.id, userId: ctx.user.id, roleId: owner.id },
       });
+      if (input.trade) await applyTradePreset(tx, created.id, input.trade);
       await tx.auditLog.create({
         data: {
           organizationId: created.id,
@@ -85,7 +90,7 @@ export const workspaceRouter = createTRPCRouter({
           action: "organization.create",
           entityType: "organization",
           entityId: created.id,
-          metadata: { name: created.name, modules: input.modules },
+          metadata: { name: created.name, modules: input.modules, trade: input.trade },
         },
       });
       return created;
@@ -173,6 +178,35 @@ export const workspaceRouter = createTRPCRouter({
     });
     return { changed: true };
   }),
+
+  /**
+   * Choisit (ou change) le corps de métier : ajoute les prestations types au catalogue et
+   * prépare les mentions des devis. Les modules ne sont pas modifiés (limites de l'offre).
+   */
+  applyTrade: orgProcedure
+    .input(z.object({ trade: tradeKeySchema }))
+    .mutation(async ({ ctx, input }) => {
+      authorize(ctx, "settings", "update", "Seuls les administrateurs peuvent choisir le métier.");
+      const before = ctx.workspace.organization.trade;
+      const result = await prisma.$transaction(async (tx) => {
+        await tx.organization.update({
+          where: { id: ctx.organizationId },
+          data: { trade: input.trade },
+        });
+        return applyTradePreset(tx, ctx.organizationId, input.trade);
+      });
+      await recordAudit(ctx, {
+        action: "organization.update",
+        entityType: "organization",
+        entityId: ctx.organizationId,
+        changes: { trade: { before, after: input.trade } },
+      });
+      const def = TRADES[input.trade];
+      const missingModules = def.modules.filter(
+        (m) => !ctx.workspace.organization.modules.includes(m),
+      );
+      return { ...result, missingModules };
+    }),
 
   updateAccent: orgProcedure
     .input(z.object({ color: hexColorSchema }))
