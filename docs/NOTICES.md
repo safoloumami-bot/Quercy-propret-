@@ -85,3 +85,18 @@ envoie les demandes de devis (ligne `var APP`) par l'adresse du logiciel suivie 
 `/terrain/quercy-proprete/api/demande`.
 Pour les notifications : ouvrir l'application installée sur l'écran d'accueil, puis
 Mon compte › Notifications.
+
+## Facture électronique
+
+Dans **Ventes › Paramètres › Facture électronique**, choisissez votre plateforme agréée : vos
+factures et avoirs émis pour des clients professionnels partent alors automatiquement, au
+format Factur-X, et leur statut (déposée, approuvée, encaissée…) s'affiche sur chaque facture.
+Le **mode essai** permet de découvrir le parcours sans rien transmettre. Les factures de vos
+fournisseurs arrivent dans **Achats** ; vous pouvez aussi y déposer un PDF Factur-X ou un XML
+reçu par email : montants, dates et fournisseur sont lus dans le fichier.
+
+## Relances et devis express
+
+Les relances d'impayés montent en ton à chaque palier, jusqu'à une dernière relance avant
+recouvrement. Dans **Ventes › Devis**, « Devis express » : décrivez le chantier en une phrase,
+l'assistant prépare le devis avec vos prix, vous le vérifiez avant qu'il soit créé.

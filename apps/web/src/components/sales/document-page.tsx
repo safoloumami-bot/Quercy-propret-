@@ -59,6 +59,7 @@ import { FieldRow } from "@/components/records/record-view";
 import type { EntityPermissions } from "@/components/records/types";
 import { useRecordTabs } from "@/components/shell/record-tabs";
 import { useAssistantFocus } from "@/components/assistant/assistant-context";
+import { EInvoicePanel } from "@/components/sales/einvoice-panel";
 import { OpenInWindowButton, PrintPdfButton } from "@/components/desktop-actions";
 import { toastError } from "@/components/toast-error";
 import { errorMessage, useTRPC } from "@/lib/trpc";
@@ -724,6 +725,10 @@ export function DocumentPage({
               </p>
             ) : null}
           </section>
+
+          {(kind === "INVOICE" || kind === "CREDIT_NOTE") && !draft ? (
+            <EInvoicePanel id={id} canEdit={canEdit} />
+          ) : null}
 
           {linked.length ? (
             <section aria-labelledby="linked-title" className="space-y-2">

@@ -18,13 +18,19 @@ import {
   emailDocument,
   finalizeDocument,
   generateFromRecurring,
+  EINVOICING_PROVIDERS,
+  EInvoiceParseError,
   getDocument,
+  importIncomingEInvoice,
   invoiceProjectTime,
+  isEInvoiceable,
   makeRecurring,
   publicDocumentUrl,
   salesSettings,
   saveLines,
+  transmitEInvoice,
 } from "@quercy/documents";
+import { prisma } from "@quercy/db";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -35,6 +41,31 @@ import { decryptSecret, encryptSecret, maskSecret } from "../../secrets";
 import { authorize, createTRPCRouter, orgProcedure, recordAudit } from "../init";
 
 const idInput = z.object({ id: z.string().min(1) });
+
+/**
+ * Facture électronique : à l'émission, une facture ou un avoir d'un client professionnel part
+ * automatiquement vers la plateforme agréée si l'option est active. Un échec n'empêche pas
+ * l'émission : il est visible sur la facture et peut être rejoué.
+ */
+async function autoTransmit(organizationId: string, documentId: string): Promise<void> {
+  const [settings, doc] = await Promise.all([
+    prisma.salesSettings.findUnique({
+      where: { organizationId },
+      select: { einvoicingProvider: true, einvoicingAutoSend: true },
+    }),
+    prisma.salesDocument.findFirst({
+      where: { id: documentId, organizationId },
+      select: { kind: true, status: true, company: { select: { siren: true, vatNumber: true } } },
+    }),
+  ]);
+  if (!settings?.einvoicingProvider || !settings.einvoicingAutoSend || !doc) return;
+  if (!isEInvoiceable(doc)) return;
+  try {
+    await transmitEInvoice({ organizationId, documentId });
+  } catch {
+    // Statut « erreur de transmission » enregistré sur la facture.
+  }
+}
 
 /** Traduit les refus métier en erreurs lisibles côté interface. */
 async function guard<T>(fn: () => Promise<T>): Promise<T> {
@@ -145,6 +176,7 @@ export const salesRouter = createTRPCRouter({
       input.id,
       ...(doc.creditedInvoiceId ? [doc.creditedInvoiceId] : []),
     ]);
+    await autoTransmit(ctx.organizationId, input.id);
     return doc;
   }),
 
@@ -458,9 +490,24 @@ export const salesRouter = createTRPCRouter({
         stripeKey = "illisible (clé de chiffrement changée)";
       }
     }
-    const { stripeSecretKeyEnc: _k, stripeWebhookSecretEnc: _w, ...rest } = s;
+    const {
+      stripeSecretKeyEnc: _k,
+      stripeWebhookSecretEnc: _w,
+      einvoicingApiKeyEnc: _e,
+      ...rest
+    } = s;
     return {
       ...rest,
+      einvoicing: {
+        provider: s.einvoicingProvider,
+        autoSend: s.einvoicingAutoSend,
+        syncedAt: s.einvoicingSyncedAt,
+        providers: Object.values(EINVOICING_PROVIDERS).map((p) => ({
+          key: p.key,
+          label: p.label,
+          simulated: p.simulated,
+        })),
+      },
       stripe: {
         secretKey: stripeKey,
         webhookConfigured: Boolean(s.stripeWebhookSecretEnc),
@@ -551,4 +598,149 @@ export const salesRouter = createTRPCRouter({
     });
     return { ok: true };
   }),
+
+  /* ───────────── Facture électronique (plateforme agréée) ───────────── */
+
+  /** Choix de la plateforme (null : désactivée) et transmission automatique à l'émission. */
+  setEInvoicing: orgProcedure
+    .input(
+      z.object({
+        provider: z.string().max(40).nullable(),
+        autoSend: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      authorize(
+        ctx,
+        "sales",
+        "admin",
+        "Les paramètres de vente sont réservés aux administrateurs.",
+      );
+      if (input.provider && !EINVOICING_PROVIDERS[input.provider])
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Plateforme inconnue." });
+      await salesSettings(ctx.organizationId);
+      await ctx.db.salesSettings.update({
+        where: { organizationId: ctx.organizationId },
+        data: { einvoicingProvider: input.provider, einvoicingAutoSend: input.autoSend },
+      });
+      await recordAudit(ctx, {
+        action: "sales.settings.update",
+        entityType: "sales_settings",
+        metadata: { einvoicing: input.provider ?? "disabled", autoSend: input.autoSend },
+      });
+      return { ok: true };
+    }),
+
+  /** Suivi de la facture électronique d'un document (dernière transmission). */
+  einvoice: orgProcedure.input(idInput).query(async ({ ctx, input }) => {
+    await access(ctx, input.id, "view");
+    const [row, settings, doc] = await Promise.all([
+      ctx.db.eInvoice.findFirst({
+        where: { salesDocumentId: input.id, direction: "OUT" },
+        orderBy: { createdAt: "desc" },
+        select: {
+          status: true,
+          statusAt: true,
+          provider: true,
+          providerRef: true,
+          error: true,
+          history: true,
+        },
+      }),
+      ctx.db.salesSettings.findUnique({
+        where: { organizationId: ctx.organizationId },
+        select: { einvoicingProvider: true },
+      }),
+      ctx.db.salesDocument.findFirst({
+        where: { id: input.id },
+        select: { kind: true, status: true, company: { select: { siren: true, vatNumber: true } } },
+      }),
+    ]);
+    const provider = settings?.einvoicingProvider
+      ? (EINVOICING_PROVIDERS[settings.einvoicingProvider] ?? null)
+      : null;
+    return {
+      enabled: Boolean(provider),
+      simulated: provider?.simulated ?? false,
+      concerned: doc ? doc.kind === "INVOICE" || doc.kind === "CREDIT_NOTE" : false,
+      eligible: doc ? isEInvoiceable(doc) : false,
+      missingSiren: Boolean(doc && !doc.company?.siren && !doc.company?.vatNumber),
+      transmission: row
+        ? {
+            ...row,
+            history: Array.isArray(row.history)
+              ? (row.history as { status: string; at: string; message?: string }[])
+              : [],
+          }
+        : null,
+    };
+  }),
+
+  transmitEInvoice: orgProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+    const entity = await access(ctx, input.id, "update");
+    const result = await guard(() =>
+      transmitEInvoice({ organizationId: ctx.organizationId, documentId: input.id }),
+    );
+    await recordAudit(ctx, {
+      action: "sales.einvoice.transmit",
+      entityType: entity,
+      entityId: input.id,
+      metadata: { status: result.status, simulated: result.simulated },
+    });
+    await changed(ctx, entity, [input.id]);
+    return result;
+  }),
+
+  /**
+   * Facture fournisseur reçue (PDF Factur-X ou XML CII/UBL), déposée à la main : enregistrée
+   * dans Achats, fournisseur retrouvé ou créé.
+   */
+  importEInvoice: orgProcedure
+    .input(
+      z.object({
+        filename: z.string().max(200),
+        // 10 Mo de fichier au plus, encodé en base64.
+        contentBase64: z.string().min(10).max(14_000_000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      authorize(
+        ctx,
+        "purchases",
+        "create",
+        "Vous ne pouvez pas enregistrer de factures fournisseurs.",
+      );
+      const bytes = new Uint8Array(Buffer.from(input.contentBase64, "base64"));
+      const result = await guard(async () => {
+        try {
+          return await importIncomingEInvoice({
+            organizationId: ctx.organizationId,
+            bytes,
+            ownerId: ctx.user.id,
+          });
+        } catch (error) {
+          if (error instanceof EInvoiceParseError) throw new SalesError(error.message);
+          throw error;
+        }
+      });
+      await recordAudit(ctx, {
+        action: "purchases.einvoice.import",
+        entityType: "bill",
+        entityId: result.billId,
+        metadata: {
+          name: result.parsed.number,
+          supplier: result.parsed.seller.name,
+          totalCents: result.parsed.totalCents,
+          filename: input.filename,
+        },
+      });
+      return {
+        billId: result.billId,
+        number: result.parsed.number,
+        supplier: result.parsed.seller.name,
+        supplierCreated: result.supplierCreated,
+        totalCents: result.parsed.totalCents,
+        path: recordPath("bill", result.billId),
+      };
+    }),
 });

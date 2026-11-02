@@ -340,6 +340,7 @@ model Organization {
   terrainSettings    TerrainSettings?
 
   @@map("organization")
+  eInvoices EInvoice[]
 }
 
 /// Rôle : prédéfini (`systemKey` renseigné) ou personnalisé par l'entreprise.
@@ -896,6 +897,7 @@ model SalesDocument {
   @@index([organizationId, companyId])
   @@index([kind, status, dueDate])
   @@map("sales_document")
+  eInvoices EInvoice[]
 }
 
 /// Ligne d'un document commercial. Montants en centimes, taux de TVA en pourcentage.
@@ -981,6 +983,14 @@ model SalesSettings {
   /// Clés Stripe de l'entreprise (paiement en ligne des factures), chiffrées (AES-256-GCM).
   stripeSecretKeyEnc     String?
   stripeWebhookSecretEnc String?
+  /// Facture électronique : plateforme agréée choisie (null : désactivée ; « sandbox » : essai).
+  einvoicingProvider     String?
+  /// Clé d'API de la plateforme agréée, chiffrée (AES-256-GCM).
+  einvoicingApiKeyEnc    String?
+  /// Transmet automatiquement à l'émission les factures et avoirs des clients professionnels.
+  einvoicingAutoSend     Boolean  @default(true)
+  /// Dernière récupération des factures reçues.
+  einvoicingSyncedAt     DateTime?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -1329,6 +1339,7 @@ model Bill {
 
   @@index([organizationId, deletedAt])
   @@map("bill")
+  eInvoices EInvoice[]
 }
 
 model Expense {
@@ -2893,4 +2904,39 @@ model TradePreset {
   updatedById   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+/// Facture électronique transmise (OUT) ou reçue (IN) via une plateforme agréée.
+model EInvoice {
+  id                String    @id @default(cuid())
+  organizationId    String
+  /// OUT (facture ou avoir émis) ou IN (facture fournisseur reçue).
+  direction         String
+  salesDocumentId   String?
+  billId            String?
+  provider          String
+  /// Identifiant de la facture chez la plateforme.
+  providerRef       String?
+  number            String?
+  /// Statut du cycle de vie (voir EINVOICE_STATUSES).
+  status            String    @default("pending")
+  statusAt          DateTime  @default(now())
+  /// Historique des statuts : [{ status, at, message }].
+  history           Json      @default("[]")
+  counterpartyName  String?
+  counterpartySiren String?
+  totalCents        Int       @default(0)
+  /// XML reçu (CII ou UBL), conservé tel quel.
+  xml               String?
+  error             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  salesDocument SalesDocument? @relation(fields: [salesDocumentId], references: [id], onDelete: SetNull)
+  bill          Bill?          @relation(fields: [billId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, direction, status])
+  @@index([salesDocumentId])
+  @@map("e_invoice")
 }

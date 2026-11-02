@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.15.0] — 2026-11-02 — Facture électronique, relances graduées, devis express
+
+### Ajouté
+
+- **Facture électronique** (obligation de réception depuis le 1er septembre 2026, d'émission
+  pour les PME au 1er septembre 2027) :
+  - Ventes › Paramètres › Facture électronique : choix de la plateforme agréée et
+    transmission automatique à l'émission. Seules les factures et avoirs des clients
+    professionnels (SIREN ou TVA) sont transmis ; les ventes aux particuliers relèvent de
+    l'e-reporting.
+  - Suivi sur chaque facture : statut du cycle de vie (déposée, mise à disposition,
+    approuvée, refusée, rejetée, encaissée…), historique, nouvel essai en cas d'erreur.
+  - Achats › Factures fournisseurs : « Déposer une facture électronique » lit un PDF
+    Factur-X ou un XML (CII ou UBL), retrouve ou crée le fournisseur (SIREN, TVA, nom) et
+    crée la facture à payer, sans ressaisie ni doublon.
+  - Synchronisation quotidienne (worker, `sales-daily`) des statuts et des factures reçues.
+  - Connecteur de plateforme générique (`packages/documents/src/einvoice/providers.ts`) avec
+    un **bac à sable** qui simule le parcours sans rien transmettre. Le connecteur de la
+    plateforme agréée partenaire reste à brancher une fois le partenaire choisi.
+  - Nouvelle table `e_invoice` et colonnes `sales_settings.einvoicing*` (migration
+    `20261102170000_einvoicing`).
+- **Relances graduées** : rappel courtois, relance ferme, puis dernière relance avant
+  recouvrement (pénalités et indemnité forfaitaire de 40 € rappelées aux clients
+  professionnels) ; le responsable de la facture est prévenu quand la dernière part.
+- **Devis express** (Ventes › Devis) : le chantier décrit en une phrase, l'assistant IA
+  prépare le devis avec le catalogue, les prix et la TVA du métier ; rien n'est créé sans
+  confirmation.
+- Tests : lecture CII/UBL, extraction d'un PDF Factur-X, cycle de vie, ton des relances.
+
 ## [1.14.0] — 2026-11-02 — Corps de métier
 
 ### Ajouté

@@ -148,6 +148,64 @@ export function reminderDue(
   );
 }
 
+export type ReminderTone = "courteous" | "firm" | "final";
+
+/**
+ * Ton de la relance n° `step` (à partir de 1) sur `total` paliers : la première est
+ * courtoise, la dernière est une dernière relance avant recouvrement, celles du milieu sont
+ * fermes.
+ */
+export function reminderTone(step: number, total: number): ReminderTone {
+  if (step <= 1) return "courteous";
+  return step >= total ? "final" : "firm";
+}
+
+/** Indemnité forfaitaire pour frais de recouvrement entre professionnels (art. D441-5 C. com.). */
+export const RECOVERY_INDEMNITY_EUROS = 40;
+
+/**
+ * Texte d'une relance d'impayé, de plus en plus ferme selon le palier. `business` : le client
+ * est une entreprise (rappel des pénalités et de l'indemnité forfaitaire de 40 €).
+ */
+export function reminderMessage(input: {
+  step: number;
+  total: number;
+  number: string;
+  dueDate: string;
+  due: string;
+  sender: string;
+  business: boolean;
+}): { tone: ReminderTone; subject: string; heading: string; message: string } {
+  const tone = reminderTone(input.step, input.total);
+  const { number, dueDate, due, sender } = input;
+  const sign = `\n\nCordialement,\n${sender}`;
+  if (tone === "courteous") {
+    return {
+      tone,
+      subject: `Rappel — facture ${number} (${sender})`,
+      heading: `Rappel : facture ${number}`,
+      message: `Bonjour,\n\nSauf erreur de notre part, la facture ${number} arrivée à échéance le ${dueDate} n'a pas encore été réglée (reste dû : ${due}). Vous pouvez la régler en ligne en un clic.\n\nSi le règlement est en cours, merci de ne pas tenir compte de ce message.${sign}`,
+    };
+  }
+  if (tone === "firm") {
+    return {
+      tone,
+      subject: `Relance — facture ${number} impayée (${sender})`,
+      heading: `Relance : facture ${number}`,
+      message: `Bonjour,\n\nMalgré notre précédent message, la facture ${number}, échue le ${dueDate}, reste impayée (reste dû : ${due}). Merci de procéder à son règlement dans les meilleurs délais, ou de nous indiquer si un point vous empêche de la régler.${sign}`,
+    };
+  }
+  const penalties = input.business
+    ? ` Conformément à l'article L441-10 du Code de commerce, des pénalités de retard sont exigibles, ainsi qu'une indemnité forfaitaire de ${RECOVERY_INDEMNITY_EUROS} € pour frais de recouvrement.`
+    : "";
+  return {
+    tone,
+    subject: `Dernière relance avant recouvrement — facture ${number} (${sender})`,
+    heading: `Dernière relance : facture ${number}`,
+    message: `Bonjour,\n\nLa facture ${number}, échue le ${dueDate}, n'est toujours pas réglée (reste dû : ${due}). Sans règlement de votre part sous 8 jours, nous engagerons une procédure de recouvrement.${penalties}\n\nSi vous rencontrez une difficulté, contactez-nous : nous pouvons convenir d'un échéancier.${sign}`,
+  };
+}
+
 export const PAYMENT_METHODS = [
   { value: "transfer", label: "Virement" },
   { value: "card", label: "Carte bancaire" },

@@ -297,7 +297,7 @@ function Form({ defaults, canEdit }: { defaults: SalesSettingsInput; canEdit: bo
       <SettingsSection
         id="reminders"
         title="Relances automatiques"
-        description="Un email de relance part pour chaque facture impayée, aux paliers indiqués après l'échéance."
+        description="Un email de relance part pour chaque facture impayée, aux paliers indiqués après l'échéance, avec le lien de paiement en ligne. Le ton monte à chaque palier : un rappel courtois, une relance ferme, puis une dernière relance avant recouvrement (avec, pour les clients professionnels, le rappel des pénalités et de l'indemnité de 40 €). Vous êtes prévenu quand la dernière part."
         footer={footer}
       >
         <div className="grid grid-cols-2 gap-4">
@@ -526,6 +526,84 @@ export function SalesSettingsForm() {
         }}
       />
       <StripeSection stripe={s.stripe} canEdit={s.canEdit} />
+      <EInvoicingSection einvoicing={s.einvoicing} canEdit={s.canEdit} />
     </>
+  );
+}
+
+function EInvoicingSection({
+  einvoicing,
+  canEdit,
+}: {
+  einvoicing: {
+    provider: string | null;
+    autoSend: boolean;
+    syncedAt: string | Date | null;
+    providers: { key: string; label: string; simulated: boolean }[];
+  };
+  canEdit: boolean;
+}) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const set = useMutation(
+    trpc.sales.setEInvoicing.mutationOptions({
+      onSuccess: () => {
+        void queryClient.invalidateQueries(trpc.sales.pathFilter());
+        toast.success("Facture électronique mise à jour.");
+      },
+      onError: (e) => toast.error(errorMessage(e)),
+    }),
+  );
+  const current = einvoicing.providers.find((p) => p.key === einvoicing.provider);
+  return (
+    <SettingsSection
+      id="einvoicing"
+      title="Facture électronique"
+      description="Depuis le 1er septembre 2026, toute entreprise doit pouvoir recevoir des factures électroniques ; à partir du 1er septembre 2027, les PME doivent aussi les émettre via une plateforme agréée. Vos factures sont déjà au format Factur-X : il suffit de les transmettre."
+    >
+      <div className="space-y-4 text-sm">
+        {current ? (
+          <Callout variant={current.simulated ? "info" : "success"} icon={<CheckCircle2Icon />}>
+            {current.simulated
+              ? "Mode essai : les factures suivent le parcours complet (dépôt, statuts), mais rien n'est réellement transmis."
+              : `Raccordé à ${current.label}.`}
+          </Callout>
+        ) : null}
+        <div className="grid grid-cols-2 gap-4">
+          <FormField id="ei-provider" label="Plateforme agréée">
+            <select
+              id="ei-provider"
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={einvoicing.provider ?? ""}
+              disabled={!canEdit || set.isPending}
+              onChange={(e) =>
+                set.mutate({ provider: e.target.value || null, autoSend: einvoicing.autoSend })
+              }
+            >
+              <option value="">Désactivée</option>
+              {einvoicing.providers.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField id="ei-auto" label="Transmettre automatiquement à l'émission">
+            <Switch
+              id="ei-auto"
+              checked={einvoicing.autoSend}
+              disabled={!canEdit || !einvoicing.provider || set.isPending}
+              onCheckedChange={(v) => set.mutate({ provider: einvoicing.provider, autoSend: v })}
+            />
+          </FormField>
+        </div>
+        <p className="text-muted-foreground">
+          Seules les factures et avoirs des clients professionnels (SIREN ou numéro de TVA
+          renseigné) sont transmis ; les ventes aux particuliers relèvent de l&apos;e-reporting. Les
+          factures reçues de vos fournisseurs arrivent dans Achats ; vous pouvez aussi y déposer un
+          PDF Factur-X ou un XML à la main.
+        </p>
+      </div>
+    </SettingsSection>
   );
 }

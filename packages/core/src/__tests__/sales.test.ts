@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  reminderMessage,
+  reminderTone,
   computeTotals,
   documentLineSchema,
   formatDocumentNumber,
@@ -108,5 +110,32 @@ describe("numérotation, échéances et relances", () => {
         new Date("2026-09-01"),
       ),
     ).toBe(false);
+  });
+});
+
+describe("Relances graduées", () => {
+  const base = {
+    number: "FA-2026-0042",
+    dueDate: "1 oct. 2026",
+    due: "1 200,00 €",
+    sender: "Durand",
+  };
+  it("courtoise, puis ferme, puis dernière relance", () => {
+    expect(reminderTone(1, 3)).toBe("courteous");
+    expect(reminderTone(2, 3)).toBe("firm");
+    expect(reminderTone(3, 3)).toBe("final");
+    expect(reminderTone(1, 1)).toBe("courteous");
+    expect(reminderTone(2, 2)).toBe("final");
+  });
+  it("la dernière relance rappelle l'indemnité de 40 € aux seuls professionnels", () => {
+    const pro = reminderMessage({ ...base, step: 3, total: 3, business: true });
+    const part = reminderMessage({ ...base, step: 3, total: 3, business: false });
+    expect(pro.message).toContain("40 €");
+    expect(pro.message).toContain("L441-10");
+    expect(part.message).not.toContain("40 €");
+    expect(part.subject).toContain("Dernière relance");
+    expect(reminderMessage({ ...base, step: 1, total: 3, business: true }).message).not.toContain(
+      "40 €",
+    );
   });
 });
