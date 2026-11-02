@@ -27,6 +27,16 @@
   travaux, décennale, devis obligatoire des dépannages au-delà de 150 € TTC…).
 - Démonstration : l'espace « Quercy Propreté » a le métier « Nettoyage et propreté ».
 - Tests : cohérence des préréglages (modules, unités, taux) et des mentions imprimées.
+- **Métiers modifiables par l'équipe, sans code** (Administration › Corps de métier,
+  `/admin/metiers`) : nom, description, mots qui reconnaissent le métier, secteur, modules
+  conseillés, catalogue de prestations (unité, prix HT, TVA, catégorie), mentions décennale
+  et TVA travaux, consignes de l'assistant IA, ordre et activation. On peut modifier un
+  métier d'origine (et revenir à sa version d'origine) ou en ajouter de nouveaux (auto-école,
+  coiffure…). Nouvelle table `TradePreset` (migration `20261102150000_trade_presets`, lecture
+  seule pour les espaces clients) ; sans ligne en base, les préréglages du code s'appliquent.
+- **Base neutre « Autre activité »** (préréglage `general`, modifiable dans la même page) :
+  quelques prestations génériques et des consignes neutres pour l'assistant, appliquées aux
+  entreprises dont le métier n'est pas reconnu ; elles choisissent ensuite leurs modules.
 
 ## [1.13.0] — 2026-10-10 — Réactivité, nouveau logo
 

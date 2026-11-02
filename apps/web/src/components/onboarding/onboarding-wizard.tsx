@@ -9,8 +9,7 @@ import {
   MODULE_KEYS,
   type ModuleKey,
   SYSTEM_ROLE_LABELS,
-  TRADES,
-  type TradeKey,
+  GENERAL_TRADE_KEY,
   detectActivity,
   accentPalette,
   createOrganizationSchema,
@@ -33,7 +32,7 @@ import { CheckIcon, CircleAlertIcon, PlusIcon, XIcon } from "lucide-react";
 import * as React from "react";
 
 import { FormField } from "@/components/form-field";
-import { TradePicker } from "@/components/trades/trade-picker";
+import { TradePicker, useTradePresets } from "@/components/trades/trade-picker";
 import { errorMessage, useTRPC } from "@/lib/trpc";
 
 const STEPS = ["Entreprise", "Modules", "Apparence", "Équipe"] as const;
@@ -58,17 +57,19 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
   const [name, setName] = React.useState("");
   const [industry, setIndustry] = React.useState<string>("");
   /** undefined : pas encore choisi ; null : « Autre activité ». */
-  const [trade, setTrade] = React.useState<TradeKey | null | undefined>(undefined);
+  const [trade, setTrade] = React.useState<string | null | undefined>(undefined);
+  const presets = useTradePresets();
+  const general = presets.find((p) => p.key === GENERAL_TRADE_KEY);
   /** Description libre (« plombier à Toulouse ») : elle choisit le métier tant que la
    * personne n'a pas cliqué elle-même sur une carte. */
   const [activity, setActivity] = React.useState("");
   const [pickedByHand, setPickedByHand] = React.useState(false);
-  const detected = React.useMemo(() => detectActivity(activity), [activity]);
+  const detected = React.useMemo(() => detectActivity(activity, presets), [activity, presets]);
 
   function describe(text: string) {
     setActivity(text);
     if (pickedByHand) return;
-    const found = detectActivity(text);
+    const found = detectActivity(text, presets);
     if (found.trade) chooseTrade(found.trade);
     else if (found.industry) {
       setTrade(null);
@@ -91,14 +92,16 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
     if (preset && modules.length === 0) setModules([...preset.modules]);
   }
 
-  function chooseTrade(value: TradeKey | null) {
+  function chooseTrade(value: string | null) {
     setTrade(value);
-    if (value) {
-      setIndustry(TRADES[value].industry);
-      setModules([...TRADES[value].modules]);
+    const preset = value ? presets.find((p) => p.key === value) : undefined;
+    if (preset) {
+      setIndustry(preset.industry);
+      setModules([...preset.modules]);
     } else {
-      setIndustry("");
-      setModules([]);
+      // « Autre activité » : la base neutre réglée par l'équipe ; les modules restent au choix.
+      setIndustry(general?.industry ?? "");
+      setModules(general ? [...general.modules] : []);
     }
   }
 
@@ -216,11 +219,12 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
               {activity.trim().length >= 3 ? (
                 <p className="text-xs text-muted-foreground" aria-live="polite">
                   {detected.trade
-                    ? `Reconnu : ${TRADES[detected.trade].label}. Vous pouvez choisir un autre métier ci-dessous.`
-                    : "Aucun métier du bâtiment ou du nettoyage reconnu : choisissez ci-dessous, ou « Autre activité »."}
+                    ? `Reconnu : ${presets.find((p) => p.key === detected.trade)?.label ?? detected.trade}. Vous pouvez choisir un autre métier ci-dessous.`
+                    : "Aucun métier reconnu : choisissez ci-dessous, ou « Autre activité »."}
                 </p>
               ) : null}
               <TradePicker
+                presets={presets}
                 value={trade}
                 onChange={(value) => {
                   setPickedByHand(true);

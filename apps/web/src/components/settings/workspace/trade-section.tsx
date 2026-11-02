@@ -1,6 +1,6 @@
 "use client";
 
-import { MODULES, TRADES, type TradeKey } from "@quercy/core";
+import { MODULES } from "@quercy/core";
 import { Button } from "@quercy/ui/components/button";
 import { Callout } from "@quercy/ui/components/callout";
 import { toast } from "@quercy/ui/components/toaster";
@@ -10,16 +10,18 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 
 import { toastError } from "@/components/toast-error";
-import { TradePicker } from "@/components/trades/trade-picker";
+import { TradePicker, useTradePresets } from "@/components/trades/trade-picker";
 import { useTRPC } from "@/lib/trpc";
 
 import { SettingsSection } from "../section";
 
 /** Corps de métier de l'espace : catalogue type, mentions des devis et assistant adaptés. */
-export function TradeSection({ current, canEdit }: { current: TradeKey | null; canEdit: boolean }) {
+export function TradeSection({ current, canEdit }: { current: string | null; canEdit: boolean }) {
   const trpc = useTRPC();
+  const presets = useTradePresets();
   const router = useRouter();
-  const [selected, setSelected] = React.useState<TradeKey | null>(current);
+  const [selected, setSelected] = React.useState<string | null>(current);
+  const preset = presets.find((p) => p.key === selected);
   const [missing, setMissing] = React.useState<string[]>([]);
   const apply = useMutation(trpc.workspace.applyTrade.mutationOptions());
 
@@ -60,12 +62,17 @@ export function TradeSection({ current, canEdit }: { current: TradeKey | null; c
       }
     >
       <div className="space-y-4">
-        <TradePicker value={selected} onChange={setSelected} disabled={!canEdit} />
-        {selected ? (
+        <TradePicker
+          presets={presets}
+          value={selected}
+          onChange={setSelected}
+          disabled={!canEdit}
+        />
+        {preset ? (
           <p className="text-sm text-muted-foreground">
-            {TRADES[selected].catalog.length} prestations types
-            {TRADES[selected].decennial ? ", mention de l'assurance décennale" : ""}
-            {TRADES[selected].renovationVat ? ", mention de TVA réduite des travaux" : ""}.
+            {preset.catalog.length} prestations types
+            {preset.decennial ? ", mention de l'assurance décennale" : ""}
+            {preset.renovationVat ? ", mention de TVA réduite des travaux" : ""}.
           </p>
         ) : null}
         {missing.length > 0 ? (

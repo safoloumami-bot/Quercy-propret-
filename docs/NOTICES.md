@@ -17,6 +17,12 @@ travaux** (nom et adresse de l'assureur, couverture géographique). L'**assistan
 désormais les règles de votre métier : demandez-lui par exemple quel taux de TVA appliquer à
 un chantier, ou de vérifier un devis avant de l'envoyer.
 
+**Pour l'équipe** : la liste des métiers se règle dans **Administration › Corps de métier**
+(sans toucher au code) : mots qui reconnaissent le métier, modules conseillés, prestations
+types, mentions des devis, consignes de l'assistant. « Autre activité » y est la base de
+départ des entreprises dont le métier n'est pas reconnu. Les espaces déjà créés gardent leur
+catalogue ; l'assistant suit tout de suite les nouvelles consignes.
+
 ## Lot 7 — Matériel, véhicules, stock et location
 
 Dans le menu **Matériel & véhicules**, chaque machine a sa fiche : où elle est (au dépôt,

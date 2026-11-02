@@ -1,20 +1,18 @@
 import "server-only";
 
-import { DEFAULT_INSURANCE_MENTION, type TradeKey, TRADES } from "@quercy/core";
+import { DEFAULT_INSURANCE_MENTION, type TradePreset } from "@quercy/core";
 import type { Prisma } from "@quercy/db";
 
 /**
  * Applique le préréglage d'un corps de métier à un espace : ajoute au catalogue les
  * prestations types absentes (comparaison sur le nom) et prépare les mentions des devis et
- * factures. Ne retire et ne remplace jamais rien de ce que l'entreprise a déjà saisi.
+ * factures. Le préréglage vient de listTradePresets (modifiable par l'équipe). Ne retire et ne remplace jamais rien de ce que l'entreprise a déjà saisi.
  */
 export async function applyTradePreset(
   tx: Prisma.TransactionClient,
   organizationId: string,
-  trade: TradeKey,
+  def: Pick<TradePreset, "catalog" | "decennial" | "renovationVat">,
 ): Promise<{ productsAdded: number }> {
-  const def = TRADES[trade];
-
   const existing = await tx.product.findMany({
     where: { organizationId, deletedAt: null },
     select: { name: true },
@@ -30,11 +28,13 @@ export async function applyTradePreset(
         unit: item.unit,
         unitPrice: item.unitPrice,
         vatRate: item.vatRate,
-        category: item.category,
+        category: item.category || null,
         description: item.description ?? null,
       })),
     });
   }
+
+  if (!def.decennial && !def.renovationVat) return { productsAdded: missing.length };
 
   const settings = await tx.salesSettings.findUnique({ where: { organizationId } });
   if (!settings) {

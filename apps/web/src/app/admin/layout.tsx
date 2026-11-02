@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type * as React from "react";
 
+import { AdminNav } from "@/components/admin/admin-nav";
 import { requireUser } from "@/lib/workspace";
 
 /** Espace super-admin : réservé à l'équipe Quercy (user.role = "admin"), hors session d'assistance. */
@@ -26,6 +27,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             className="rounded-md"
           />
           <span className="font-semibold tracking-tight">Quercy · Administration</span>
+          <span className="mx-2 h-4 w-px bg-border" aria-hidden />
+          <AdminNav />
         </div>
         <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
           Retour à mon espace

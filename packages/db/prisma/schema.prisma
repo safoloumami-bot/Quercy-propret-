@@ -2872,3 +2872,25 @@ model TerrainSettings {
 
   @@map("terrain_settings")
 }
+
+/// Préréglage de corps de métier, géré par l'équipe dans l'administration (/admin/metiers).
+/// Remplace le préréglage d'origine de même clé (packages/core/src/trades.ts) ou en ajoute un.
+/// Table commune à toute la plateforme : pas d'organizationId.
+model TradePreset {
+  key           String   @id
+  label         String
+  hint          String   @default("")
+  industry      String
+  keywords      String[] @default([])
+  modules       String[] @default([])
+  /// Liste de CatalogItem (nom, unité, prix HT, TVA, catégorie).
+  catalog       Json     @default("[]")
+  decennial     Boolean  @default(false)
+  renovationVat Boolean  @default(false)
+  assistant     String   @default("")
+  active        Boolean  @default(true)
+  position      Int      @default(0)
+  updatedById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

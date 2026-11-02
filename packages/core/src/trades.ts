@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { ModuleKey } from "./modules";
+import { type ModuleKey, moduleKeySchema } from "./modules";
 
 /**
  * Corps de métier : un préréglage choisi à la création de l'espace (ou plus tard dans les
@@ -48,7 +48,7 @@ export interface TradeDefinition {
   /** Une ligne pour l'assistant d'accueil. */
   hint: string;
   /** Secteur d'activité correspondant (voir INDUSTRIES). */
-  industry: "cleaning" | "construction";
+  industry: string;
   modules: ModuleKey[];
   catalog: CatalogItem[];
   /** Assurance décennale obligatoire pour l'essentiel des travaux du métier. */
@@ -800,28 +800,41 @@ function score(text: string, words: readonly string[]): { hits: number; longest:
 }
 
 export interface DetectedActivity {
-  /** Corps de métier reconnu, ou null. */
-  trade: TradeKey | null;
+  /** Corps de métier reconnu (clé du préréglage), ou null. */
+  trade: string | null;
   /** Secteur d'activité (celui du métier, ou deviné à partir des mots), ou null. */
   industry: string | null;
 }
 
+/** Ce qu'il faut d'un préréglage pour reconnaître un métier. */
+export type DetectablePreset = Pick<TradePreset, "key" | "keywords" | "industry"> & {
+  active?: boolean;
+};
+
 /**
  * Reconnaît le métier décrit en quelques mots. Le métier qui a le plus de mots reconnus
  * l'emporte (puis le mot le plus long) : « nettoyage de toiture, démoussage » → couverture.
+ * Sans liste fournie, ce sont les préréglages d'origine qui servent.
  */
-export function detectActivity(description: string): DetectedActivity {
+export function detectActivity(
+  description: string,
+  presets: readonly DetectablePreset[] = DEFAULT_TRADE_PRESETS,
+): DetectedActivity {
   const text = normalizeText(description);
   if (text.length < 3) return { trade: null, industry: null };
 
-  let best: { key: TradeKey; hits: number; longest: number } | null = null;
-  for (const key of TRADE_KEYS) {
-    const s = score(text, TRADE_KEYWORDS[key]);
+  let best: { preset: DetectablePreset; hits: number; longest: number } | null = null;
+  for (const preset of presets) {
+    if (preset.active === false || preset.key === GENERAL_TRADE_KEY) continue;
+    const s = score(
+      text,
+      preset.keywords.map(normalizeText).filter((w) => w.length > 1),
+    );
     if (s.hits === 0) continue;
     if (!best || s.hits > best.hits || (s.hits === best.hits && s.longest > best.longest))
-      best = { key, ...s };
+      best = { preset, ...s };
   }
-  if (best) return { trade: best.key, industry: TRADES[best.key].industry };
+  if (best) return { trade: best.preset.key, industry: best.preset.industry };
 
   let industry: string | null = null;
   let top = 0;
@@ -830,4 +843,165 @@ export function detectActivity(description: string): DetectedActivity {
     if (s.hits > top) [industry, top] = [key, s.hits];
   }
   return { trade: null, industry };
+}
+
+/* ───────────── Préréglages modifiables par l'équipe (super-admin) ───────────── */
+
+/**
+ * Clé d'un préréglage : minuscules, chiffres et tirets (« plomberie », « auto-ecole »).
+ * Les préréglages d'origine gardent leurs clés anglaises (« cleaning », « plumbing »…).
+ */
+export const tradeSlugSchema = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9][a-z0-9-]{1,39}$/, {
+    error: "Identifiant : 2 à 40 caractères, minuscules, chiffres et tirets.",
+  });
+
+/**
+ * Base de départ des entreprises dont le métier n'est pas reconnu (« Autre activité ») :
+ * quelques prestations génériques et des consignes neutres pour l'assistant. Modifiable
+ * par l'équipe comme les autres préréglages ; jamais proposée par la reconnaissance.
+ */
+export const GENERAL_TRADE_KEY = "general";
+
+export const CATALOG_UNITS = ["unit", "hour", "day", "flat", "sqm", "kg"] as const;
+export const CATALOG_VAT_RATES = ["20", "10", "5.5"] as const;
+
+export const catalogItemSchema = z.object({
+  name: z.string().trim().min(1, { error: "Nom de la prestation requis." }).max(120),
+  unit: z.enum(CATALOG_UNITS),
+  unitPrice: z.number().min(0).max(1_000_000),
+  vatRate: z.enum(CATALOG_VAT_RATES),
+  category: z.string().trim().max(60).default(""),
+  description: z.string().trim().max(300).optional(),
+});
+
+export const tradePresetInputSchema = z.object({
+  key: tradeSlugSchema,
+  label: z.string().trim().min(2, { error: "Nom du métier requis." }).max(60),
+  hint: z.string().trim().max(120).default(""),
+  industry: z.string().trim().min(1).max(40),
+  keywords: z.array(z.string().trim().min(2).max(60)).max(120).default([]),
+  modules: z.array(moduleKeySchema).min(1, { error: "Au moins un module conseillé." }),
+  catalog: z.array(catalogItemSchema).max(80).default([]),
+  decennial: z.boolean().default(false),
+  renovationVat: z.boolean().default(false),
+  assistant: z.string().trim().max(6000).default(""),
+  active: z.boolean().default(true),
+  position: z.number().int().min(0).max(10_000).default(0),
+});
+export type TradePresetInput = z.input<typeof tradePresetInputSchema>;
+
+export interface TradePreset {
+  key: string;
+  label: string;
+  hint: string;
+  industry: string;
+  keywords: string[];
+  modules: ModuleKey[];
+  catalog: CatalogItem[];
+  decennial: boolean;
+  renovationVat: boolean;
+  assistant: string;
+  active: boolean;
+  position: number;
+  /** Préréglage livré avec le logiciel (on peut le modifier, puis revenir à l'origine). */
+  builtin: boolean;
+  /** Modifié par l'équipe (enregistré en base). */
+  customized: boolean;
+}
+
+export const GENERAL_TRADE: TradePreset = {
+  key: GENERAL_TRADE_KEY,
+  label: "Autre activité",
+  hint: "Commerce, services, conseil…",
+  industry: "services",
+  keywords: [],
+  modules: ["crm", "sales", "calendar"],
+  catalog: [
+    {
+      name: "Prestation à l'heure",
+      unit: "hour",
+      unitPrice: 50,
+      vatRate: "20",
+      category: "Prestations",
+    },
+    {
+      name: "Prestation au forfait",
+      unit: "flat",
+      unitPrice: 300,
+      vatRate: "20",
+      category: "Prestations",
+    },
+    { name: "Frais de déplacement", unit: "flat", unitPrice: 30, vatRate: "20", category: "Frais" },
+  ],
+  decennial: false,
+  renovationVat: false,
+  assistant:
+    "Le métier précis de l'entreprise n'est pas renseigné : reste général, pose une question si une règle propre à un métier peut s'appliquer.",
+  active: true,
+  position: 1000,
+  builtin: true,
+  customized: false,
+};
+
+/** Préréglages livrés avec le logiciel, dans l'ordre d'affichage, base neutre en dernier. */
+export const DEFAULT_TRADE_PRESETS: readonly TradePreset[] = [
+  ...TRADE_KEYS.map((key, index) => ({
+    ...TRADES[key],
+    keywords: [...TRADE_KEYWORDS[key]],
+    active: true,
+    position: (index + 1) * 10,
+    builtin: true,
+    customized: false,
+  })),
+  GENERAL_TRADE,
+];
+
+/** Ligne enregistrée en base (voir le modèle TradePreset). */
+export interface StoredTradePreset {
+  key: string;
+  label: string;
+  hint: string;
+  industry: string;
+  keywords: string[];
+  modules: string[];
+  catalog: unknown;
+  decennial: boolean;
+  renovationVat: boolean;
+  assistant: string;
+  active: boolean;
+  position: number;
+}
+
+/**
+ * Préréglages en vigueur : ceux enregistrés par l'équipe remplacent ceux d'origine de même
+ * clé ; les autres préréglages d'origine restent tels quels. Triés par position puis nom.
+ */
+export function mergeTradePresets(rows: readonly StoredTradePreset[]): TradePreset[] {
+  const builtin = new Set(DEFAULT_TRADE_PRESETS.map((p) => p.key));
+  const byKey = new Map<string, TradePreset>(DEFAULT_TRADE_PRESETS.map((p) => [p.key, p]));
+  for (const row of rows) {
+    const catalog = z.array(catalogItemSchema).safeParse(row.catalog);
+    byKey.set(row.key, {
+      key: row.key,
+      label: row.label,
+      hint: row.hint,
+      industry: row.industry,
+      keywords: row.keywords,
+      modules: row.modules.filter((m): m is ModuleKey => moduleKeySchema.safeParse(m).success),
+      catalog: catalog.success ? catalog.data : [],
+      decennial: row.decennial,
+      renovationVat: row.renovationVat,
+      assistant: row.assistant,
+      active: row.key === GENERAL_TRADE_KEY ? true : row.active,
+      position: row.position,
+      builtin: builtin.has(row.key),
+      customized: true,
+    });
+  }
+  return [...byKey.values()].sort(
+    (a, b) => a.position - b.position || a.label.localeCompare(b.label, "fr"),
+  );
 }

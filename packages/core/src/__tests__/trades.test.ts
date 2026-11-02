@@ -3,7 +3,17 @@ import { describe, expect, it } from "vitest";
 import { MODULE_KEYS } from "../modules";
 import { PRODUCT_UNITS, VAT_RATES } from "../records/entities";
 import { INDUSTRIES, createOrganizationSchema } from "../schemas";
-import { TRADES, TRADE_KEYS, detectActivity, tradeDefinition } from "../trades";
+import {
+  DEFAULT_TRADE_PRESETS,
+  GENERAL_TRADE_KEY,
+  TRADES,
+  TRADE_KEYS,
+  type StoredTradePreset,
+  detectActivity,
+  mergeTradePresets,
+  tradeDefinition,
+  tradePresetInputSchema,
+} from "../trades";
 
 const units = PRODUCT_UNITS.map((u) => u.value);
 const rates = VAT_RATES.map((r) => r.value);
@@ -55,7 +65,11 @@ describe("Corps de métier", () => {
     };
     expect(createOrganizationSchema.parse(base).trade).toBeNull();
     expect(createOrganizationSchema.parse({ ...base, trade: "plumbing" }).trade).toBe("plumbing");
-    expect(createOrganizationSchema.safeParse({ ...base, trade: "astronaute" }).success).toBe(
+    // Les métiers ajoutés par l'équipe ont leur propre clé : le serveur vérifie qu'elle existe.
+    expect(createOrganizationSchema.parse({ ...base, trade: "auto-ecole" }).trade).toBe(
+      "auto-ecole",
+    );
+    expect(createOrganizationSchema.safeParse({ ...base, trade: "Auto École" }).success).toBe(
       false,
     );
   });
@@ -100,5 +114,72 @@ describe("Reconnaissance du métier", () => {
     // « pac » ne doit pas être reconnu dans « capacité » ni « toit » dans « toiletteur »
     expect(detectActivity("capacité d'accueil").trade).toBeNull();
     expect(detectActivity("toiletteur pour chiens").trade).toBeNull();
+  });
+});
+
+describe("Préréglages modifiables par l'équipe", () => {
+  const row = (over: Partial<StoredTradePreset>): StoredTradePreset => ({
+    key: "auto-ecole",
+    label: "Auto-école",
+    hint: "Permis B, code",
+    industry: "services",
+    keywords: ["auto-ecole", "moniteur", "permis de conduire"],
+    modules: ["crm", "sales", "calendar", "inconnu"],
+    catalog: [
+      { name: "Heure de conduite", unit: "hour", unitPrice: 55, vatRate: "20", category: "Leçons" },
+    ],
+    decennial: false,
+    renovationVat: false,
+    assistant: "Auto-école.",
+    active: true,
+    position: 95,
+    ...over,
+  });
+
+  it("les préréglages d'origine sont tous valides et la base neutre est en dernier", () => {
+    for (const p of DEFAULT_TRADE_PRESETS) {
+      expect(tradePresetInputSchema.safeParse(p).success, p.key).toBe(true);
+    }
+    expect(DEFAULT_TRADE_PRESETS.at(-1)?.key).toBe(GENERAL_TRADE_KEY);
+  });
+
+  it("un métier ajouté est reconnu, un module inconnu est ignoré", () => {
+    const presets = mergeTradePresets([row({})]);
+    const added = presets.find((p) => p.key === "auto-ecole");
+    expect(added?.modules).toEqual(["crm", "sales", "calendar"]);
+    expect(added?.builtin).toBe(false);
+    expect(detectActivity("Moniteur d'auto-école à Cahors", presets)).toEqual({
+      trade: "auto-ecole",
+      industry: "services",
+    });
+  });
+
+  it("une modification remplace le préréglage d'origine, un métier désactivé n'est plus reconnu", () => {
+    const presets = mergeTradePresets([
+      row({
+        key: "plumbing",
+        label: "Plombier-chauffagiste",
+        keywords: ["plombier"],
+        active: false,
+      }),
+    ]);
+    const plumbing = presets.find((p) => p.key === "plumbing");
+    expect(plumbing?.label).toBe("Plombier-chauffagiste");
+    expect(plumbing?.builtin && plumbing.customized).toBe(true);
+    expect(presets.filter((p) => p.key === "plumbing")).toHaveLength(1);
+    expect(detectActivity("plombier", presets).trade).toBeNull();
+  });
+
+  it("la base neutre n'est jamais proposée par la reconnaissance et reste active", () => {
+    const presets = mergeTradePresets([
+      row({ key: GENERAL_TRADE_KEY, keywords: ["boutique"], active: false }),
+    ]);
+    expect(detectActivity("boutique de vêtements", presets).trade).toBeNull();
+    expect(presets.find((p) => p.key === GENERAL_TRADE_KEY)?.active).toBe(true);
+  });
+
+  it("un catalogue enregistré invalide est ignoré plutôt que de casser l'application", () => {
+    const presets = mergeTradePresets([row({ catalog: [{ name: 3 }] })]);
+    expect(presets.find((p) => p.key === "auto-ecole")?.catalog).toEqual([]);
   });
 });

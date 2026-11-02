@@ -7,6 +7,7 @@ import { prisma } from "@quercy/db";
 
 import type { AiPart, AiStreamEvent, AiTurn } from "@/lib/ai-types";
 
+import { tradePresetFor } from "../trade-presets";
 import type { ResolvedWorkspace } from "../workspace";
 import { FALLBACK_BETA, aiEffort, aiModel, anthropic } from "./client";
 import { SYSTEM_PROMPT, contextBlock } from "./prompt";
@@ -131,7 +132,7 @@ export async function runChat(input: ChatInput): Promise<void> {
         type: "text",
         text: contextBlock({
           organization: workspace.organization.name,
-          trade: workspace.organization.trade,
+          trade: await tradePresetFor(workspace.organization.trade),
           user: user.name,
           role: workspace.role.name,
           timeZone: workspace.organization.preferences.timezone,
