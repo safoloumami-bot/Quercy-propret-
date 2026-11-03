@@ -22,6 +22,14 @@
   `GET /api/public/sites/images/[id]` (seules les photos du site publié sont servies).
 - Nouvelle variable `SITES_DOMAIN` (par défaut `sebt.site`), table `website` (migration
   `20261103090000_website`).
+- **Application des sites** (`apps/sites`, à déployer sur Vercel) : un seul déploiement
+  affiche tous les sites selon le nom d'hôte. Accueil avec photo, présentation, prestations
+  (catalogue et prix), galerie, actualités, horaires, contact, mentions légales, référencement
+  (titre, description, image de partage). Responsive.
+- **Formulaire de contact des sites** : le message crée un contact « Site web » (CRM) avec
+  une tâche « Répondre au message reçu sur le site » et notifie les responsables ; champ
+  piège anti-robots et limite par adresse IP.
+- **Mise à jour immédiate** après « Publier » (`SITES_APP_URL`, `SITES_REVALIDATE_SECRET`).
 
 ## [1.15.0] — 2026-11-02 — Facture électronique, relances graduées, devis express
 

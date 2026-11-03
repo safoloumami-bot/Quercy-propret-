@@ -67,3 +67,22 @@ export async function publicImage(fileId: string) {
   if (!content || !websiteFileIds(content).includes(fileId)) return null;
   return file;
 }
+
+/**
+ * Prévient l'application des sites qu'une version vient d'être publiée (ou retirée) : la page
+ * est régénérée tout de suite. Sans réglage, le site se met à jour seul en moins d'une minute.
+ */
+export async function refreshPublicSite(slug: string, domains: string[]): Promise<void> {
+  const { SITES_APP_URL, SITES_REVALIDATE_SECRET, SITES_DOMAIN } = env();
+  if (!SITES_APP_URL || !SITES_REVALIDATE_SECRET) return;
+  const bare = domains.map((d) => (d.startsWith("www.") ? d.slice(4) : d));
+  const hosts = [
+    ...new Set([`${slug}.${SITES_DOMAIN}`, ...domains, ...bare, ...bare.map((d) => `www.${d}`)]),
+  ];
+  await fetch(`${SITES_APP_URL.replace(/\/$/, "")}/api/revalidate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Revalidate-Secret": SITES_REVALIDATE_SECRET },
+    body: JSON.stringify({ hosts }),
+    signal: AbortSignal.timeout(4000),
+  }).catch(() => undefined);
+}

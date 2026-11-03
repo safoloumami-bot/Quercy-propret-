@@ -41,6 +41,9 @@ const schema = z.object({
   AI_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("medium"),
   /** Domaine des sites des entreprises (module « Site web ») : <adresse>.<SITES_DOMAIN>. */
   SITES_DOMAIN: z.string().default("sebt.site"),
+  /** Application qui affiche les sites (mise à jour immédiate après publication). Facultatif. */
+  SITES_APP_URL: z.url().optional(),
+  SITES_REVALIDATE_SECRET: z.string().min(16).optional(),
   ENABLE_DEV_MAILBOX: z
     .enum(["true", "false"])
     .default("false")

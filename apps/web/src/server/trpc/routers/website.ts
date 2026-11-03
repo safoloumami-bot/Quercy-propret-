@@ -14,7 +14,7 @@ import { z } from "zod";
 import { env } from "../../env";
 import { signedFileUrl } from "../../storage";
 import { tradePresetFor } from "../../trade-presets";
-import { availableSlug, parseContent, parseTheme, siteUrl } from "../../website";
+import { availableSlug, parseContent, parseTheme, refreshPublicSite, siteUrl } from "../../website";
 import { authorize, createTRPCRouter, orgProcedure, recordAudit } from "../init";
 
 function requireModule(ctx: { workspace: { organization: { modules: string[] } } }) {
@@ -159,6 +159,8 @@ export const websiteRouter = createTRPCRouter({
     requireModule(ctx);
     authorize(ctx, "website", "update");
     await ctx.db.website.updateMany({ data: { published: Prisma.DbNull, publishedAt: null } });
+    const site = await ctx.db.website.findFirst({ select: { slug: true, domains: true } });
+    if (site) await refreshPublicSite(site.slug, site.domains);
     await recordAudit(ctx, { action: "website.unpublish", entityType: "website" });
     return { ok: true };
   }),
