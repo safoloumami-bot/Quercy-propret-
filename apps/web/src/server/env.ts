@@ -39,6 +39,8 @@ const schema = z.object({
   ANTHROPIC_BASE_URL: z.url().optional(),
   AI_MODEL: z.string().default("claude-opus-5"),
   AI_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("medium"),
+  /** Domaine des sites des entreprises (module « Site web ») : <adresse>.<SITES_DOMAIN>. */
+  SITES_DOMAIN: z.string().default("sebt.site"),
   ENABLE_DEV_MAILBOX: z
     .enum(["true", "false"])
     .default("false")

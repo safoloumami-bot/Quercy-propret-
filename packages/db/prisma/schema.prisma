@@ -341,6 +341,7 @@ model Organization {
 
   @@map("organization")
   eInvoices EInvoice[]
+  website Website?
 }
 
 /// Rôle : prédéfini (`systemKey` renseigné) ou personnalisé par l'entreprise.
@@ -2939,4 +2940,28 @@ model EInvoice {
   @@index([organizationId, direction, status])
   @@index([salesDocumentId])
   @@map("e_invoice")
+}
+
+/// Site web d'une entreprise (module « Site web ») : brouillon modifiable et version publiée.
+model Website {
+  id             String    @id @default(cuid())
+  organizationId String    @unique
+  /// Sous-domaine : <slug>.<domaine des sites>.
+  slug           String    @unique
+  /// Noms de domaine personnels rattachés au site.
+  domains        String[]  @default([])
+  /// Apparence (couleurs, typographie) : voir websiteThemeSchema.
+  theme          Json      @default("{}")
+  /// Contenu en cours de modification : voir websiteContentSchema.
+  draft          Json
+  /// Contenu affiché publiquement (null tant que rien n'est publié).
+  published      Json?
+  publishedAt    DateTime?
+  publishedById  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("website")
 }

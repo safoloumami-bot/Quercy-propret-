@@ -37,10 +37,12 @@ import { rolesRouter } from "./routers/roles";
 import { salesRouter } from "./routers/sales";
 import { teamsRouter } from "./routers/teams";
 import { timerRouter } from "./routers/timer";
+import { websiteRouter } from "./routers/website";
 import { workspaceRouter } from "./routers/workspace";
 
 export const appRouter = createTRPCRouter({
   workspace: workspaceRouter,
+  website: websiteRouter,
   members: membersRouter,
   invitations: invitationsRouter,
   roles: rolesRouter,

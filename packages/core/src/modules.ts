@@ -18,6 +18,7 @@ export const MODULE_KEYS = [
   "documents",
   "automations",
   "integrations",
+  "website",
 ] as const;
 
 export const moduleKeySchema = z.enum(MODULE_KEYS);
@@ -141,6 +142,15 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     description: "API publique, webhooks et connecteurs.",
     category: "platform",
     pairsWith: ["automations"],
+  },
+  website: {
+    key: "website",
+    slug: "site",
+    name: "Site web",
+    description:
+      "Votre site, modifiable depuis votre espace : photos, textes, horaires, prestations et actualités.",
+    category: "relation",
+    pairsWith: ["crm", "calendar", "sales"],
   },
 };
 

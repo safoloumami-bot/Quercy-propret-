@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.16.0] — 2026-11-03 — Site web modifiable par l'entreprise
+
+### Ajouté
+
+- **Module « Site web »** (`/site`) : l'entreprise modifie elle-même son site depuis son espace,
+  sans toucher à la mise en page : accueil (titre, accroche, photo, logo), présentation,
+  prestations (reprises du catalogue, prix affichés ou non, plus des prestations libres),
+  galerie de photos, actualités, horaires (deux plages par jour), contact et réseaux,
+  sections affichées et leur ordre, apparence, référencement, mentions légales, adresse et
+  noms de domaine personnels.
+- Brouillon puis **publication** : le site public n'affiche que la version publiée ; on peut
+  retirer le site de la circulation. Liste « à compléter » (photo d'accueil, présentation,
+  contact, mentions légales…).
+- Site **prérempli** à la création avec ce que le logiciel connaît (nom, coordonnées des
+  paramètres de vente, métier, couleur de l'espace).
+- Photos redimensionnées dans le navigateur puis stockées comme les autres fichiers (quota
+  de l'offre) ; enregistrer et publier sont bloqués pendant un envoi.
+- **API publique** pour l'application qui affiche les sites : `GET /api/public/sites/[hôte]`
+  (sous-domaine `<adresse>.SITES_DOMAIN` ou domaine personnel) et
+  `GET /api/public/sites/images/[id]` (seules les photos du site publié sont servies).
+- Nouvelle variable `SITES_DOMAIN` (par défaut `sebt.site`), table `website` (migration
+  `20261103090000_website`).
+
 ## [1.15.0] — 2026-11-02 — Facture électronique, relances graduées, devis express
 
 ### Ajouté
