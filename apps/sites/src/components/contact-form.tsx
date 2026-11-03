@@ -49,9 +49,9 @@ export function ContactForm({ cta }: { cta: string }) {
       className="space-y-5 rounded-[var(--r-card)] bg-[var(--card)] p-6 text-[var(--text)] shadow-[0_40px_80px_-40px_rgba(0,0,0,0.6)] md:p-10"
     >
       <div>
-        <p className="titre text-[1.6rem] leading-tight">Une question, un devis ?</p>
+        <p className="titre text-[1.6rem] leading-tight">Écrivez-nous</p>
         <p className="mt-2 text-[15px] text-[var(--muted)]">
-          Écrivez-nous, nous revenons vers vous rapidement.
+          Une question, une commande, un devis : on vous répond vite.
         </p>
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
@@ -83,7 +83,7 @@ export function ContactForm({ cta }: { cta: string }) {
         />
       </label>
       <label className={label}>
-        Votre besoin
+        Votre message
         <textarea
           name="message"
           required

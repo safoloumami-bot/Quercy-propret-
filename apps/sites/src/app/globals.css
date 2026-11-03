@@ -5,12 +5,19 @@ html {
 }
 body {
   margin: 0;
+  font-family:
+    "Geist Variable",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 .site {
   background: var(--bg);
   color: var(--text);
+  font-feature-settings: "ss01", "cv11";
 }
 .site ::selection {
   background: color-mix(in srgb, var(--accent) 30%, transparent);
@@ -22,22 +29,36 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
-.site img {
-  border-radius: var(--r-img);
-}
-.site figure img {
-  border-radius: 0;
-}
 
 /* Titres : moderne (Geist serré) ou classique (Fraunces). */
 .police-sans .titre {
-  font-family: "Geist", system-ui, sans-serif;
-  font-weight: 620;
-  letter-spacing: -0.035em;
+  font-family: "Geist Variable", system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.045em;
 }
 .police-serif .titre {
-  font-family: "Fraunces", Georgia, "Times New Roman", serif;
-  font-weight: 460;
-  letter-spacing: -0.02em;
+  font-family: "Fraunces Variable", Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.025em;
   font-optical-sizing: auto;
+}
+/* Mot mis en valeur dans un titre. */
+.police-serif .titre em {
+  font-style: italic;
+  font-weight: 350;
+}
+.police-sans .titre em {
+  font-style: normal;
+  color: var(--accent-text);
+}
+.sur-sombre .titre em {
+  color: var(--accent-on-dark);
+}
+
+/* Points de conduite entre une prestation et son prix. */
+.pointilles {
+  flex: 1;
+  min-width: 1.5rem;
+  border-bottom: 1px dotted color-mix(in srgb, var(--text) 35%, transparent);
+  transform: translateY(-0.3em);
 }
