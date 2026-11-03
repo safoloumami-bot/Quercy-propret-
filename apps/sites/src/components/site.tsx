@@ -110,7 +110,6 @@ function Img({
   priority?: boolean;
 }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- photos servies par le logiciel, déjà redimensionnées
     <img
       src={imageUrl(site, image.fileId)}
       alt={image.alt}
@@ -520,7 +519,7 @@ export function Site({ site }: { site: PublishedSite }) {
             Du nouveau <em>chez nous</em>
           </h2>
           <ul className="mt-14 grid gap-x-8 gap-y-14 md:grid-cols-3">
-            {news.slice(0, 6).map((n, i) => (
+            {news.slice(0, 6).map((n) => (
               <li key={n.id}>
                 {n.image ? (
                   <div className="mb-6 overflow-hidden" style={{ borderRadius: "var(--r-img)" }}>
