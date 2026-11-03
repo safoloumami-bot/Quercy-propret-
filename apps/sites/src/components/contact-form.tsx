@@ -3,7 +3,8 @@
 import { useState } from "react";
 
 const field =
-  "mt-1.5 w-full rounded-[var(--radius)] border border-current/15 bg-fond px-4 py-3 text-[16px] outline-none focus:border-accent";
+  "mt-2 w-full rounded-[var(--r-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-[16px] text-[var(--text)] outline-none transition-colors focus:border-[var(--accent)]";
+const label = "block text-sm font-medium text-[var(--text)]";
 
 /** Formulaire de contact : le message arrive dans le logiciel de l'entreprise. */
 export function ContactForm({ cta }: { cta: string }) {
@@ -31,15 +32,30 @@ export function ContactForm({ cta }: { cta: string }) {
 
   if (state === "sent")
     return (
-      <div role="status" className="bg-fond rounded-[var(--radius)] p-8 text-lg">
-        Merci, votre message est bien parti. Nous vous répondons rapidement.
+      <div
+        role="status"
+        className="rounded-[var(--r-card)] bg-[var(--card)] p-10 text-[var(--text)]"
+      >
+        <p className="titre text-[1.8rem] leading-tight">Merci, c&apos;est bien reçu.</p>
+        <p className="mt-3 text-[17px] text-[var(--muted)]">
+          Votre message est bien parti. Nous vous répondons rapidement.
+        </p>
       </div>
     );
 
   return (
-    <form onSubmit={submit} className="bg-fond space-y-4 rounded-[var(--radius)] p-6 md:p-8">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm font-medium">
+    <form
+      onSubmit={submit}
+      className="space-y-5 rounded-[var(--r-card)] bg-[var(--card)] p-6 text-[var(--text)] shadow-[0_40px_80px_-40px_rgba(0,0,0,0.6)] md:p-10"
+    >
+      <div>
+        <p className="titre text-[1.6rem] leading-tight">Une question, un devis ?</p>
+        <p className="mt-2 text-[15px] text-[var(--muted)]">
+          Écrivez-nous, nous revenons vers vous rapidement.
+        </p>
+      </div>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <label className={label}>
           Nom
           <input
             name="name"
@@ -50,12 +66,12 @@ export function ContactForm({ cta }: { cta: string }) {
             className={field}
           />
         </label>
-        <label className="block text-sm font-medium">
+        <label className={label}>
           Téléphone
           <input name="phone" type="tel" maxLength={40} autoComplete="tel" className={field} />
         </label>
       </div>
-      <label className="block text-sm font-medium">
+      <label className={label}>
         Email
         <input
           name="email"
@@ -66,8 +82,8 @@ export function ContactForm({ cta }: { cta: string }) {
           className={field}
         />
       </label>
-      <label className="block text-sm font-medium">
-        Message
+      <label className={label}>
+        Votre besoin
         <textarea
           name="message"
           required
@@ -93,11 +109,14 @@ export function ContactForm({ cta }: { cta: string }) {
       <button
         type="submit"
         disabled={state === "sending"}
-        className="w-full rounded-[var(--radius)] bg-accent px-6 py-3.5 font-medium text-white disabled:opacity-60"
+        className="h-12 w-full rounded-[var(--r-btn)] px-6 font-medium transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+        style={{ background: "var(--accent)", color: "var(--on-accent)" }}
       >
         {state === "sending" ? "Envoi…" : cta}
       </button>
-      <p className="text-xs opacity-60">Vos coordonnées servent uniquement à vous répondre.</p>
+      <p className="text-xs text-[var(--muted)]">
+        Vos coordonnées servent uniquement à vous répondre.
+      </p>
     </form>
   );
 }

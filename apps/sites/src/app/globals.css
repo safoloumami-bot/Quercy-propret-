@@ -1,32 +1,43 @@
 @import "tailwindcss";
 
-@theme inline {
-  --color-accent: var(--accent);
-  --color-fond: var(--bg);
-  --color-texte: var(--text);
-  --color-doux: var(--soft);
-  --radius-site: var(--radius);
-}
-
 html {
   scroll-behavior: smooth;
 }
 body {
   margin: 0;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.site {
   background: var(--bg);
   color: var(--text);
-  -webkit-font-smoothing: antialiased;
 }
-.police-serif h1,
-.police-serif h2,
-.police-serif h3 {
+.site ::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.site a:focus-visible,
+.site button:focus-visible,
+.site input:focus-visible,
+.site textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.site img {
+  border-radius: var(--r-img);
+}
+.site figure img {
+  border-radius: 0;
+}
+
+/* Titres : moderne (Geist serré) ou classique (Fraunces). */
+.police-sans .titre {
+  font-family: "Geist", system-ui, sans-serif;
+  font-weight: 620;
+  letter-spacing: -0.035em;
+}
+.police-serif .titre {
   font-family: "Fraunces", Georgia, "Times New Roman", serif;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-.police-sans h1,
-.police-sans h2,
-.police-sans h3 {
-  font-weight: 650;
-  letter-spacing: -0.025em;
+  font-weight: 460;
+  letter-spacing: -0.02em;
+  font-optical-sizing: auto;
 }
