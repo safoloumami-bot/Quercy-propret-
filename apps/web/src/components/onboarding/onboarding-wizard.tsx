@@ -37,6 +37,7 @@ import { errorMessage, useTRPC } from "@/lib/trpc";
 
 const STEPS = ["Entreprise", "Modules", "Apparence", "Équipe"] as const;
 const ACCENTS = [
+  "#82623A",
   "#0F6E5E",
   "#2563EB",
   "#4F46E5",

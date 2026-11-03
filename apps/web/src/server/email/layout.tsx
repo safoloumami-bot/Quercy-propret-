@@ -17,7 +17,7 @@ import type * as React from "react";
  * les clients mail ne comprennent pas les variables CSS du design system.
  */
 const colors = {
-  brand: "#0F6E5E",
+  brand: "#82623A",
   ink: "#10221F",
   muted: "#5B6B68",
   line: "#E3EAE8",
