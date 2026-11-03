@@ -31,8 +31,8 @@ export async function renderReportPdf(input: {
   const regular = await pdf.embedFont(Buffer.from(GEIST_REGULAR, "base64"), { subset: true });
   const bold = await pdf.embedFont(Buffer.from(GEIST_SEMIBOLD, "base64"), { subset: true });
   pdf.setTitle(input.title);
-  pdf.setCreator("Quercy");
-  pdf.setProducer("Quercy");
+  pdf.setCreator("sebt");
+  pdf.setProducer("sebt");
   pdf.setLanguage("fr-FR");
   const at = input.generatedAt ?? new Date();
 

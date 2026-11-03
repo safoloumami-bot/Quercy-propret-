@@ -1,5 +1,5 @@
 /**
- * Crée (ou retrouve) dans Stripe les produits et les quatre prix de Quercy, puis affiche les
+ * Crée (ou retrouve) dans Stripe les produits et les quatre prix de sebt, puis affiche les
  * variables d'environnement à renseigner. Idempotent grâce aux « lookup keys » des prix.
  *
  *   STRIPE_SECRET_KEY=sk_test_... pnpm stripe:setup
@@ -20,7 +20,7 @@ async function ensureProduct(plan: "PRO" | "BUSINESS") {
   const existing = await stripe.products.search({ query: `metadata['quercy_plan']:'${plan}'` });
   if (existing.data[0]) return existing.data[0];
   return stripe.products.create({
-    name: `Quercy ${PLANS[plan].name}`,
+    name: `sebt ${PLANS[plan].name}`,
     description: PLANS[plan].tagline,
     metadata: { quercy_plan: plan },
   });

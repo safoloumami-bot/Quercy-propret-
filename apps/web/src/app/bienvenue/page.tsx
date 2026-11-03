@@ -19,14 +19,8 @@ export default async function WelcomePage() {
     <div className="min-h-dvh bg-sidebar">
       <header className="flex h-14 items-center justify-between border-b border-border bg-background px-8">
         <div className="flex items-center gap-2.5">
-          <Image
-            src="/brand/quercy-mark.png"
-            alt=""
-            width={24}
-            height={24}
-            className="rounded-md"
-          />
-          <span className="font-semibold tracking-tight">Quercy</span>
+          <Image src="/brand/sebt-mark.png" alt="" width={24} height={24} className="rounded-md" />
+          <span className="font-semibold tracking-tight">sebt</span>
         </div>
         {hasWorkspace ? (
           <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">

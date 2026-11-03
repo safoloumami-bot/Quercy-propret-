@@ -198,10 +198,10 @@ export function facturXmp(doc: DocumentData, createdAt: Date): string {
   <rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/">
    <xmp:CreateDate>${iso}</xmp:CreateDate>
    <xmp:ModifyDate>${iso}</xmp:ModifyDate>
-   <xmp:CreatorTool>Quercy</xmp:CreatorTool>
+   <xmp:CreatorTool>sebt</xmp:CreatorTool>
   </rdf:Description>
   <rdf:Description rdf:about="" xmlns:pdf="http://ns.adobe.com/pdf/1.3/">
-   <pdf:Producer>Quercy</pdf:Producer>
+   <pdf:Producer>sebt</pdf:Producer>
   </rdf:Description>
   <rdf:Description rdf:about="" xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#">
    <fx:DocumentType>INVOICE</fx:DocumentType>

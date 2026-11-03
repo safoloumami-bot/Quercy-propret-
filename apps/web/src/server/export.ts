@@ -86,7 +86,7 @@ export async function buildWorkspaceExport(
       JSON.stringify({ exportedAt: new Date().toISOString(), ...tables }, null, 2),
     ),
     "LISEZMOI.txt": strToU8(
-      "Export complet de votre espace Quercy.\n\n- donnees.json : toutes les données, structurées.\n- csv/ : un fichier par table (séparateur « ; », encodage UTF-8).\n",
+      "Export complet de votre espace sebt.\n\n- donnees.json : toutes les données, structurées.\n- csv/ : un fichier par table (séparateur « ; », encodage UTF-8).\n",
     ),
   };
   for (const [name, rows] of Object.entries(tables))

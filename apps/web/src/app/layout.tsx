@@ -8,9 +8,9 @@ import type * as React from "react";
 import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: { default: "Quercy", template: "%s · Quercy" },
+  title: { default: "sebt", template: "%s · sebt" },
   description: "Le logiciel de gestion tout-en-un, modulaire, pour les PME et les indépendants.",
-  applicationName: "Quercy",
+  applicationName: "sebt",
 };
 
 export const viewport: Viewport = {

@@ -5,7 +5,7 @@ import { EmailLayout } from "./layout";
 export function MagicLinkEmail({ url }: { url: string }) {
   return (
     <EmailLayout
-      preview="Votre lien de connexion à Quercy"
+      preview="Votre lien de connexion à sebt"
       title="Votre lien de connexion"
       action={{ label: "Se connecter", href: url }}
     >
@@ -20,7 +20,7 @@ export function MagicLinkEmail({ url }: { url: string }) {
 export function ResetPasswordEmail({ url, name }: { url: string; name: string }) {
   return (
     <EmailLayout
-      preview="Réinitialisez votre mot de passe Quercy"
+      preview="Réinitialisez votre mot de passe sebt"
       title="Nouveau mot de passe"
       action={{ label: "Choisir un nouveau mot de passe", href: url }}
     >
@@ -61,14 +61,14 @@ export function InvitationEmail({
 }) {
   return (
     <EmailLayout
-      preview={`${inviterName} vous invite à rejoindre ${organizationName} sur Quercy`}
+      preview={`${inviterName} vous invite à rejoindre ${organizationName} sur sebt`}
       title={`Rejoignez ${organizationName}`}
       action={{ label: "Accepter l'invitation", href: url }}
       footer="L'invitation est valable 7 jours. Si vous ne connaissez pas l'expéditeur, ignorez cet email."
     >
       <Text>
         {inviterName} vous invite à rejoindre l&apos;espace <strong>{organizationName}</strong> sur
-        Quercy, avec le rôle <strong>{roleName}</strong>.
+        sebt, avec le rôle <strong>{roleName}</strong>.
       </Text>
     </EmailLayout>
   );

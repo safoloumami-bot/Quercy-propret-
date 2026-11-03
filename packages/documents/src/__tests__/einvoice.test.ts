@@ -52,7 +52,7 @@ function invoice(): DocumentData {
 }
 
 describe("Facture électronique — lecture", () => {
-  it("relit le XML Factur-X produit par Quercy", () => {
+  it("relit le XML Factur-X produit par sebt", () => {
     const parsed = parseEInvoiceXml(buildFacturXml(invoice()));
     expect(parsed).toMatchObject({
       format: "CII",

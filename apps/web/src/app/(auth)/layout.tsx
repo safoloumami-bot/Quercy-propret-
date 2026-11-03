@@ -7,14 +7,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(480px,1fr)_1fr]">
       <main className="flex flex-col px-10 py-10">
         <div className="flex items-center gap-2.5">
-          <Image
-            src="/brand/quercy-mark.png"
-            alt=""
-            width={28}
-            height={28}
-            className="rounded-md"
-          />
-          <span className="text-base font-semibold tracking-tight">Quercy</span>
+          <Image src="/brand/sebt-mark.png" alt="" width={28} height={28} className="rounded-md" />
+          <span className="text-base font-semibold tracking-tight">sebt</span>
         </div>
         <div className="flex flex-1 items-center justify-center py-10">
           <div className="w-full max-w-sm">{children}</div>

@@ -257,7 +257,7 @@ export function ImportDialog({
                 <tr className="text-left text-xs text-muted-foreground">
                   <th className="pb-2 font-medium">Colonne du fichier</th>
                   <th className="pb-2 font-medium">Exemple</th>
-                  <th className="pb-2 font-medium">Champ Quercy</th>
+                  <th className="pb-2 font-medium">Champ sebt</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

@@ -68,7 +68,7 @@ async function sendEmail(message: Parameters<typeof sendAppEmail>[0]) {
 function createAuth() {
   const e = env();
   return betterAuth({
-    appName: "Quercy",
+    appName: "sebt",
     baseURL: e.APP_URL,
     secret: e.BETTER_AUTH_SECRET,
     // Adresses configurées + l'adresse du site qui reçoit la requête (même origine) : une
@@ -159,7 +159,7 @@ function createAuth() {
       max: 100,
     },
     plugins: [
-      twoFactor({ issuer: "Quercy" }),
+      twoFactor({ issuer: "sebt" }),
       // Super-admin de la plateforme (user.role = "admin") : sessions d'assistance d'une heure.
       admin({ impersonationSessionDuration: 60 * 60 }),
       magicLink({

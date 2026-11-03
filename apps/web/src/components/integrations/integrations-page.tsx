@@ -143,7 +143,7 @@ export function IntegrationsPage() {
         setRevealed({
           title: "Secret de signature",
           value: secret,
-          hint: "Vérifiez l'en-tête X-Quercy-Signature avec ce secret.",
+          hint: "Vérifiez l'en-tête X-Sebt-Signature avec ce secret.",
         }),
       onError: toastError,
     }),
@@ -168,7 +168,7 @@ export function IntegrationsPage() {
     <div className="mx-auto w-full max-w-5xl space-y-10 px-8 py-8">
       <PageHeader
         title="Intégrations"
-        description="Connectez Quercy à vos autres outils : API REST, webhooks et abonnement d'agenda. Pour Zapier, Make ou n8n, utilisez une clé d'API et des webhooks."
+        description="Connectez sebt à vos autres outils : API REST, webhooks et abonnement d'agenda. Pour Zapier, Make ou n8n, utilisez une clé d'API et des webhooks."
       />
 
       <section aria-labelledby="api-title" className="space-y-3">
@@ -311,8 +311,8 @@ export function IntegrationsPage() {
           </h2>
           <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 text-sm">
             <p className="text-muted-foreground">
-              Abonnez Google Agenda, Outlook ou Apple Calendrier aux évènements de l'agenda Quercy
-              (90 jours passés et 12 mois à venir, selon vos droits).
+              Abonnez Google Agenda, Outlook ou Apple Calendrier aux évènements de l'agenda sebt (90
+              jours passés et 12 mois à venir, selon vos droits).
             </p>
             <Button variant="secondary" onClick={calendarLink} disabled={createKey.isPending}>
               <CalendarPlusIcon />
@@ -358,7 +358,7 @@ export function IntegrationsPage() {
                   setRevealed({
                     title: "Secret de signature",
                     value: secret,
-                    hint: "Vérifiez l'en-tête X-Quercy-Signature avec ce secret.",
+                    hint: "Vérifiez l'en-tête X-Sebt-Signature avec ce secret.",
                   });
               },
             },

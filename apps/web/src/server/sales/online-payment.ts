@@ -16,7 +16,7 @@ export async function organizationStripe(
   if (!settings?.stripeSecretKeyEnc || !settings.stripeWebhookSecretEnc) return null;
   return {
     client: new Stripe(decryptSecret(settings.stripeSecretKeyEnc), {
-      appInfo: { name: "Quercy" },
+      appInfo: { name: "sebt" },
       maxNetworkRetries: 2,
     }),
     webhookSecret: decryptSecret(settings.stripeWebhookSecretEnc),

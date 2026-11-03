@@ -54,9 +54,9 @@ export async function GET(request: NextRequest) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Quercy//Agenda//FR",
+    "PRODID:-//sebt//Agenda//FR",
     "CALSCALE:GREGORIAN",
-    "X-WR-CALNAME:Quercy",
+    "X-WR-CALNAME:sebt",
   ];
   const seen = new Set<string>();
   for (const row of rows as (Record<string, unknown> & { id: string })[]) {
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     const end = row.endAt ? new Date(row.endAt as string) : new Date(start.getTime() + 3_600_000);
     lines.push(
       "BEGIN:VEVENT",
-      `UID:${row.id}@quercy.app`,
+      `UID:${row.id}@sebt.cloud`,
       `DTSTAMP:${now}`,
       `DTSTART:${stamp(start)}`,
       `DTEND:${stamp(end)}`,
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
   return new Response(lines.join("\r\n") + "\r\n", {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": 'inline; filename="quercy.ics"',
+      "Content-Disposition": 'inline; filename="sebt.ics"',
       "Cache-Control": "private, max-age=300",
     },
   });

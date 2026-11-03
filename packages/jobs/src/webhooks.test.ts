@@ -34,7 +34,7 @@ describe("webhooks sortants", () => {
       let body = "";
       req.on("data", (c) => (body += c));
       req.on("end", () => {
-        received.push({ signature: String(req.headers["x-quercy-signature"]), body });
+        received.push({ signature: String(req.headers["x-sebt-signature"]), body });
         res.writeHead(fail ? 500 : 204).end();
       });
     });

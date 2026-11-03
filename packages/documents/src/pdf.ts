@@ -181,8 +181,8 @@ export async function renderDocumentPdf(
   const heading = doc.number ? `${title} ${doc.number}` : `${title} (brouillon)`;
   pdf.setTitle(heading);
   pdf.setAuthor(doc.seller.name);
-  pdf.setCreator("Quercy");
-  pdf.setProducer("Quercy");
+  pdf.setCreator("sebt");
+  pdf.setProducer("sebt");
   pdf.setLanguage("fr-FR");
   pdf.setCreationDate(now);
   pdf.setModificationDate(now);

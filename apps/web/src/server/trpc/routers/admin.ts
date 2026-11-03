@@ -24,7 +24,7 @@ const adminProcedure = authedProcedure.use(({ ctx, next }) => {
     (ctx.session.session as { impersonatedBy?: string | null }).impersonatedBy,
   );
   if (role !== "admin" || impersonating) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Espace réservé à l'équipe Quercy." });
+    throw new TRPCError({ code: "FORBIDDEN", message: "Espace réservé à l'équipe sebt." });
   }
   return next();
 });

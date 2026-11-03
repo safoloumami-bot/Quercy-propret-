@@ -97,7 +97,7 @@ export async function emailDocument(input: {
     now,
   });
   const title = DOCUMENT_TITLES[kind];
-  const sender = data.seller.name || "Quercy";
+  const sender = data.seller.name || "sebt";
 
   const facts: [string, string][] = [[title, doc.number ?? ""]];
   if (kind === "INVOICE") {

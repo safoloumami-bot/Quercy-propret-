@@ -157,7 +157,7 @@ export const profileRouter = createTRPCRouter({
           where: { id: user.id },
           data: {
             name: "Utilisateur supprimé",
-            email: `supprime-${user.id}@invalid.quercy.app`,
+            email: `supprime-${user.id}@invalid.sebt.cloud`,
             image: null,
             emailVerified: false,
             twoFactorEnabled: false,

@@ -350,7 +350,7 @@ export function BillingManager({ justPaid }: { justPaid: boolean }) {
                 {key === "ENTERPRISE" ? (
                   <Button variant="secondary" asChild>
                     <a
-                      href={`mailto:${o.salesEmail}?subject=${encodeURIComponent("Offre Entreprise Quercy")}`}
+                      href={`mailto:${o.salesEmail}?subject=${encodeURIComponent("Offre Entreprise sebt")}`}
                     >
                       Nous contacter
                     </a>

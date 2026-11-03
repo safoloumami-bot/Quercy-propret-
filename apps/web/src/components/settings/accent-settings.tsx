@@ -14,7 +14,7 @@ import * as React from "react";
 import { errorMessage, useTRPC } from "@/lib/trpc";
 
 const PRESETS = [
-  { name: "Vert Quercy", hex: DEFAULT_ACCENT },
+  { name: "Vert sapin", hex: DEFAULT_ACCENT },
   { name: "Bleu", hex: "#2563EB" },
   { name: "Indigo", hex: "#4F46E5" },
   { name: "Violet", hex: "#7C3AED" },

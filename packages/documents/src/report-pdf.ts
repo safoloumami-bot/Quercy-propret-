@@ -111,8 +111,8 @@ export async function renderReportPdf(data: ReportData): Promise<Uint8Array> {
   const bold = await pdf.embedFont(Buffer.from(GEIST_SEMIBOLD, "base64"), { subset: true });
   pdf.setTitle(data.title);
   pdf.setAuthor(data.issuer);
-  pdf.setCreator("Quercy");
-  pdf.setProducer("Quercy");
+  pdf.setCreator("sebt");
+  pdf.setProducer("sebt");
   pdf.setLanguage("fr-FR");
   pdf.setCreationDate(data.generatedAt);
   const ctx: Ctx = { pdf, page: pdf.addPage([PAGE.width, PAGE.height]), y: 0, regular, bold };
