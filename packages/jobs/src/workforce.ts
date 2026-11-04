@@ -4,8 +4,9 @@ import {
   addDays,
   documentAlertLevel,
   labelOf,
+  parseDay,
   recordPath,
-  utcDay,
+  todayIn,
   vehicleDues,
 } from "@quercy/core";
 import { prisma } from "@quercy/db";
@@ -17,7 +18,8 @@ import { cleaningManagerIds } from "./anomalies";
  * avant l'expiration, puis une à l'expiration. Chaque niveau n'est signalé qu'une fois.
  */
 export async function alertWorkerDocuments(now: Date = new Date()): Promise<number> {
-  const today = utcDay(now);
+  // Jour calendaire à Paris, comme le reste du logiciel (pas le jour UTC du serveur).
+  const today = parseDay(todayIn("Europe/Paris", now));
   const docs = await prisma.workerDocument.findMany({
     where: { expiresAt: { not: null, lte: addDays(today, DOCUMENT_ALERT_DAYS) } },
     include: { profile: { select: { user: { select: { name: true } } } } },
@@ -58,7 +60,8 @@ export async function alertWorkerDocuments(now: Date = new Date()): Promise<numb
  * (clé retenue sur le véhicule).
  */
 export async function alertVehicleDues(now: Date = new Date()): Promise<number> {
-  const today = utcDay(now);
+  // Jour calendaire à Paris, comme le reste du logiciel (pas le jour UTC du serveur).
+  const today = parseDay(todayIn("Europe/Paris", now));
   const vehicles = await prisma.vehicle.findMany({
     where: { deletedAt: null, status: { not: "sold" } },
   });
@@ -105,7 +108,8 @@ export async function alertVehicleDues(now: Date = new Date()): Promise<number> 
  * Les responsables sont prévenus de chaque changement.
  */
 export async function reviseContracts(now: Date = new Date()): Promise<number> {
-  const today = utcDay(now);
+  // Jour calendaire à Paris, comme le reste du logiciel (pas le jour UTC du serveur).
+  const today = parseDay(todayIn("Europe/Paris", now));
   const contracts = await prisma.cleaningContract.findMany({
     where: {
       deletedAt: null,
