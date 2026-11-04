@@ -41,6 +41,11 @@ const schema = z.object({
   AI_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("medium"),
   /** Domaine des sites des entreprises (module « Site web ») : <adresse>.<SITES_DOMAIN>. */
   SITES_DOMAIN: z.string().default("sebt.site"),
+  /**
+   * Tant qu'aucun domaine n'est branché : adresse technique du moteur des sites
+   * (ex. https://sebt-sites.netlify.app) ; un site est alors servi sur <adresse>/<nom>.
+   */
+  SITES_BASE_URL: z.url().optional(),
   /** Application qui affiche les sites (mise à jour immédiate après publication). Facultatif. */
   SITES_APP_URL: z.url().optional(),
   SITES_REVALIDATE_SECRET: z.string().min(16).optional(),

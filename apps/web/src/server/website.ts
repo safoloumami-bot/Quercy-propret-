@@ -23,6 +23,8 @@ export function parseTheme(raw: unknown): WebsiteTheme {
 
 /** Adresse publique par défaut d'un site. */
 export function siteUrl(slug: string): string {
+  const base = env().SITES_BASE_URL?.replace(/\/$/, "");
+  if (base) return `${base}/${slug}`;
   return `https://${slug}.${env().SITES_DOMAIN}`;
 }
 

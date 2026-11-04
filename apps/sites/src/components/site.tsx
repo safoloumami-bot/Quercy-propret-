@@ -183,7 +183,7 @@ function ButtonLink({
   );
 }
 
-export function Site({ site }: { site: PublishedSite }) {
+export function Site({ site, base = "" }: { site: PublishedSite; base?: string }) {
   const { content: c } = site;
   const now = today(c);
   const address = [
@@ -914,7 +914,7 @@ export function Site({ site }: { site: PublishedSite }) {
                   <ArrowUpRight className="size-3.5" aria-hidden />
                 </a>
               ))}
-              <a href="/mentions-legales" className="hover:text-[var(--text)]">
+              <a href={`${base}/mentions-legales`} className="hover:text-[var(--text)]">
                 Mentions légales
               </a>
             </p>
