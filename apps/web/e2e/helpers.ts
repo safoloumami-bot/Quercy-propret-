@@ -79,6 +79,8 @@ export async function signUp(page: Page, name: string, email: string, password: 
 export async function createWorkspace(page: Page, name: string) {
   await expect(page).toHaveURL(/\/bienvenue/);
   await page.getByLabel("Nom de l'entreprise").fill(name);
+  // Métier : « Autre activité » fait apparaître le choix du secteur.
+  await page.getByRole("radio", { name: /Autre activité/ }).click();
   await page.getByLabel("Secteur d'activité").click();
   await page.getByRole("option", { name: "Services aux entreprises" }).click();
   await page.getByLabel("Taille").click();

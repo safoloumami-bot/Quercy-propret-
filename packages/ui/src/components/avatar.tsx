@@ -29,7 +29,7 @@ export function AvatarFallback({
   return (
     <AvatarPrimitive.Fallback
       className={cn(
-        "flex size-full items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary",
+        "flex size-full items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-foreground",
         className,
       )}
       {...props}
