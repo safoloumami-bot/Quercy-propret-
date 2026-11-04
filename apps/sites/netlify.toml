@@ -1,0 +1,9 @@
+# Moteur des sites clients sur Netlify (projet distinct du logiciel).
+# Dans Netlify : « Base directory » vide, « Package directory » = apps/sites.
+[build]
+  command = "pnpm --filter @quercy/sites... build"
+  publish = "apps/sites/.next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"

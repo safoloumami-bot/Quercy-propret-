@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { Site } from "@/components/site";
@@ -29,5 +30,5 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function SitePage({ params }: Props) {
   const site = await fetchSite(decodeURIComponent((await params).host));
   if (!site) notFound();
-  return <Site site={site} />;
+  return <Site site={site} base={(await headers()).get("x-site-base") ?? ""} />;
 }

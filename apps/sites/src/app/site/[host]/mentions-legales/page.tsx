@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { fetchSite } from "@/lib/api";
@@ -11,10 +12,11 @@ export default async function LegalPage({ params }: Props) {
   const site = await fetchSite(decodeURIComponent((await params).host));
   if (!site) notFound();
   const { content: c, theme } = site;
+  const base = (await headers()).get("x-site-base") ?? "";
   return (
     <main style={{ background: theme.background, color: theme.text }} className="min-h-dvh">
       <div className="mx-auto max-w-3xl space-y-8 px-6 py-16 leading-relaxed">
-        <a href="/" className="text-sm underline underline-offset-4">
+        <a href={`${base}/`} className="text-sm underline underline-offset-4">
           ← Retour au site
         </a>
         <h1 className="text-3xl font-semibold">Mentions légales</h1>

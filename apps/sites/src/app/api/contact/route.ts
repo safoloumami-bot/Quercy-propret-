@@ -1,21 +1,26 @@
 import { NextResponse } from "next/server";
 
 import { apiBase } from "@/lib/api";
+import { hostFromSlug, isPlatformHost, requestHost } from "@/lib/hosts";
 
 /** Relaie le formulaire de contact vers le logiciel, pour le site de ce nom d'hôte. */
 export async function POST(request: Request) {
-  const header = (
-    request.headers.get("x-forwarded-host") ??
-    request.headers.get("host") ??
-    ""
-  ).toLowerCase();
+  const header = requestHost(request.headers);
   const local = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(header);
   const referer = request.headers.get("referer");
-  const host = local
-    ? ((referer ? new URL(referer).searchParams.get("site") : null) ??
+  let host = "";
+  if (local) {
+    host =
+      (referer ? new URL(referer).searchParams.get("site") : null) ??
       process.env.SITE_DEV_HOST ??
-      "")
-    : header.replace(/:\d+$/, "");
+      "";
+  } else if (isPlatformHost(header)) {
+    // Mode chemin : le site est le premier segment de la page d'où vient le formulaire.
+    const slug = referer ? (new URL(referer).pathname.split("/")[1] ?? "") : "";
+    host = (slug && hostFromSlug(slug)) || "";
+  } else {
+    host = header.replace(/:\d+$/, "");
+  }
   if (!host) return NextResponse.json({ error: "Site introuvable." }, { status: 404 });
   try {
     const response = await fetch(

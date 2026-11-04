@@ -16,10 +16,23 @@ et les responsables de l'espace sont notifiés.
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `SEBT_API_URL`            | Adresse du logiciel (ex. `https://app.sebt.cloud`).                                                                                                          |
 | `SITES_REVALIDATE_SECRET` | Secret partagé avec le logiciel (16 caractères au moins) : une publication est visible tout de suite. Sans lui, le site se met à jour en moins d'une minute. |
+| `SITES_DOMAIN`            | Domaine des adresses par défaut (même valeur que dans le logiciel, `sebt.site` par défaut).                                                                  |
 | `SITE_DEV_HOST`           | En local seulement : le site à afficher sur `localhost` (ou `?site=…`).                                                                                      |
 
 Côté logiciel : `SITES_DOMAIN` (ex. `sebt.site`), `SITES_APP_URL` (adresse de cette
 application) et le même `SITES_REVALIDATE_SECRET`.
+
+## Sans domaine : mode chemin
+
+Sur l'adresse technique de l'hébergeur (`….netlify.app`, `….vercel.app` ou
+`SITES_PLATFORM_HOST`), le premier segment du chemin choisit le site :
+`sebt-sites.netlify.app/dupont-plomberie`. Côté logiciel, `SITES_BASE_URL` (ex.
+`https://sebt-sites.netlify.app`) fait afficher cette adresse dans « Mon site ».
+
+## Mise en ligne (Netlify)
+
+Voir `netlify.toml` : projet distinct, construit depuis la racine du dépôt. Variables :
+`SEBT_API_URL`, `SITES_DOMAIN`, et `SITES_REVALIDATE_SECRET` (facultatif).
 
 ## Mise en ligne (Vercel)
 
