@@ -104,7 +104,7 @@ export async function dispatchScheduledReports(
 <h1 style="font-size:18px">${esc(report.name)}</h1>
 <p>${esc(measureLabel(def))} · ${esc(period.label)} : <strong>${esc(formatMeasure(run.measureField, run.total))}</strong></p>
 ${top ? `<ul>${top}</ul>` : ""}
-<p><a href="${esc(url)}">Ouvrir le rapport dans Quercy</a></p>
+<p><a href="${esc(url)}">Ouvrir le rapport dans sebt</a></p>
 <p style="color:#6b7280;font-size:12px">Rapport complet en PDF et CSV en pièces jointes. Envoi ${report.schedule === "weekly" ? "hebdomadaire" : "mensuel"} programmé par ${esc(report.owner.name)}.</p>
 </body></html>`,
           text: `${report.name}\n${measureLabel(def)} · ${period.label} : ${formatMeasure(run.measureField, run.total)}\n\n${url}`,

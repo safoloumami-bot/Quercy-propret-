@@ -31,6 +31,7 @@ const ENTITY_LABELS: Record<string, string> = {
 const FIELD_LABELS: Record<string, string> = {
   name: "Nom",
   industry: "Secteur",
+  trade: "Métier",
   size: "Taille",
   currency: "Devise",
   timezone: "Fuseau horaire",

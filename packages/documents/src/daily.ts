@@ -1,6 +1,7 @@
 import { recordPath, reminderDue, startOfDayUtc } from "@quercy/core";
 import { prisma } from "@quercy/db";
 
+import { syncEInvoicing } from "./einvoice/service";
 import { emailDocument } from "./mail";
 import { generateFromRecurring, refreshInvoice } from "./service";
 
@@ -9,6 +10,8 @@ export interface DailySalesResult {
   overdue: number;
   expiredQuotes: number;
   reminders: number;
+  einvoiceStatusUpdates: number;
+  einvoicesReceived: number;
   errors: { documentId: string; error: string }[];
 }
 
@@ -33,6 +36,8 @@ export async function runDailySales(
     overdue: 0,
     expiredQuotes: 0,
     reminders: 0,
+    einvoiceStatusUpdates: 0,
+    einvoicesReceived: 0,
     errors: [],
   };
   const today = startOfDayUtc(now);
@@ -101,6 +106,8 @@ export async function runDailySales(
       dueDate: true,
       reminderCount: true,
       lastReminderAt: true,
+      ownerId: true,
+      number: true,
       organization: { select: { salesSettings: true } },
     },
   });
@@ -121,9 +128,26 @@ export async function runDailySales(
         now,
       });
       result.reminders += 1;
+      // Dernier palier envoyé : on prévient le responsable, la suite (appel, échéancier,
+      // injonction de payer) est une décision humaine.
+      if (invoice.reminderCount + 1 >= days.length && invoice.ownerId)
+        await prisma.notification.create({
+          data: {
+            organizationId: invoice.organizationId,
+            userId: invoice.ownerId,
+            type: "sales.final_reminder",
+            title: `Dernière relance envoyée : facture ${invoice.number ?? ""}. À suivre de près.`,
+            url: recordPath("invoice", invoice.id),
+          },
+        });
     } catch (error) {
       result.errors.push({ documentId: invoice.id, error: String(error) });
     }
   }
+  // 5. Facture électronique : statuts des factures transmises et factures reçues.
+  const einvoicing = await syncEInvoicing(now);
+  result.einvoiceStatusUpdates = einvoicing.statusUpdates;
+  result.einvoicesReceived = einvoicing.received;
+  for (const error of einvoicing.errors) result.errors.push({ documentId: "e-invoicing", error });
   return result;
 }

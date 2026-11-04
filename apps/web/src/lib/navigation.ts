@@ -38,6 +38,7 @@ import {
   UsersRoundIcon,
   TruckIcon,
   FileInputIcon,
+  GlobeIcon,
   WalletIcon,
   WarehouseIcon,
   ArrowLeftRightIcon,
@@ -596,6 +597,21 @@ export const MODULE_SECTIONS: NavSection[] = [
         "calendrier",
         "planning",
       ]),
+    ],
+  },
+  {
+    id: "website",
+    label: "Site web",
+    items: [
+      {
+        id: "website-editor",
+        href: "/site",
+        label: "Mon site",
+        icon: GlobeIcon,
+        keywords: ["site internet", "vitrine", "photos", "horaires", "publier"],
+        permission: ["website", "view"],
+        module: "website",
+      },
     ],
   },
   {

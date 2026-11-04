@@ -21,7 +21,7 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
   return (
     <main className="flex min-h-dvh items-center justify-center bg-sidebar p-8">
       <div className="w-full max-w-md space-y-6 rounded-xl border border-border bg-card p-8 shadow-sm">
-        <Image src="/brand/quercy-mark.png" alt="" width={32} height={32} className="rounded-md" />
+        <Image src="/brand/sebt-mark.png" alt="" width={32} height={32} className="rounded-md" />
         {invitation.state !== "pending" ? (
           <div className="space-y-3">
             <h1 className="text-xl font-semibold tracking-tight">

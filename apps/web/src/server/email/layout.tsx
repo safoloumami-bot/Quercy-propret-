@@ -17,7 +17,7 @@ import type * as React from "react";
  * les clients mail ne comprennent pas les variables CSS du design system.
  */
 const colors = {
-  brand: "#0F6E5E",
+  brand: "#82623A",
   ink: "#10221F",
   muted: "#5B6B68",
   line: "#E3EAE8",
@@ -60,7 +60,7 @@ export function EmailLayout({
             <Text
               style={{ color: colors.brand, fontSize: 15, fontWeight: 700, margin: "0 0 24px" }}
             >
-              Quercy
+              sebt
             </Text>
             <Heading as="h1" style={{ color: colors.ink, fontSize: 20, margin: "0 0 12px" }}>
               {title}
@@ -88,7 +88,7 @@ export function EmailLayout({
             <Hr style={{ borderColor: colors.line, margin: "24px 0 16px" }} />
             <Text style={{ color: colors.muted, fontSize: 13, lineHeight: "20px", margin: 0 }}>
               {footer ??
-                "Vous recevez cet email parce qu'une action a été demandée sur Quercy. Si ce n'est pas vous, ignorez-le simplement."}
+                "Vous recevez cet email parce qu'une action a été demandée sur sebt. Si ce n'est pas vous, ignorez-le simplement."}
             </Text>
           </Section>
         </Container>

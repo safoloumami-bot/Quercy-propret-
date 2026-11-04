@@ -32,7 +32,7 @@ export function describeUserAgent(ua: string | null | undefined): {
         : /Safari\//.test(ua)
           ? "Safari"
           : kind === "app"
-            ? "Application Quercy"
+            ? "Application sebt"
             : "Navigateur";
   const os = /Windows/.test(ua)
     ? "Windows"

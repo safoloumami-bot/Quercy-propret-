@@ -18,6 +18,8 @@ export interface ResolvedWorkspace {
     slug: string;
     logoUrl: string | null;
     industry: string | null;
+    /** Clé du préréglage de métier (voir trade-presets.ts), ou null. */
+    trade: string | null;
     size: string | null;
     plan: string;
     trialEndsAt: Date | null;
@@ -75,6 +77,7 @@ export async function resolveWorkspace(
       slug: org.slug,
       logoUrl: org.logoUrl,
       industry: org.industry,
+      trade: org.trade ?? null,
       size: org.size,
       plan: org.plan,
       trialEndsAt: org.trialEndsAt,

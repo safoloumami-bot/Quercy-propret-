@@ -1,5 +1,103 @@
 # Changelog
 
+## [1.16.0] — 2026-11-03 — Site web modifiable par l'entreprise
+
+### Ajouté
+
+- **Module « Site web »** (`/site`) : l'entreprise modifie elle-même son site depuis son espace,
+  sans toucher à la mise en page : accueil (titre, accroche, photo, logo), présentation,
+  prestations (reprises du catalogue, prix affichés ou non, plus des prestations libres),
+  galerie de photos, actualités, horaires (deux plages par jour), contact et réseaux,
+  sections affichées et leur ordre, apparence, référencement, mentions légales, adresse et
+  noms de domaine personnels.
+- Brouillon puis **publication** : le site public n'affiche que la version publiée ; on peut
+  retirer le site de la circulation. Liste « à compléter » (photo d'accueil, présentation,
+  contact, mentions légales…).
+- Site **prérempli** à la création avec ce que le logiciel connaît (nom, coordonnées des
+  paramètres de vente, métier, couleur de l'espace).
+- Photos redimensionnées dans le navigateur puis stockées comme les autres fichiers (quota
+  de l'offre) ; enregistrer et publier sont bloqués pendant un envoi.
+- **API publique** pour l'application qui affiche les sites : `GET /api/public/sites/[hôte]`
+  (sous-domaine `<adresse>.SITES_DOMAIN` ou domaine personnel) et
+  `GET /api/public/sites/images/[id]` (seules les photos du site publié sont servies).
+- Nouvelle variable `SITES_DOMAIN` (par défaut `sebt.site`), table `website` (migration
+  `20261103090000_website`).
+- **Application des sites** (`apps/sites`, à déployer sur Vercel) : un seul déploiement
+  affiche tous les sites selon le nom d'hôte. Accueil avec photo, présentation, prestations
+  (catalogue et prix), galerie, actualités, horaires, contact, mentions légales, référencement
+  (titre, description, image de partage). Responsive.
+- **Formulaire de contact des sites** : le message crée un contact « Site web » (CRM) avec
+  une tâche « Répondre au message reçu sur le site » et notifie les responsables ; champ
+  piège anti-robots et limite par adresse IP.
+- **Mise à jour immédiate** après « Publier » (`SITES_APP_URL`, `SITES_REVALIDATE_SECRET`).
+
+## [1.15.0] — 2026-11-02 — Facture électronique, relances graduées, devis express
+
+### Ajouté
+
+- **Facture électronique** (obligation de réception depuis le 1er septembre 2026, d'émission
+  pour les PME au 1er septembre 2027) :
+  - Ventes › Paramètres › Facture électronique : choix de la plateforme agréée et
+    transmission automatique à l'émission. Seules les factures et avoirs des clients
+    professionnels (SIREN ou TVA) sont transmis ; les ventes aux particuliers relèvent de
+    l'e-reporting.
+  - Suivi sur chaque facture : statut du cycle de vie (déposée, mise à disposition,
+    approuvée, refusée, rejetée, encaissée…), historique, nouvel essai en cas d'erreur.
+  - Achats › Factures fournisseurs : « Déposer une facture électronique » lit un PDF
+    Factur-X ou un XML (CII ou UBL), retrouve ou crée le fournisseur (SIREN, TVA, nom) et
+    crée la facture à payer, sans ressaisie ni doublon.
+  - Synchronisation quotidienne (worker, `sales-daily`) des statuts et des factures reçues.
+  - Connecteur de plateforme générique (`packages/documents/src/einvoice/providers.ts`) avec
+    un **bac à sable** qui simule le parcours sans rien transmettre. Le connecteur de la
+    plateforme agréée partenaire reste à brancher une fois le partenaire choisi.
+  - Nouvelle table `e_invoice` et colonnes `sales_settings.einvoicing*` (migration
+    `20261102170000_einvoicing`).
+- **Relances graduées** : rappel courtois, relance ferme, puis dernière relance avant
+  recouvrement (pénalités et indemnité forfaitaire de 40 € rappelées aux clients
+  professionnels) ; le responsable de la facture est prévenu quand la dernière part.
+- **Devis express** (Ventes › Devis) : le chantier décrit en une phrase, l'assistant IA
+  prépare le devis avec le catalogue, les prix et la TVA du métier ; rien n'est créé sans
+  confirmation.
+- Tests : lecture CII/UBL, extraction d'un PDF Factur-X, cycle de vie, ton des relances.
+
+## [1.14.0] — 2026-11-02 — Corps de métier
+
+### Ajouté
+
+- **Choix du métier à la création de l'espace** : nettoyage et propreté, plomberie et
+  chauffage, électricité, maçonnerie, peinture et plâtrerie, menuiserie, couverture,
+  paysage, multiservice (ou « Autre activité »). Le métier présélectionne les modules utiles
+  et règle le secteur.
+- **Le métier se reconnaît dans une phrase** : « plombier chauffagiste à Toulouse » choisit
+  la plomberie, « démoussage et nettoyage de toiture » la couverture (`detectActivity`, sans
+  appel à l'IA). Sans métier reconnu, le secteur est deviné (commerce, conseil…). La
+  personne peut toujours choisir une autre carte.
+- **Préréglage du métier** (`packages/core/src/trades.ts`) : catalogue de prestations types
+  (unité, prix indicatif, taux de TVA le plus courant, avec une note quand le taux dépend du
+  chantier), mentions des devis et factures, contexte de l'assistant IA. Il n'ajoute que ce
+  qui manque et ne remplace rien de ce que l'entreprise a saisi.
+- **Réglages › Général › Métier** : choisir ou changer de métier dans un espace existant ;
+  les modules conseillés non activés sont signalés.
+- **Mentions des travaux** (Ventes › Paramètres) : assurance décennale imprimée sur les
+  devis et factures, et mention de certification client ajoutée automatiquement quand une
+  ligne est à 10 % ou 5,5 % (elle remplace les attestations Cerfa depuis la loi de finances
+  pour 2025). Nouvelles colonnes `organization.trade`, `sales_settings.insuranceMention` et
+  `sales_settings.renovationVatMention` (migration `20261102120000_trades`).
+- **Assistant IA** : il connaît le métier de l'entreprise (vocabulaire, taux de TVA des
+  travaux, décennale, devis obligatoire des dépannages au-delà de 150 € TTC…).
+- Démonstration : l'espace « Quercy Propreté » a le métier « Nettoyage et propreté ».
+- Tests : cohérence des préréglages (modules, unités, taux) et des mentions imprimées.
+- **Métiers modifiables par l'équipe, sans code** (Administration › Corps de métier,
+  `/admin/metiers`) : nom, description, mots qui reconnaissent le métier, secteur, modules
+  conseillés, catalogue de prestations (unité, prix HT, TVA, catégorie), mentions décennale
+  et TVA travaux, consignes de l'assistant IA, ordre et activation. On peut modifier un
+  métier d'origine (et revenir à sa version d'origine) ou en ajouter de nouveaux (auto-école,
+  coiffure…). Nouvelle table `TradePreset` (migration `20261102150000_trade_presets`, lecture
+  seule pour les espaces clients) ; sans ligne en base, les préréglages du code s'appliquent.
+- **Base neutre « Autre activité »** (préréglage `general`, modifiable dans la même page) :
+  quelques prestations génériques et des consignes neutres pour l'assistant, appliquées aux
+  entreprises dont le métier n'est pas reconnu ; elles choisissent ensuite leurs modules.
+
 ## [1.13.0] — 2026-10-10 — Réactivité, nouveau logo
 
 ### Ajouté

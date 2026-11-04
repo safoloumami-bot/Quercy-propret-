@@ -9,6 +9,7 @@ import {
   moduleKeySchema,
   moduleLimitError,
   slugify,
+  tradeSlugSchema,
   updateOrganizationSchema,
 } from "@quercy/core";
 import { SYSTEM_ROLE_SEEDS, prisma } from "@quercy/db";
@@ -18,6 +19,8 @@ import { z } from "zod";
 import { syncSeats } from "../../billing/seats";
 import { PlanLimitError } from "../../billing/state";
 import { createInvitations } from "../../invitations";
+import { findTradePreset, listTradePresets, tradePresetFor } from "../../trade-presets";
+import { applyTradePreset } from "../../trades";
 import { parsePreferences } from "../../workspace";
 import { authedProcedure, authorize, createTRPCRouter, orgProcedure, recordAudit } from "../init";
 
@@ -55,12 +58,16 @@ export const workspaceRouter = createTRPCRouter({
   /** Création d'un espace (assistant d'accueil) avec essai Business de 14 jours. */
   create: authedProcedure.input(createOrganizationSchema).mutation(async ({ ctx, input }) => {
     const slug = await uniqueSlug(input.name);
+    // Métier inconnu ou désactivé entre-temps : on retombe sur la base neutre.
+    const preset = await tradePresetFor(input.trade);
+    const trade = input.trade && preset.key === input.trade ? input.trade : null;
     const org = await prisma.$transaction(async (tx) => {
       const created = await tx.organization.create({
         data: {
           name: input.name,
           slug,
           industry: input.industry,
+          trade,
           size: input.size,
           plan: "BUSINESS",
           trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
@@ -78,6 +85,8 @@ export const workspaceRouter = createTRPCRouter({
       await tx.membership.create({
         data: { organizationId: created.id, userId: ctx.user.id, roleId: owner.id },
       });
+      // Métier reconnu ou base neutre (« Autre activité ») : les deux sont réglés par l'équipe.
+      await applyTradePreset(tx, created.id, preset);
       await tx.auditLog.create({
         data: {
           organizationId: created.id,
@@ -85,7 +94,7 @@ export const workspaceRouter = createTRPCRouter({
           action: "organization.create",
           entityType: "organization",
           entityId: created.id,
-          metadata: { name: created.name, modules: input.modules },
+          metadata: { name: created.name, modules: input.modules, trade },
         },
       });
       return created;
@@ -173,6 +182,40 @@ export const workspaceRouter = createTRPCRouter({
     });
     return { changed: true };
   }),
+
+  /** Préréglages de métier proposés (accueil, réglages) : ceux d'origine et ceux de l'équipe. */
+  trades: authedProcedure.query(async () => (await listTradePresets()).filter((p) => p.active)),
+
+  /**
+   * Choisit (ou change) le corps de métier : ajoute les prestations types au catalogue et
+   * prépare les mentions des devis. Les modules ne sont pas modifiés (limites de l'offre).
+   */
+  applyTrade: orgProcedure
+    .input(z.object({ trade: tradeSlugSchema }))
+    .mutation(async ({ ctx, input }) => {
+      authorize(ctx, "settings", "update", "Seuls les administrateurs peuvent choisir le métier.");
+      const def = await findTradePreset(input.trade);
+      if (!def)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Ce métier n'est plus proposé." });
+      const before = ctx.workspace.organization.trade;
+      const result = await prisma.$transaction(async (tx) => {
+        await tx.organization.update({
+          where: { id: ctx.organizationId },
+          data: { trade: input.trade },
+        });
+        return applyTradePreset(tx, ctx.organizationId, def);
+      });
+      await recordAudit(ctx, {
+        action: "organization.update",
+        entityType: "organization",
+        entityId: ctx.organizationId,
+        changes: { trade: { before, after: input.trade } },
+      });
+      const missingModules = def.modules.filter(
+        (m) => !ctx.workspace.organization.modules.includes(m),
+      );
+      return { ...result, missingModules };
+    }),
 
   updateAccent: orgProcedure
     .input(z.object({ color: hexColorSchema }))

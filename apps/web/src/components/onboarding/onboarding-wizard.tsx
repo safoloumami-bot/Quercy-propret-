@@ -9,6 +9,8 @@ import {
   MODULE_KEYS,
   type ModuleKey,
   SYSTEM_ROLE_LABELS,
+  GENERAL_TRADE_KEY,
+  detectActivity,
   accentPalette,
   createOrganizationSchema,
   emailSchema,
@@ -30,10 +32,12 @@ import { CheckIcon, CircleAlertIcon, PlusIcon, XIcon } from "lucide-react";
 import * as React from "react";
 
 import { FormField } from "@/components/form-field";
+import { TradePicker, useTradePresets } from "@/components/trades/trade-picker";
 import { errorMessage, useTRPC } from "@/lib/trpc";
 
 const STEPS = ["Entreprise", "Modules", "Apparence", "Équipe"] as const;
 const ACCENTS = [
+  "#82623A",
   "#0F6E5E",
   "#2563EB",
   "#4F46E5",
@@ -53,6 +57,28 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
   const [step, setStep] = React.useState(0);
   const [name, setName] = React.useState("");
   const [industry, setIndustry] = React.useState<string>("");
+  /** undefined : pas encore choisi ; null : « Autre activité ». */
+  const [trade, setTrade] = React.useState<string | null | undefined>(undefined);
+  const presets = useTradePresets();
+  const general = presets.find((p) => p.key === GENERAL_TRADE_KEY);
+  /** Description libre (« plombier à Toulouse ») : elle choisit le métier tant que la
+   * personne n'a pas cliqué elle-même sur une carte. */
+  const [activity, setActivity] = React.useState("");
+  const [pickedByHand, setPickedByHand] = React.useState(false);
+  const detected = React.useMemo(() => detectActivity(activity, presets), [activity, presets]);
+
+  function describe(text: string) {
+    setActivity(text);
+    if (pickedByHand) return;
+    const found = detectActivity(text, presets);
+    if (found.trade) chooseTrade(found.trade);
+    else if (found.industry) {
+      setTrade(null);
+      setIndustry(found.industry);
+      const preset = INDUSTRIES.find((i) => i.value === found.industry);
+      setModules(preset ? [...preset.modules] : []);
+    }
+  }
   const [size, setSize] = React.useState<string>("");
   const [modules, setModules] = React.useState<ModuleKey[]>([]);
   const [accent, setAccent] = React.useState(DEFAULT_ACCENT);
@@ -65,6 +91,19 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
     setIndustry(value);
     const preset = INDUSTRIES.find((i) => i.value === value);
     if (preset && modules.length === 0) setModules([...preset.modules]);
+  }
+
+  function chooseTrade(value: string | null) {
+    setTrade(value);
+    const preset = value ? presets.find((p) => p.key === value) : undefined;
+    if (preset) {
+      setIndustry(preset.industry);
+      setModules([...preset.modules]);
+    } else {
+      // « Autre activité » : la base neutre réglée par l'équipe ; les modules restent au choix.
+      setIndustry(general?.industry ?? "");
+      setModules(general ? [...general.modules] : []);
+    }
   }
 
   function toggleModule(key: ModuleKey) {
@@ -84,7 +123,7 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
   }
 
   const stepValid = [
-    name.trim().length >= 2 && industry !== "" && size !== "",
+    name.trim().length >= 2 && trade !== undefined && industry !== "" && size !== "",
     modules.length > 0,
     true,
     true,
@@ -95,6 +134,7 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
     const input = createOrganizationSchema.safeParse({
       name,
       industry,
+      trade: trade ?? null,
       size,
       modules,
       accentColor: accent,
@@ -160,21 +200,57 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
                 maxLength={80}
               />
             </FormField>
+            <div className="space-y-2">
+              <label htmlFor="org-activity" className="text-sm font-medium">
+                Votre métier
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Décrivez votre activité en quelques mots, ou choisissez une carte : nous préparons
+                le catalogue de prestations, les mentions des devis et les modules utiles. Tout
+                reste modifiable.
+              </p>
+              <Input
+                id="org-activity"
+                aria-label="Votre activité en quelques mots"
+                value={activity}
+                onChange={(e) => describe(e.target.value)}
+                placeholder="Ex. : plombier chauffagiste à Toulouse, dépannages et salles de bain"
+                maxLength={200}
+              />
+              {activity.trim().length >= 3 ? (
+                <p className="text-xs text-muted-foreground" aria-live="polite">
+                  {detected.trade
+                    ? `Reconnu : ${presets.find((p) => p.key === detected.trade)?.label ?? detected.trade}. Vous pouvez choisir un autre métier ci-dessous.`
+                    : "Aucun métier reconnu : choisissez ci-dessous, ou « Autre activité »."}
+                </p>
+              ) : null}
+              <TradePicker
+                presets={presets}
+                value={trade}
+                onChange={(value) => {
+                  setPickedByHand(true);
+                  chooseTrade(value);
+                }}
+                other
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <FormField id="org-industry" label="Secteur d'activité">
-                <Select value={industry} onValueChange={chooseIndustry}>
-                  <SelectTrigger id="org-industry">
-                    <SelectValue placeholder="Choisir…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INDUSTRIES.map((i) => (
-                      <SelectItem key={i.value} value={i.value}>
-                        {i.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
+              {trade === null ? (
+                <FormField id="org-industry" label="Secteur d'activité">
+                  <Select value={industry} onValueChange={chooseIndustry}>
+                    <SelectTrigger id="org-industry">
+                      <SelectValue placeholder="Choisir…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDUSTRIES.map((i) => (
+                        <SelectItem key={i.value} value={i.value}>
+                          {i.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              ) : null}
               <FormField id="org-size" label="Taille">
                 <Select value={size} onValueChange={setSize}>
                   <SelectTrigger id="org-size">

@@ -137,6 +137,8 @@ export async function documentData(
       vatExempt: settings.vatExempt,
       footer: settings.footer,
       latePenaltyText: settings.latePenaltyText,
+      insuranceMention: settings.insuranceMention,
+      renovationVatMention: settings.renovationVatMention,
     },
     buyer: {
       name: doc.company?.name ?? "Client",

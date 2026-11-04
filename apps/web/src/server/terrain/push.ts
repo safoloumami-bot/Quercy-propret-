@@ -60,7 +60,7 @@ export async function sendPush(
             payload,
             {
               vapidDetails: {
-                subject: `mailto:${org?.email || "contact@quercy.app"}`,
+                subject: `mailto:${org?.email || "contact@sebt.cloud"}`,
                 publicKey: keys.publicKey,
                 privateKey: keys.privateKey,
               },

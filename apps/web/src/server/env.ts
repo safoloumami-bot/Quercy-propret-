@@ -17,7 +17,7 @@ const schema = z.object({
   MICROSOFT_CLIENT_SECRET: z.string().optional(),
   MICROSOFT_TENANT_ID: z.string().default("common"),
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().default("Quercy <no-reply@quercy.app>"),
+  EMAIL_FROM: z.string().default("sebt <no-reply@sebt.cloud>"),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_PRICE_PRO_MONTH: z.string().optional(),
@@ -25,7 +25,7 @@ const schema = z.object({
   STRIPE_PRICE_BUSINESS_MONTH: z.string().optional(),
   STRIPE_PRICE_BUSINESS_YEAR: z.string().optional(),
   /** Adresse de contact commercial (offre Entreprise). */
-  SALES_EMAIL: z.string().default("commercial@quercy.app"),
+  SALES_EMAIL: z.string().default("commercial@sebt.cloud"),
   /** Limitation de débit des connexions. « off » uniquement pour les tests E2E, jamais en production. */
   AUTH_RATE_LIMIT: z.enum(["on", "off"]).default("on"),
   /**
@@ -39,6 +39,11 @@ const schema = z.object({
   ANTHROPIC_BASE_URL: z.url().optional(),
   AI_MODEL: z.string().default("claude-opus-5"),
   AI_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("medium"),
+  /** Domaine des sites des entreprises (module « Site web ») : <adresse>.<SITES_DOMAIN>. */
+  SITES_DOMAIN: z.string().default("sebt.site"),
+  /** Application qui affiche les sites (mise à jour immédiate après publication). Facultatif. */
+  SITES_APP_URL: z.url().optional(),
+  SITES_REVALIDATE_SECRET: z.string().min(16).optional(),
   ENABLE_DEV_MAILBOX: z
     .enum(["true", "false"])
     .default("false")

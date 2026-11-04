@@ -2,7 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  DEFAULT_INSURANCE_MENTION,
   DEFAULT_LATE_PENALTY_TEXT,
+  RENOVATION_VAT_MENTION,
   type SalesSettingsInput,
   salesSettingsSchema,
 } from "@quercy/core";
@@ -223,6 +225,48 @@ function Form({ defaults, canEdit }: { defaults: SalesSettingsInput; canEdit: bo
       </SettingsSection>
 
       <SettingsSection
+        id="trade-mentions"
+        title="Mentions des travaux"
+        description="Pour les métiers du bâtiment : ces mentions s'impriment sur les devis et les factures."
+        footer={footer}
+      >
+        <div className="space-y-4">
+          <FormField
+            id="s-insuranceMention"
+            label="Assurance professionnelle (décennale)"
+            hint="Obligatoire si votre activité est soumise à l'assurance décennale : assureur, coordonnées et couverture géographique. Joignez aussi l'attestation d'assurance à vos devis."
+            error={errors.insuranceMention?.message}
+          >
+            <Textarea
+              {...fieldAria("s-insuranceMention", errors.insuranceMention?.message, true)}
+              {...form.register("insuranceMention")}
+              placeholder={DEFAULT_INSURANCE_MENTION}
+              rows={3}
+              disabled={!canEdit}
+            />
+          </FormField>
+          <FormField
+            id="s-renovationVatMention"
+            label="TVA réduite des travaux (10 % et 5,5 %)"
+            hint={`Ajoute automatiquement, sur les devis et factures qui ont une ligne à 10 % ou 5,5 %, la mention que le client certifie (elle remplace les attestations Cerfa depuis 2025) : « ${RENOVATION_VAT_MENTION} »`}
+          >
+            <Controller
+              control={form.control}
+              name="renovationVatMention"
+              render={({ field }) => (
+                <Switch
+                  id="s-renovationVatMention"
+                  checked={field.value ?? false}
+                  onCheckedChange={field.onChange}
+                  disabled={!canEdit}
+                />
+              )}
+            />
+          </FormField>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
         id="numbering"
         title="Numérotation"
         description="Numéros continus par type et par année (ex. FA-2026-0001), attribués à l'émission."
@@ -253,7 +297,7 @@ function Form({ defaults, canEdit }: { defaults: SalesSettingsInput; canEdit: bo
       <SettingsSection
         id="reminders"
         title="Relances automatiques"
-        description="Un email de relance part pour chaque facture impayée, aux paliers indiqués après l'échéance."
+        description="Un email de relance part pour chaque facture impayée, aux paliers indiqués après l'échéance, avec le lien de paiement en ligne. Le ton monte à chaque palier : un rappel courtois, une relance ferme, puis une dernière relance avant recouvrement (avec, pour les clients professionnels, le rappel des pénalités et de l'indemnité de 40 €). Vous êtes prévenu quand la dernière part."
         footer={footer}
       >
         <div className="grid grid-cols-2 gap-4">
@@ -472,6 +516,8 @@ export function SalesSettingsForm() {
           quoteValidityDays: s.quoteValidityDays,
           footer: s.footer ?? "",
           latePenaltyText: s.latePenaltyText ?? "",
+          insuranceMention: s.insuranceMention ?? "",
+          renovationVatMention: s.renovationVatMention,
           remindersEnabled: s.remindersEnabled,
           reminderDays: s.reminderDays,
           minMarginPct: s.minMarginPct,
@@ -480,6 +526,84 @@ export function SalesSettingsForm() {
         }}
       />
       <StripeSection stripe={s.stripe} canEdit={s.canEdit} />
+      <EInvoicingSection einvoicing={s.einvoicing} canEdit={s.canEdit} />
     </>
+  );
+}
+
+function EInvoicingSection({
+  einvoicing,
+  canEdit,
+}: {
+  einvoicing: {
+    provider: string | null;
+    autoSend: boolean;
+    syncedAt: string | Date | null;
+    providers: { key: string; label: string; simulated: boolean }[];
+  };
+  canEdit: boolean;
+}) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const set = useMutation(
+    trpc.sales.setEInvoicing.mutationOptions({
+      onSuccess: () => {
+        void queryClient.invalidateQueries(trpc.sales.pathFilter());
+        toast.success("Facture électronique mise à jour.");
+      },
+      onError: (e) => toast.error(errorMessage(e)),
+    }),
+  );
+  const current = einvoicing.providers.find((p) => p.key === einvoicing.provider);
+  return (
+    <SettingsSection
+      id="einvoicing"
+      title="Facture électronique"
+      description="Depuis le 1er septembre 2026, toute entreprise doit pouvoir recevoir des factures électroniques ; à partir du 1er septembre 2027, les PME doivent aussi les émettre via une plateforme agréée. Vos factures sont déjà au format Factur-X : il suffit de les transmettre."
+    >
+      <div className="space-y-4 text-sm">
+        {current ? (
+          <Callout variant={current.simulated ? "info" : "success"} icon={<CheckCircle2Icon />}>
+            {current.simulated
+              ? "Mode essai : les factures suivent le parcours complet (dépôt, statuts), mais rien n'est réellement transmis."
+              : `Raccordé à ${current.label}.`}
+          </Callout>
+        ) : null}
+        <div className="grid grid-cols-2 gap-4">
+          <FormField id="ei-provider" label="Plateforme agréée">
+            <select
+              id="ei-provider"
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={einvoicing.provider ?? ""}
+              disabled={!canEdit || set.isPending}
+              onChange={(e) =>
+                set.mutate({ provider: e.target.value || null, autoSend: einvoicing.autoSend })
+              }
+            >
+              <option value="">Désactivée</option>
+              {einvoicing.providers.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField id="ei-auto" label="Transmettre automatiquement à l'émission">
+            <Switch
+              id="ei-auto"
+              checked={einvoicing.autoSend}
+              disabled={!canEdit || !einvoicing.provider || set.isPending}
+              onCheckedChange={(v) => set.mutate({ provider: einvoicing.provider, autoSend: v })}
+            />
+          </FormField>
+        </div>
+        <p className="text-muted-foreground">
+          Seules les factures et avoirs des clients professionnels (SIREN ou numéro de TVA
+          renseigné) sont transmis ; les ventes aux particuliers relèvent de l&apos;e-reporting. Les
+          factures reçues de vos fournisseurs arrivent dans Achats ; vous pouvez aussi y déposer un
+          PDF Factur-X ou un XML à la main.
+        </p>
+      </div>
+    </SettingsSection>
   );
 }

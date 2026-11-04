@@ -145,7 +145,7 @@ export const integrationsRouter = createTRPCRouter({
     const sent = await enqueueDeliveries(
       ctx.organizationId,
       "ping",
-      { message: "Test de webhook Quercy" },
+      { message: "Test de webhook sebt" },
       input.id,
     );
     return { sent };

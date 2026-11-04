@@ -20,7 +20,8 @@ export const hexColorSchema = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "Couleur attendue au format #RRGGBB");
 
-export const DEFAULT_ACCENT = "#0F6E5E";
+/** Bronze sebt (couleur de la marque), modifiable par chaque entreprise. */
+export const DEFAULT_ACCENT = "#82623A";
 
 export const organizationPreferencesSchema = z.object({
   locale: localeSchema.default("fr"),

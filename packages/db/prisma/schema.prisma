@@ -226,6 +226,8 @@ model Organization {
   slug        String    @unique
   logoUrl     String?
   industry    String?
+  /// Corps de métier (voir TRADE_KEYS dans @quercy/core) : catalogue, mentions et assistant adaptés.
+  trade       String?
   size        String?
   plan        Plan      @default(FREE)
   trialEndsAt DateTime?
@@ -338,6 +340,8 @@ model Organization {
   terrainSettings    TerrainSettings?
 
   @@map("organization")
+  eInvoices EInvoice[]
+  website Website?
 }
 
 /// Rôle : prédéfini (`systemKey` renseigné) ou personnalisé par l'entreprise.
@@ -894,6 +898,7 @@ model SalesDocument {
   @@index([organizationId, companyId])
   @@index([kind, status, dueDate])
   @@map("sales_document")
+  eInvoices EInvoice[]
 }
 
 /// Ligne d'un document commercial. Montants en centimes, taux de TVA en pourcentage.
@@ -969,12 +974,24 @@ model SalesSettings {
   defaultKmCostCents     Int?
   footer                 String?
   latePenaltyText        String?
+  /// Assurance professionnelle (décennale) imprimée sur les devis et factures.
+  insuranceMention       String?
+  /// Ajoute la mention de certification client pour la TVA réduite des travaux (10 % et 5,5 %).
+  renovationVatMention   Boolean  @default(false)
   remindersEnabled       Boolean  @default(true)
   /// Jours après l'échéance où une relance part.
   reminderDays           Int[]    @default([7, 15, 30])
   /// Clés Stripe de l'entreprise (paiement en ligne des factures), chiffrées (AES-256-GCM).
   stripeSecretKeyEnc     String?
   stripeWebhookSecretEnc String?
+  /// Facture électronique : plateforme agréée choisie (null : désactivée ; « sandbox » : essai).
+  einvoicingProvider     String?
+  /// Clé d'API de la plateforme agréée, chiffrée (AES-256-GCM).
+  einvoicingApiKeyEnc    String?
+  /// Transmet automatiquement à l'émission les factures et avoirs des clients professionnels.
+  einvoicingAutoSend     Boolean  @default(true)
+  /// Dernière récupération des factures reçues.
+  einvoicingSyncedAt     DateTime?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -1323,6 +1340,7 @@ model Bill {
 
   @@index([organizationId, deletedAt])
   @@map("bill")
+  eInvoices EInvoice[]
 }
 
 model Expense {
@@ -2865,4 +2883,85 @@ model TerrainSettings {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("terrain_settings")
+}
+
+/// Préréglage de corps de métier, géré par l'équipe dans l'administration (/admin/metiers).
+/// Remplace le préréglage d'origine de même clé (packages/core/src/trades.ts) ou en ajoute un.
+/// Table commune à toute la plateforme : pas d'organizationId.
+model TradePreset {
+  key           String   @id
+  label         String
+  hint          String   @default("")
+  industry      String
+  keywords      String[] @default([])
+  modules       String[] @default([])
+  /// Liste de CatalogItem (nom, unité, prix HT, TVA, catégorie).
+  catalog       Json     @default("[]")
+  decennial     Boolean  @default(false)
+  renovationVat Boolean  @default(false)
+  assistant     String   @default("")
+  active        Boolean  @default(true)
+  position      Int      @default(0)
+  updatedById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+/// Facture électronique transmise (OUT) ou reçue (IN) via une plateforme agréée.
+model EInvoice {
+  id                String    @id @default(cuid())
+  organizationId    String
+  /// OUT (facture ou avoir émis) ou IN (facture fournisseur reçue).
+  direction         String
+  salesDocumentId   String?
+  billId            String?
+  provider          String
+  /// Identifiant de la facture chez la plateforme.
+  providerRef       String?
+  number            String?
+  /// Statut du cycle de vie (voir EINVOICE_STATUSES).
+  status            String    @default("pending")
+  statusAt          DateTime  @default(now())
+  /// Historique des statuts : [{ status, at, message }].
+  history           Json      @default("[]")
+  counterpartyName  String?
+  counterpartySiren String?
+  totalCents        Int       @default(0)
+  /// XML reçu (CII ou UBL), conservé tel quel.
+  xml               String?
+  error             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  salesDocument SalesDocument? @relation(fields: [salesDocumentId], references: [id], onDelete: SetNull)
+  bill          Bill?          @relation(fields: [billId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, direction, status])
+  @@index([salesDocumentId])
+  @@map("e_invoice")
+}
+
+/// Site web d'une entreprise (module « Site web ») : brouillon modifiable et version publiée.
+model Website {
+  id             String    @id @default(cuid())
+  organizationId String    @unique
+  /// Sous-domaine : <slug>.<domaine des sites>.
+  slug           String    @unique
+  /// Noms de domaine personnels rattachés au site.
+  domains        String[]  @default([])
+  /// Apparence (couleurs, typographie) : voir websiteThemeSchema.
+  theme          Json      @default("{}")
+  /// Contenu en cours de modification : voir websiteContentSchema.
+  draft          Json
+  /// Contenu affiché publiquement (null tant que rien n'est publié).
+  published      Json?
+  publishedAt    DateTime?
+  publishedById  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("website")
 }

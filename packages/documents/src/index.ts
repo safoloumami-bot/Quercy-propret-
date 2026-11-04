@@ -1,7 +1,7 @@
 export { type DailySalesResult, runDailySales } from "./daily";
 export { FACTURX_FILENAME, FACTURX_PROFILE, buildFacturXml, countryCode } from "./facturx";
 export { documentEmailHtml, emailDocument, publicDocumentUrl } from "./mail";
-export { renderDocumentPdf, wrap } from "./pdf";
+export { renderDocumentPdf, tradeMentions, wrap } from "./pdf";
 export {
   renderReportPdf,
   type ReportColumn,
@@ -33,3 +33,4 @@ export {
 } from "./service";
 export type { DocumentData, DocumentLine, PartyInfo, SellerInfo } from "./types";
 export { GEIST_REGULAR, GEIST_SEMIBOLD } from "./fonts.generated";
+export * from "./einvoice";

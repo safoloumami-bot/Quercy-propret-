@@ -5,6 +5,9 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@quercy/ui/co
 import { useRouter } from "next/navigation";
 import * as React from "react";
 
+import { ImportEInvoiceButton } from "@/components/purchases/import-einvoice-button";
+import { QuickQuoteButton } from "@/components/sales/quick-quote-dialog";
+
 import { CreateRecordDialog } from "./create-dialog";
 import { DataTable } from "./data-table";
 import { ImportDialog } from "./import-dialog";
@@ -54,6 +57,8 @@ export function EntityListPage({
         <div>
           <h1 className="text-xl font-semibold tracking-tight">{def.labelPlural}</h1>
         </div>
+        {entity === "quote" && permissions.create ? <QuickQuoteButton /> : null}
+        {entity === "bill" && permissions.create ? <ImportEInvoiceButton /> : null}
       </header>
       <div className="min-h-0 flex-1">
         <DataTable

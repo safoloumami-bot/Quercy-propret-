@@ -92,7 +92,7 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
   BUSINESS: {
     key: "BUSINESS",
     name: "Business",
-    tagline: "Tout Quercy, sans limite de modules.",
+    tagline: "Tout sebt, sans limite de modules.",
     monthlyPricePerSeat: 2900,
     limits: {
       maxMembers: null,

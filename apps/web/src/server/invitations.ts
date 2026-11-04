@@ -74,7 +74,7 @@ export async function createInvitations(params: {
     const url = invitationUrl(token);
     const emailSent = await sendEmail({
       to: email,
-      subject: `${inviter.name} vous invite sur Quercy`,
+      subject: `${inviter.name} vous invite sur sebt`,
       react: InvitationEmail({
         url,
         inviterName: inviter.name,

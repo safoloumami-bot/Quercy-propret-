@@ -109,6 +109,7 @@ async function main() {
     update: {
       logoUrl: "/brand/quercy-mark.png",
       industry: "cleaning",
+      trade: "cleaning",
       modules: [...MODULE_KEYS],
       size: "11-50",
       ...DEMO_SUBSCRIPTION,
@@ -118,6 +119,7 @@ async function main() {
       slug: "quercy-proprete",
       logoUrl: "/brand/quercy-mark.png",
       industry: "cleaning",
+      trade: "cleaning",
       size: "11-50",
       ...DEMO_SUBSCRIPTION,
       modules: [...MODULE_KEYS],

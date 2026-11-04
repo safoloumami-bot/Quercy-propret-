@@ -48,7 +48,7 @@ let client: Stripe | null = null;
 export function stripe(): Stripe {
   const key = env().STRIPE_SECRET_KEY;
   if (!key) throw new Error("Stripe n'est pas configuré (STRIPE_SECRET_KEY).");
-  client ??= new Stripe(key, { appInfo: { name: "Quercy" }, maxNetworkRetries: 2 });
+  client ??= new Stripe(key, { appInfo: { name: "sebt" }, maxNetworkRetries: 2 });
   return client;
 }
 

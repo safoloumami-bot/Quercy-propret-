@@ -234,7 +234,7 @@ export default async function PublicDocumentPage({
         ) : null}
 
         <p className="text-center text-xs text-muted-foreground">
-          Document transmis par {data.seller.name} via Quercy.
+          Document transmis par {data.seller.name} via sebt.
         </p>
       </div>
     </main>

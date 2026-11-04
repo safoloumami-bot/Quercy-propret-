@@ -141,11 +141,11 @@ export function openApiDocument(serverUrl: string) {
   return {
     openapi: "3.1.0",
     info: {
-      title: "API Quercy",
+      title: "API sebt",
       version: "1.0.0",
       description:
-        "API REST de Quercy. Authentification : en-tête `Authorization: Bearer <clé>` (clé créée dans Intégrations). La clé agit avec les droits de la personne qui l'a créée ; 600 requêtes par minute. Webhooks : évènements " +
-        `${WEBHOOK_EVENTS.slice(0, 3).join(", ")}… signés par l'en-tête X-Quercy-Signature (t=horodatage,v1=HMAC-SHA256 de « horodatage.corps »).`,
+        "API REST de sebt. Authentification : en-tête `Authorization: Bearer <clé>` (clé créée dans Intégrations). La clé agit avec les droits de la personne qui l'a créée ; 600 requêtes par minute. Webhooks : évènements " +
+        `${WEBHOOK_EVENTS.slice(0, 3).join(", ")}… signés par l'en-tête X-Sebt-Signature (t=horodatage,v1=HMAC-SHA256 de « horodatage.corps »).`,
     },
     servers: [{ url: `${serverUrl}/api/v1` }],
     security: [{ bearer: [] }],

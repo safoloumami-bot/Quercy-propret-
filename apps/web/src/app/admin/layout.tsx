@@ -3,9 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type * as React from "react";
 
+import { AdminNav } from "@/components/admin/admin-nav";
 import { requireUser } from "@/lib/workspace";
 
-/** Espace super-admin : réservé à l'équipe Quercy (user.role = "admin"), hors session d'assistance. */
+/** Espace super-admin : réservé à l'équipe sebt (user.role = "admin"), hors session d'assistance. */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireUser();
   const role = (session.user as { role?: string | null }).role;
@@ -18,14 +19,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="min-h-dvh bg-background">
       <header className="flex h-12 items-center justify-between border-b border-border px-6">
         <div className="flex items-center gap-2.5">
-          <Image
-            src="/brand/quercy-mark.png"
-            alt=""
-            width={22}
-            height={22}
-            className="rounded-md"
-          />
-          <span className="font-semibold tracking-tight">Quercy · Administration</span>
+          <Image src="/brand/sebt-mark.png" alt="" width={22} height={22} className="rounded-md" />
+          <span className="font-semibold tracking-tight">sebt · Administration</span>
+          <span className="mx-2 h-4 w-px bg-border" aria-hidden />
+          <AdminNav />
         </div>
         <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
           Retour à mon espace

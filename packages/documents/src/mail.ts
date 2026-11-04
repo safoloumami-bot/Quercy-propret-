@@ -1,4 +1,4 @@
-import { DOCUMENT_TITLES, type DocumentKind, formatCents } from "@quercy/core";
+import { DOCUMENT_TITLES, type DocumentKind, formatCents, reminderMessage } from "@quercy/core";
 import { prisma } from "@quercy/db";
 import { sendMail } from "@quercy/mailer";
 
@@ -97,7 +97,7 @@ export async function emailDocument(input: {
     now,
   });
   const title = DOCUMENT_TITLES[kind];
-  const sender = data.seller.name || "Quercy";
+  const sender = data.seller.name || "sebt";
 
   const facts: [string, string][] = [[title, doc.number ?? ""]];
   if (kind === "INVOICE") {
@@ -117,14 +117,28 @@ export async function emailDocument(input: {
     CREDIT_NOTE: `Bonjour,\n\nVeuillez trouver ci-joint l'avoir ${doc.number}.\n\nCordialement,\n${sender}`,
     RECURRING: "",
   };
-  const reminder = `Bonjour,\n\nSauf erreur de notre part, la facture ${doc.number} arrivée à échéance le ${
-    doc.dueDate ? dateFmt.format(doc.dueDate) : ""
-  } n'a pas encore été réglée (reste dû : ${formatCents(doc.dueCents)}).\n\nSi le règlement est en cours, merci de ne pas tenir compte de ce message.\n\nCordialement,\n${sender}`;
+  let reminder: ReturnType<typeof reminderMessage> | null = null;
+  if (mode === "reminder") {
+    const settings = await prisma.salesSettings.findUnique({
+      where: { organizationId: input.organizationId },
+      select: { reminderDays: true },
+    });
+    reminder = reminderMessage({
+      step: doc.reminderCount + 1,
+      total: Math.max(1, settings?.reminderDays.length ?? 3),
+      number: doc.number ?? "",
+      dueDate: doc.dueDate ? dateFmt.format(doc.dueDate) : "",
+      due: formatCents(doc.dueCents),
+      sender,
+      // Client professionnel identifié (SIREN ou TVA) : rappel des pénalités et de l'indemnité.
+      business: Boolean(doc.company?.siren || doc.company?.vatNumber),
+    });
+  }
 
   const content = {
     sender,
-    heading: mode === "reminder" ? `Relance : facture ${doc.number}` : `${title} ${doc.number}`,
-    message: input.message?.trim() || (mode === "reminder" ? reminder : defaults[kind]),
+    heading: reminder ? reminder.heading : `${title} ${doc.number}`,
+    message: input.message?.trim() || (reminder ? reminder.message : defaults[kind]),
     facts,
     buttonLabel:
       kind === "INVOICE"
@@ -136,10 +150,7 @@ export async function emailDocument(input: {
   };
   await sendMail({
     to: input.to,
-    subject:
-      mode === "reminder"
-        ? `Relance — facture ${doc.number} (${sender})`
-        : `${title} ${doc.number} — ${sender}`,
+    subject: reminder ? reminder.subject : `${title} ${doc.number} — ${sender}`,
     html: documentEmailHtml(content),
     text: plain(content),
     replyTo: input.replyTo ?? data.seller.email ?? undefined,

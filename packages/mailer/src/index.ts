@@ -83,7 +83,7 @@ export async function sendMail(message: MailMessage): Promise<void> {
   if (key) {
     resend ??= new Resend(key);
     const { error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM ?? "Quercy <no-reply@quercy.app>",
+      from: process.env.EMAIL_FROM ?? "sebt <no-reply@sebt.cloud>",
       to: message.to,
       subject: message.subject,
       html: message.html,

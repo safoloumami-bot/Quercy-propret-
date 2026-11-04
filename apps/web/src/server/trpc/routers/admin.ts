@@ -1,14 +1,20 @@
 import {
+  DEFAULT_TRADE_PRESETS,
+  GENERAL_TRADE_KEY,
+  INDUSTRIES,
   type PlanKey,
   type SubscriptionStatus,
   billingState,
   monthlyRecurringRevenue,
+  tradePresetInputSchema,
+  tradeSlugSchema,
 } from "@quercy/core";
 import { prisma } from "@quercy/db";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { runStripeEvent } from "../../billing/webhook";
+import { clearTradePresetCache, listTradePresets } from "../../trade-presets";
 import { authedProcedure, createTRPCRouter } from "../init";
 
 /** Réservé au propriétaire du SaaS (user.role = "admin"), jamais pendant une session d'assistance. */
@@ -18,7 +24,7 @@ const adminProcedure = authedProcedure.use(({ ctx, next }) => {
     (ctx.session.session as { impersonatedBy?: string | null }).impersonatedBy,
   );
   if (role !== "admin" || impersonating) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Espace réservé à l'équipe Quercy." });
+    throw new TRPCError({ code: "FORBIDDEN", message: "Espace réservé à l'équipe sebt." });
   }
   return next();
 });
@@ -136,5 +142,80 @@ export const adminRouter = createTRPCRouter({
       if (!event) throw new TRPCError({ code: "NOT_FOUND", message: "Événement introuvable." });
       if (event.status === "PROCESSED") return { result: "processed" as const };
       return { result: await runStripeEvent(input.id) };
+    }),
+
+  /* ───────────── Corps de métier (préréglages proposés aux entreprises) ───────────── */
+
+  /** Tous les préréglages, actifs ou non, avec le nombre d'espaces qui les utilisent. */
+  tradePresets: adminProcedure.query(async () => {
+    clearTradePresetCache();
+    const [presets, usage] = await Promise.all([
+      listTradePresets(),
+      prisma.organization.groupBy({
+        by: ["trade"],
+        where: { deletedAt: null },
+        _count: { _all: true },
+      }),
+    ]);
+    const count = new Map(usage.map((u) => [u.trade ?? GENERAL_TRADE_KEY, u._count._all]));
+    return presets.map((p) => ({ ...p, organizations: count.get(p.key) ?? 0 }));
+  }),
+
+  /**
+   * Enregistre un préréglage (création ou modification). Les espaces déjà créés gardent leur
+   * catalogue : le préréglage sert aux nouveaux espaces et quand une entreprise choisit son
+   * métier ; l'assistant IA, lui, suit immédiatement le nouveau texte.
+   */
+  saveTradePreset: adminProcedure
+    .input(tradePresetInputSchema.extend({ isNew: z.boolean().default(false) }))
+    .mutation(async ({ ctx, input }) => {
+      const { isNew, ...data } = input;
+      if (!INDUSTRIES.some((i) => i.value === data.industry)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Secteur d'activité inconnu." });
+      }
+      if (isNew) {
+        const taken = (await listTradePresets()).some((p) => p.key === data.key);
+        if (taken) {
+          throw new TRPCError({ code: "CONFLICT", message: "Cet identifiant est déjà utilisé." });
+        }
+      }
+      const keywords = [...new Set(data.keywords.map((k) => k.trim()).filter(Boolean))];
+      const values = {
+        ...data,
+        keywords,
+        active: data.key === GENERAL_TRADE_KEY ? true : data.active,
+        catalog: data.catalog.map((c) => ({ ...c, description: c.description || undefined })),
+        updatedById: ctx.user.id,
+      };
+      await prisma.tradePreset.upsert({
+        where: { key: data.key },
+        create: values,
+        update: values,
+      });
+      clearTradePresetCache();
+      return { key: data.key };
+    }),
+
+  /**
+   * Préréglage d'origine : revient à la version livrée avec le logiciel.
+   * Préréglage ajouté par l'équipe : le supprime s'il n'est utilisé par aucun espace
+   * (sinon, il faut le désactiver).
+   */
+  resetTradePreset: adminProcedure
+    .input(z.object({ key: tradeSlugSchema }))
+    .mutation(async ({ input }) => {
+      const builtin = DEFAULT_TRADE_PRESETS.some((p) => p.key === input.key);
+      if (!builtin) {
+        const used = await prisma.organization.count({ where: { trade: input.key } });
+        if (used > 0) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `Utilisé par ${used} espace${used > 1 ? "s" : ""} : désactivez-le plutôt.`,
+          });
+        }
+      }
+      await prisma.tradePreset.deleteMany({ where: { key: input.key } });
+      clearTradePresetCache();
+      return { result: builtin ? ("reset" as const) : ("deleted" as const) };
     }),
 });

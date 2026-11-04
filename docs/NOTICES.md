@@ -2,6 +2,27 @@
 
 Une notice courte par lot, pour un utilisateur non technicien.
 
+## Corps de métier
+
+À la création de votre espace, décrivez votre activité en quelques mots (« plombier à
+Toulouse ») ou choisissez votre **métier** (nettoyage, plomberie, électricité,
+maçonnerie, peinture, menuiserie, couverture, paysage, multiservice). Le logiciel active les
+modules utiles, remplit votre **catalogue** avec des prestations types (prix et TVA à ajuster)
+et prépare vos **devis** : la mention de votre assurance décennale et, pour les travaux dans
+un logement de plus de deux ans, la mention de TVA réduite que votre client certifie en
+signant. Vous pouvez choisir ou changer de métier plus tard dans **Réglages › Général**.
+
+Pensez à compléter la mention d'assurance dans **Ventes › Paramètres › Mentions des
+travaux** (nom et adresse de l'assureur, couverture géographique). L'**assistant IA** connaît
+désormais les règles de votre métier : demandez-lui par exemple quel taux de TVA appliquer à
+un chantier, ou de vérifier un devis avant de l'envoyer.
+
+**Pour l'équipe** : la liste des métiers se règle dans **Administration › Corps de métier**
+(sans toucher au code) : mots qui reconnaissent le métier, modules conseillés, prestations
+types, mentions des devis, consignes de l'assistant. « Autre activité » y est la base de
+départ des entreprises dont le métier n'est pas reconnu. Les espaces déjà créés gardent leur
+catalogue ; l'assistant suit tout de suite les nouvelles consignes.
+
 ## Lot 7 — Matériel, véhicules, stock et location
 
 Dans le menu **Matériel & véhicules**, chaque machine a sa fiche : où elle est (au dépôt,
@@ -64,3 +85,18 @@ envoie les demandes de devis (ligne `var APP`) par l'adresse du logiciel suivie 
 `/terrain/quercy-proprete/api/demande`.
 Pour les notifications : ouvrir l'application installée sur l'écran d'accueil, puis
 Mon compte › Notifications.
+
+## Facture électronique
+
+Dans **Ventes › Paramètres › Facture électronique**, choisissez votre plateforme agréée : vos
+factures et avoirs émis pour des clients professionnels partent alors automatiquement, au
+format Factur-X, et leur statut (déposée, approuvée, encaissée…) s'affiche sur chaque facture.
+Le **mode essai** permet de découvrir le parcours sans rien transmettre. Les factures de vos
+fournisseurs arrivent dans **Achats** ; vous pouvez aussi y déposer un PDF Factur-X ou un XML
+reçu par email : montants, dates et fournisseur sont lus dans le fichier.
+
+## Relances et devis express
+
+Les relances d'impayés montent en ton à chaque palier, jusqu'à une dernière relance avant
+recouvrement. Dans **Ventes › Devis**, « Devis express » : décrivez le chantier en une phrase,
+l'assistant prépare le devis avec vos prix, vous le vérifiez avant qu'il soit créé.

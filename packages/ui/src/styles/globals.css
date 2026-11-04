@@ -1,5 +1,5 @@
 /*
- * Design system Quercy — source unique des jetons (couleurs, rayons, ombres, typographie).
+ * Design system sebt — source unique des jetons (couleurs, rayons, ombres, typographie).
  * Aucune couleur ne doit être écrite en dur dans les écrans : utiliser ces jetons via Tailwind
  * (bg-background, text-muted-foreground, border-border, bg-primary…).
  *
@@ -14,11 +14,11 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  /* Accent d'entreprise (valeurs par défaut : vert Quercy), surchargé par l'espace. */
-  --brand: #0f6e5e;
+  /* Accent d'entreprise (valeurs par défaut : bronze sebt), surchargé par l'espace. */
+  --brand: #82623a;
   --brand-foreground: #ffffff;
-  --brand-dark: #2ad3b5;
-  --brand-dark-foreground: #0a0f0e;
+  --brand-dark: #e2c99f;
+  --brand-dark-foreground: #1f1b16;
 
   --radius: 0.5rem;
 }
@@ -26,20 +26,20 @@
 /* Thème clair ; `.light` permet d'afficher un bloc en clair à l'intérieur du thème sombre. */
 :root,
 .light {
-  --background: oklch(0.992 0.002 170);
-  --foreground: oklch(0.2 0.015 175);
+  --background: oklch(0.988 0.006 80);
+  --foreground: oklch(0.2 0.02 75);
   --card: oklch(1 0 0);
   --card-foreground: var(--foreground);
   --popover: oklch(1 0 0);
   --popover-foreground: var(--foreground);
   --primary: var(--brand);
   --primary-foreground: var(--brand-foreground);
-  --secondary: oklch(0.962 0.005 170);
-  --secondary-foreground: oklch(0.25 0.015 175);
-  --muted: oklch(0.965 0.004 170);
-  --muted-foreground: oklch(0.49 0.014 175);
-  --accent: oklch(0.955 0.008 170);
-  --accent-foreground: oklch(0.22 0.015 175);
+  --secondary: oklch(0.962 0.01 75);
+  --secondary-foreground: oklch(0.25 0.02 75);
+  --muted: oklch(0.965 0.008 75);
+  --muted-foreground: oklch(0.49 0.02 75);
+  --accent: oklch(0.955 0.015 75);
+  --accent-foreground: oklch(0.22 0.02 75);
   --destructive: oklch(0.53 0.19 27);
   --destructive-foreground: oklch(0.99 0 0);
   --success: oklch(0.52 0.12 160);
@@ -53,23 +53,24 @@
   --warning-text: oklch(0.46 0.11 65);
   --info-text: oklch(0.45 0.14 250);
   --destructive-text: oklch(0.47 0.19 27);
-  --border: oklch(0.915 0.006 170);
-  --input: oklch(0.88 0.008 170);
+  --border: oklch(0.915 0.012 75);
+  --input: oklch(0.88 0.015 75);
   --ring: var(--primary);
   --selection: color-mix(in oklch, var(--primary) 18%, transparent);
 
-  --sidebar: oklch(0.978 0.004 170);
-  --sidebar-foreground: oklch(0.3 0.015 175);
-  --sidebar-accent: oklch(0.935 0.008 170);
-  --sidebar-accent-foreground: oklch(0.2 0.015 175);
-  --sidebar-border: oklch(0.92 0.006 170);
+  --sidebar: oklch(0.978 0.008 75);
+  --sidebar-foreground: oklch(0.3 0.02 75);
+  --sidebar-accent: oklch(0.935 0.015 75);
+  --sidebar-accent-foreground: oklch(0.2 0.02 75);
+  --sidebar-border: oklch(0.92 0.012 75);
 
   --chart-1: var(--primary);
-  --chart-2: oklch(0.6 0.15 250);
+  /* Sable sebt : se distingue du bronze par la clarté. */
+  --chart-2: oklch(0.78 0.07 80);
   --chart-3: oklch(0.7 0.14 70);
   --chart-4: oklch(0.6 0.18 330);
   --chart-5: oklch(0.62 0.13 200);
-  --chart-6: oklch(0.55 0.02 175);
+  --chart-6: oklch(0.55 0.02 75);
 
   --shadow-xs: 0 1px 2px 0 oklch(0.2 0.02 175 / 0.05);
   --shadow-sm: 0 1px 3px 0 oklch(0.2 0.02 175 / 0.07), 0 1px 2px -1px oklch(0.2 0.02 175 / 0.06);
@@ -90,16 +91,16 @@
   --ring: var(--primary);
   --chart-1: var(--primary);
 
-  --background: oklch(0.165 0.008 190);
-  --foreground: oklch(0.94 0.006 170);
-  --card: oklch(0.195 0.009 190);
-  --popover: oklch(0.215 0.01 190);
-  --secondary: oklch(0.25 0.01 190);
-  --secondary-foreground: oklch(0.94 0.006 170);
-  --muted: oklch(0.235 0.01 190);
-  --muted-foreground: oklch(0.72 0.012 175);
-  --accent: oklch(0.26 0.012 190);
-  --accent-foreground: oklch(0.96 0.006 170);
+  --background: oklch(0.165 0.01 65);
+  --foreground: oklch(0.94 0.01 80);
+  --card: oklch(0.195 0.011 65);
+  --popover: oklch(0.215 0.012 65);
+  --secondary: oklch(0.25 0.012 65);
+  --secondary-foreground: oklch(0.94 0.01 80);
+  --muted: oklch(0.235 0.012 65);
+  --muted-foreground: oklch(0.72 0.016 80);
+  --accent: oklch(0.26 0.014 65);
+  --accent-foreground: oklch(0.96 0.01 80);
   --destructive: oklch(0.7 0.16 27);
   --destructive-foreground: oklch(0.18 0.03 27);
   --success: oklch(0.74 0.13 160);
@@ -112,21 +113,21 @@
   --warning-text: var(--warning);
   --info-text: var(--info);
   --destructive-text: var(--destructive);
-  --border: oklch(0.28 0.01 190);
-  --input: oklch(0.33 0.012 190);
+  --border: oklch(0.28 0.012 65);
+  --input: oklch(0.33 0.014 65);
   --selection: color-mix(in oklch, var(--primary) 28%, transparent);
 
-  --sidebar: oklch(0.145 0.008 190);
-  --sidebar-foreground: oklch(0.82 0.01 175);
-  --sidebar-accent: oklch(0.235 0.011 190);
-  --sidebar-accent-foreground: oklch(0.97 0.005 170);
-  --sidebar-border: oklch(0.24 0.01 190);
+  --sidebar: oklch(0.145 0.01 65);
+  --sidebar-foreground: oklch(0.82 0.014 80);
+  --sidebar-accent: oklch(0.235 0.013 65);
+  --sidebar-accent-foreground: oklch(0.97 0.009 80);
+  --sidebar-border: oklch(0.24 0.012 65);
 
-  --chart-2: oklch(0.72 0.13 250);
+  --chart-2: oklch(0.58 0.08 65);
   --chart-3: oklch(0.8 0.13 75);
   --chart-4: oklch(0.72 0.16 330);
   --chart-5: oklch(0.75 0.11 200);
-  --chart-6: oklch(0.7 0.02 175);
+  --chart-6: oklch(0.7 0.024 80);
 
   --shadow-xs: 0 1px 2px 0 oklch(0 0 0 / 0.3);
   --shadow-sm: 0 1px 3px 0 oklch(0 0 0 / 0.35), 0 1px 2px -1px oklch(0 0 0 / 0.3);
