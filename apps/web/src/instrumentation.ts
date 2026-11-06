@@ -12,7 +12,6 @@ export async function register() {
       dsn,
       environment: process.env.CONTEXT ?? process.env.NODE_ENV,
       tracesSampleRate: 0.1,
-      sendDefaultPii: false,
     });
   }
 }
