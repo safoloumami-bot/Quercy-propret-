@@ -1,7 +1,14 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
+
 /** Dernier filet de sécurité : erreur dans le layout racine lui-même. */
-export default function GlobalError({ reset }: { error: Error; reset: () => void }) {
+export default function GlobalError({ error, reset }: { error: Error; reset: () => void }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <html lang="fr">
       <body style={{ fontFamily: "system-ui, sans-serif", padding: 48, textAlign: "center" }}>
