@@ -6,6 +6,13 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  // Politique de contenu sans risque de casser l'application : interdit l'intégration dans un
+  // autre site (clickjacking), les plugins (<object>, <embed>), le détournement de <base> et
+  // force le HTTPS des ressources. Les scripts restent gérés par Next.js.
+  {
+    key: "Content-Security-Policy",
+    value: "frame-ancestors 'self'; object-src 'none'; base-uri 'self'; upgrade-insecure-requests",
+  },
 ];
 
 const config: NextConfig = {

@@ -157,6 +157,11 @@ function createAuth() {
       enabled: e.NODE_ENV === "production" && e.AUTH_RATE_LIMIT === "on",
       window: 60,
       max: 100,
+      // Compteurs en base (table rate_limit) : sur Netlify, chaque requête peut tomber sur une
+      // instance différente, une limite en mémoire laisserait passer les essais en boucle.
+      // Les règles plus strictes de better-auth (connexion, réinitialisation) s'appliquent aussi.
+      storage: "database",
+      modelName: "rateLimit",
     },
     plugins: [
       twoFactor({ issuer: "sebt" }),
