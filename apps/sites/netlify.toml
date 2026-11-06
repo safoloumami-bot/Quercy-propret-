@@ -1,0 +1,20 @@
+# Moteur des sites clients sur Netlify (projet distinct du logiciel).
+# Dans Netlify : « Base directory » vide, « Package directory » = apps/sites.
+[build]
+  command = "pnpm --filter @quercy/sites... build"
+  publish = "apps/sites/.next"
+  # Économie du quota : seules les mises en ligne de production sont construites (les
+  # aperçus et les branches sont annulés avant construction, comme pour le logiciel).
+  ignore = "bash scripts/netlify-ignore.sh"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Moteur Next.js de Netlify (pages dynamiques, middleware, API).
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Pas de fonctions planifiées ici : la tâche quotidienne appartient au logiciel.
+[functions]
+  directory = "apps/sites/netlify/functions"
