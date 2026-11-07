@@ -64,6 +64,7 @@ import { COULEURS, PRESTATIONS, entrepriseConf, saveEntreprise } from "./config"
 import { handleGestion, hasAgentPhoto, journal, receiveQuoteRequest, teamOf } from "./gestion";
 import { type Body, HttpError, type Me, fail, json, str, txt } from "./http";
 import { type TerrainOrgRow, terrainBrandOf } from "./org";
+import { TERRAIN_ACCENT, agentColor } from "./brand";
 import { clearDemo, clearExamples, newChantiers, seedDemo, seedExamples } from "./planning";
 import { patronIds, sendPush } from "./push";
 import {
@@ -114,7 +115,7 @@ async function publicMe(org: TerrainOrgRow, me: Me) {
     nom: me.nom,
     code: me.code,
     role: me.role,
-    couleur: access?.color ?? "#009C84",
+    couleur: agentColor(access?.color),
     photo: await hasAgentPhoto(org.id, me.id),
   };
 }
@@ -809,7 +810,7 @@ export async function handleTerrainApi(
           userId: membership.userId,
           code: "patron",
           role: "patron",
-          color: "#009C84",
+          color: TERRAIN_ACCENT,
           ...newPin(pin),
         },
       });

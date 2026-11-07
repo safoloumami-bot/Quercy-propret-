@@ -112,28 +112,28 @@ describe("marque convertible", () => {
     expect(html).not.toMatch(/Quercy Propreté|terrain-quercy/);
     expect(html).toContain(`<base href="/terrain/${slug}/">`);
     expect(html).toContain(`var BASE = T.base+"api/";`);
-    // Sans logo : l'icône dessinée aux couleurs de l'entreprise sert de logo.
-    expect(html).toContain(`src="/terrain/${slug}/icone/512"`);
+    // Application « sebt Terrain » : logo et icônes de sebt.
+    expect(html).toContain(`src="/app/icone-512.png"`);
     expect(html).toContain(`"base":"/terrain/${slug}/"`);
     expect(initials("Quercy Propreté")).toBe("QP");
     expect(initials("Net'Éclat Services")).toBe("NE");
     const manifest = terrainManifest(brand);
     expect(manifest.start_url).toBe(`/terrain/${slug}`);
     expect(manifest.scope).toBe(`/terrain/${slug}`);
-    expect(manifest.icons[0]!.src).toBe(`/terrain/${slug}/icone/192`);
+    expect(manifest.icons[0]!.src).toBe("/app/icone-192.png");
+    expect(manifest.short_name).toBe("sebt Terrain");
   });
 
-  it("garde le vert d'origine, ou prend la couleur choisie par l'entreprise", async () => {
-    const before = terrainBrandOf((await terrainOrg(slug))!);
-    expect(before.accent).toBe("#009C84");
-    expect(renderTerrainPage(before)).not.toContain("<style>\n:root{--acc:");
+  it("garde les couleurs de sebt, même si l'entreprise a choisi une autre couleur", async () => {
     await prisma.organization.update({
       where: { id: orgId },
       data: { preferences: { accentColor: "#7C3AED" } },
     });
-    const after = terrainBrandOf((await terrainOrg(slug))!);
-    expect(after.customAccent).toBe(true);
-    expect(renderTerrainPage(after)).toContain(`--acc:${after.accent}`);
+    const brand = terrainBrandOf((await terrainOrg(slug))!);
+    expect(brand.accent).toBe("#82623A");
+    const html = renderTerrainPage(brand);
+    expect(html).toContain("--acc:#82623A");
+    expect(html).not.toContain("#7C3AED");
     await prisma.organization.update({ where: { id: orgId }, data: { preferences: {} } });
   });
 

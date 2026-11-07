@@ -27,7 +27,7 @@ export default async function InstallPage({
       name={terrain ? "sebt Terrain" : "sebt"}
       path={terrain ? `/terrain/${slug}` : "/"}
       apk={`${APK_BASE}/${terrain ? "sebt-terrain.apk" : "sebt.apk"}`}
-      icon={terrain ? "/terrain-quercy/icone-192.png" : "/app/icone-192.png"}
+      icon={"/app/icone-192.png"}
     />
   );
 }

@@ -19,6 +19,7 @@ import {
 } from "./chantier";
 import { entrepriseConf } from "./config";
 import { type Body, HttpError, type Me, isDay, isMonth, json, txt } from "./http";
+import { agentColor } from "./brand";
 import type { TerrainOrgRow } from "./org";
 import { patronIds, sendPush } from "./push";
 
@@ -426,7 +427,7 @@ export async function handleGestion(route: string, ctx: GestionCtx): Promise<Res
         ? {
             id: target,
             nom: access.user.name,
-            couleur: access.color ?? "",
+            couleur: access.color ? agentColor(access.color) : "",
             photo: await hasAgentPhoto(org.id, target),
             tel: access.phone ?? "",
           }
@@ -1069,7 +1070,9 @@ export async function teamOf(organizationId: string) {
     code: a.code,
     role: a.role === "patron" ? "patron" : "agent",
     actif: a.active,
-    couleur: a.color ?? ["#009C84", "#B07B2A", "#3C6E9F", "#8A5B9E", "#B8553C", "#4C8C4A"][i % 6]!,
+    couleur: a.color
+      ? agentColor(a.color)
+      : ["#82623A", "#B07B2A", "#3C6E9F", "#8A5B9E", "#B8553C", "#4C8C4A"][i % 6]!,
     tel: a.phone ?? "",
     photo: withPhoto.has(a.userId),
     exemple: a.sample,

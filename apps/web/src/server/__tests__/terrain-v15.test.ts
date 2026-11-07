@@ -123,7 +123,7 @@ describe("état de l'application (v15)", () => {
     expect(etat.moi).toMatchObject({
       code: "patron",
       role: "patron",
-      couleur: "#009C84",
+      couleur: "#82623A",
       photo: false,
     });
     expect(etat.modeles).toEqual([
