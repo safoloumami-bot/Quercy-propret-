@@ -8,6 +8,8 @@ const PUBLIC_PREFIXES = [
   "/reinitialiser",
   "/invitation",
   "/document",
+  // Guide d'installation sur téléphone, à envoyer aux équipes.
+  "/installer",
   "/api",
   // Application terrain des agents : sa propre connexion (identifiant + code).
   "/terrain",

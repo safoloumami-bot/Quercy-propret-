@@ -19,6 +19,7 @@ import { cn } from "@quercy/ui/lib/utils";
 import {
   KeyboardIcon,
   LogOutIcon,
+  SmartphoneIcon,
   MonitorIcon,
   MoonIcon,
   ShieldCheckIcon,
@@ -110,6 +111,12 @@ export function UserMenu({
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+        <DropdownMenuItem asChild>
+          <Link href="/installer" target="_blank">
+            <SmartphoneIcon />
+            Installer l&apos;appli sur téléphone
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => setHelpOpen(true)}>
           <KeyboardIcon />
           Raccourcis clavier

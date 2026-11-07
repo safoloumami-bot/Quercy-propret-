@@ -26,7 +26,12 @@ export default async function FieldAppPage() {
   if (!grantedScope(role.permissions, "cleaning", "view")) return <Forbidden what="à ce module" />;
 
   const url = new URL(`/terrain/${organization.slug}`, env().APP_URL).toString();
-  const qr = await QRCode.toDataURL(url, { margin: 1, width: 360 });
+  // Le QR code ouvre le guide d'installation (iPhone, Samsung), qui mène à l'application.
+  const guide = new URL(
+    `/installer?appli=terrain&e=${organization.slug}`,
+    env().APP_URL,
+  ).toString();
+  const qr = await QRCode.toDataURL(guide, { margin: 1, width: 360 });
   const accesses = await prisma.fieldAccess.findMany({
     where: { organizationId: organization.id },
     include: { user: { select: { name: true } } },
@@ -57,6 +62,17 @@ export default async function FieldAppPage() {
             >
               {url}
             </a>
+            <p className="text-sm">
+              Guide d&apos;installation à envoyer aux agents (iPhone et Samsung) :{" "}
+              <a
+                href={guide}
+                target="_blank"
+                rel="noopener"
+                className="font-medium break-all text-primary underline-offset-4 hover:underline"
+              >
+                {guide}
+              </a>
+            </p>
             <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
               <li>
                 Première fois : ouvrez ce lien en étant connecté ici avec un compte administrateur,
@@ -80,9 +96,9 @@ export default async function FieldAppPage() {
         </Card>
         <Card className="items-center justify-center p-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qr} alt={`QR code vers ${url}`} width={180} height={180} />
+          <img src={qr} alt={`QR code vers ${guide}`} width={180} height={180} />
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            À scanner avec le téléphone
+            À scanner avec le téléphone : guide d&apos;installation
           </p>
         </Card>
       </div>
