@@ -131,6 +131,7 @@ export function Topbar() {
             <Button
               variant="ghost"
               size="icon"
+              className="max-md:hidden"
               onClick={() => setHelpOpen(true)}
               aria-label="Raccourcis clavier"
             >

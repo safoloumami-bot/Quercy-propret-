@@ -178,7 +178,7 @@ export function PlanningBoard({ canManage }: { canManage: boolean }) {
             ))}
           </select>
         ) : null}
-        <div className="ml-auto flex gap-2">
+        <div className="flex flex-wrap gap-2 sm:ml-auto">
           {canManage ? (
             <Button
               variant="secondary"

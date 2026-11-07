@@ -261,7 +261,7 @@ export function DashboardGrid() {
 
   if (dashboard.isPending || !items) {
     return (
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 8 }, (_, i) => (
           <Skeleton key={i} className="h-40" />
         ))}
@@ -287,6 +287,104 @@ export function DashboardGrid() {
       minH: def?.minSize.h,
     };
   });
+
+  const renderItem = (item: DashboardItem, style?: React.CSSProperties) => {
+    const def = widgetByKey(item.widget);
+    const configurable = item.widget === "objective" || item.widget === "report";
+    return (
+      <section
+        key={item.i}
+        style={style}
+        aria-label={widgetTitle(item.widget, item.config, reports)}
+        className={cn(
+          "flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs",
+          editing && "ring-2 ring-primary/20",
+        )}
+      >
+        <header className="flex items-center gap-1 px-4 pt-3 pb-2">
+          {editing ? (
+            <GripVerticalIcon
+              className="widget-handle size-4 cursor-grab text-muted-foreground"
+              aria-hidden
+            />
+          ) : null}
+          <h2 className="min-w-0 flex-1 truncate text-sm font-medium text-muted-foreground">
+            {widgetTitle(item.widget, item.config, reports)}
+          </h2>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Options du widget ${def?.label ?? ""}`}
+              >
+                <MoreHorizontalIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {configurable ? (
+                <DropdownMenuItem onSelect={() => setConfiguring(item)}>
+                  <Settings2Icon />
+                  Configurer
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem onSelect={() => persist(moveItem(items, item.i, -1))}>
+                <ArrowUpIcon />
+                Monter
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => persist(moveItem(items, item.i, 1))}>
+                <ArrowDownIcon />
+                Descendre
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  persist(
+                    items.map((i) =>
+                      i.i === item.i
+                        ? {
+                            ...i,
+                            w: Math.min(COLS, i.w + 3),
+                            x: Math.min(i.x, COLS - Math.min(COLS, i.w + 3)),
+                          }
+                        : i,
+                    ),
+                  )
+                }
+              >
+                <MaximizeIcon />
+                Élargir
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  persist(
+                    items.map((i) =>
+                      i.i === item.i ? { ...i, w: Math.max(def?.minSize.w ?? 2, i.w - 3) } : i,
+                    ),
+                  )
+                }
+              >
+                <MinimizeIcon />
+                Réduire
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => persist(items.filter((i) => i.i !== item.i))}>
+                <Trash2Icon />
+                Retirer du tableau de bord
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </header>
+        <div className="min-h-0 flex-1 px-4 pb-4">
+          <WidgetBody widget={item.widget} period={period} config={item.config} />
+        </div>
+      </section>
+    );
+  };
+
+  // Sur téléphone : une colonne, dans l'ordre du tableau de bord (la grille à 12 colonnes
+  // rendrait les widgets illisibles), sans glisser-déposer.
+  const narrow = width > 0 && width < 640;
+  const stacked = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
 
   return (
     <div className="space-y-4">
@@ -315,7 +413,12 @@ export function DashboardGrid() {
               </Button>
             </>
           ) : (
-            <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="max-sm:hidden"
+              onClick={() => setEditing(true)}
+            >
               <LayoutGridIcon />
               Personnaliser
             </Button>
@@ -341,7 +444,13 @@ export function DashboardGrid() {
       ) : null}
 
       <div ref={containerRef}>
-        {width > 0 ? (
+        {narrow ? (
+          <div className="flex flex-col gap-4">
+            {stacked.map((item) =>
+              renderItem(item, { height: Math.max(2, Math.min(item.h, 5)) * 76 + 16 }),
+            )}
+          </div>
+        ) : width > 0 ? (
           <ReactGridLayout
             width={width}
             layout={layout}
@@ -359,101 +468,7 @@ export function DashboardGrid() {
               );
             }}
           >
-            {items.map((item) => {
-              const def = widgetByKey(item.widget);
-              const configurable = item.widget === "objective" || item.widget === "report";
-              return (
-                <section
-                  key={item.i}
-                  aria-label={widgetTitle(item.widget, item.config, reports)}
-                  className={cn(
-                    "flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs",
-                    editing && "ring-2 ring-primary/20",
-                  )}
-                >
-                  <header className="flex items-center gap-1 px-4 pt-3 pb-2">
-                    {editing ? (
-                      <GripVerticalIcon
-                        className="widget-handle size-4 cursor-grab text-muted-foreground"
-                        aria-hidden
-                      />
-                    ) : null}
-                    <h2 className="min-w-0 flex-1 truncate text-sm font-medium text-muted-foreground">
-                      {widgetTitle(item.widget, item.config, reports)}
-                    </h2>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Options du widget ${def?.label ?? ""}`}
-                        >
-                          <MoreHorizontalIcon />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {configurable ? (
-                          <DropdownMenuItem onSelect={() => setConfiguring(item)}>
-                            <Settings2Icon />
-                            Configurer
-                          </DropdownMenuItem>
-                        ) : null}
-                        <DropdownMenuItem onSelect={() => persist(moveItem(items, item.i, -1))}>
-                          <ArrowUpIcon />
-                          Monter
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => persist(moveItem(items, item.i, 1))}>
-                          <ArrowDownIcon />
-                          Descendre
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() =>
-                            persist(
-                              items.map((i) =>
-                                i.i === item.i
-                                  ? {
-                                      ...i,
-                                      w: Math.min(COLS, i.w + 3),
-                                      x: Math.min(i.x, COLS - Math.min(COLS, i.w + 3)),
-                                    }
-                                  : i,
-                              ),
-                            )
-                          }
-                        >
-                          <MaximizeIcon />
-                          Élargir
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() =>
-                            persist(
-                              items.map((i) =>
-                                i.i === item.i
-                                  ? { ...i, w: Math.max(def?.minSize.w ?? 2, i.w - 3) }
-                                  : i,
-                              ),
-                            )
-                          }
-                        >
-                          <MinimizeIcon />
-                          Réduire
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onSelect={() => persist(items.filter((i) => i.i !== item.i))}
-                        >
-                          <Trash2Icon />
-                          Retirer du tableau de bord
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </header>
-                  <div className="min-h-0 flex-1 px-4 pb-4">
-                    <WidgetBody widget={item.widget} period={period} config={item.config} />
-                  </div>
-                </section>
-              );
-            })}
+            {items.map((item) => renderItem(item))}
           </ReactGridLayout>
         ) : null}
       </div>
