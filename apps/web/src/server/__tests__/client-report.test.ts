@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { todayIn } from "@quercy/core";
 import { prisma } from "@quercy/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -14,6 +15,7 @@ let storageDir: string;
 let orgId: string;
 let owner: Api;
 let agentA: Api;
+let agentAId: string;
 let ownerCtx: RecordsCtx;
 let companyId: string;
 const cages: string[] = [];
@@ -33,6 +35,7 @@ beforeAll(async () => {
   process.env.STORAGE_LOCAL_DIR = storageDir;
   const o = await fx.user("owner");
   const a = await fx.user("agent-a");
+  agentAId = a.id;
   orgId = (await fx.org("a")).id;
   await fx.member(orgId, o.id, "owner");
   await fx.member(orgId, a.id, "worker");
@@ -213,6 +216,18 @@ describe("rapport syndic", () => {
       "FORBIDDEN",
     );
     await expectCode(agentA.sites.clientOverview({ companyId, month: "2026-09" }), "FORBIDDEN");
+    // La fiche d'un site est ouverte aux agents qui y passent dans la période récente : on
+    // ajoute un passage aujourd'hui (le passage de septembre vieillit avec la date du jour).
+    await prisma.intervention.create({
+      data: {
+        organizationId: orgId,
+        title: "Entretien parties communes",
+        siteId: cages[0]!,
+        ownerId: agentAId,
+        date: day(todayIn()),
+        status: "planned",
+      },
+    });
     expect((await agentA.sites.sheet({ siteId: cages[0]! })).site.code).toBe("R1-01");
     await expectCode(agentA.sites.sheet({ siteId: cages[1]! }), "FORBIDDEN");
   });
