@@ -100,3 +100,14 @@ reçu par email : montants, dates et fournisseur sont lus dans le fichier.
 Les relances d'impayés montent en ton à chaque palier, jusqu'à une dernière relance avant
 recouvrement. Dans **Ventes › Devis**, « Devis express » : décrivez le chantier en une phrase,
 l'assistant prépare le devis avec vos prix, vous le vérifiez avant qu'il soit créé.
+
+## Site rédigé par l'assistant
+
+Dans « Mon site », décrivez votre activité en quelques phrases (métier, ville, prestations,
+clientèle, ce qui vous distingue) puis cliquez sur « Rédiger avec l'assistant ». En une
+minute, l'assistant écrit l'accueil, la présentation, les prestations et le texte lu par
+Google, et choisit une couleur et une police adaptées à votre métier.
+
+Vos photos, coordonnées et actualités ne sont pas touchées, et l'assistant n'invente ni prix
+ni chiffres. Relisez, corrigez si besoin, ajoutez vos photos, puis enregistrez et publiez :
+rien n'est mis en ligne avant.

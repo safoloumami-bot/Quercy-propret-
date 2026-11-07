@@ -18,6 +18,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@quercy/ui/components/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@quercy/ui/components/dialog";
 import { Input } from "@quercy/ui/components/input";
 import { Label } from "@quercy/ui/components/label";
 import { Skeleton } from "@quercy/ui/components/skeleton";
@@ -36,6 +44,7 @@ import {
   Loader2Icon,
   PlusIcon,
   SendIcon,
+  SparklesIcon,
   Trash2Icon,
 } from "lucide-react";
 import * as React from "react";
@@ -208,6 +217,10 @@ export function WebsiteEditor() {
   /** Numéro de version local : une modification faite pendant l'enregistrement n'est pas perdue. */
   const revision = React.useRef(0);
   const [domain, setDomain] = React.useState("");
+  /** Description libre de l'activité : l'assistant rédige le site à partir d'elle. */
+  const [brief, setBrief] = React.useState("");
+  const [briefOpen, setBriefOpen] = React.useState(false);
+  const [briefPending, setBriefPending] = React.useState(false);
   const [slug, setSlug] = React.useState("");
 
   const site = query.data?.site ?? null;
@@ -230,6 +243,7 @@ export function WebsiteEditor() {
     }),
   );
   const save = useMutation(trpc.website.save.mutationOptions());
+  const generate = useMutation(trpc.website.generate.mutationOptions());
   const publish = useMutation(trpc.website.publish.mutationOptions());
   const unpublish = useMutation(
     trpc.website.unpublish.mutationOptions({
@@ -293,6 +307,30 @@ export function WebsiteEditor() {
     }
   }
 
+  async function writeWithAssistant() {
+    if (!content || !theme) return;
+    try {
+      const r = await generate.mutateAsync({ description: brief, content, theme });
+      setContent(r.content);
+      setTheme(r.theme);
+      revision.current += 1;
+      setDirty(true);
+      setBriefOpen(false);
+      toast.success("Site rédigé. Relisez-le, ajoutez vos photos, puis enregistrez et publiez.");
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  }
+
+  // Site créé avec une description : l'assistant le rédige dès que le brouillon est chargé.
+  React.useEffect(() => {
+    if (briefPending && content && theme) {
+      setBriefPending(false);
+      void writeWithAssistant();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [briefPending, content, theme]);
+
   async function publishNow() {
     if (uploads > 0) return;
     if (dirty && !(await saveDraft(true))) return;
@@ -307,7 +345,7 @@ export function WebsiteEditor() {
 
   if (query.isPending) {
     return (
-      <div className="mx-auto w-full max-w-6xl space-y-6 px-8 py-8">
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 md:px-8 md:py-8">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-96" />
       </div>
@@ -319,7 +357,7 @@ export function WebsiteEditor() {
 
   if (!site) {
     return (
-      <div className="mx-auto w-full max-w-3xl px-8 py-16">
+      <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-8 md:py-16">
         <Card>
           <CardHeader>
             <GlobeIcon className="size-6 text-primary" aria-hidden />
@@ -330,9 +368,38 @@ export function WebsiteEditor() {
               déjà de votre entreprise ; vos prestations viennent de votre catalogue.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button onClick={() => create.mutate()} disabled={!canEdit || create.isPending}>
-              <PlusIcon /> {create.isPending ? "Création…" : "Créer mon site"}
+          <CardContent className="space-y-4">
+            <Field id="w-brief" label="Décrivez votre activité (facultatif)">
+              <Textarea
+                id="w-brief"
+                rows={4}
+                maxLength={3000}
+                value={brief}
+                disabled={!canEdit}
+                placeholder="Ex. : Plombier à Cahors depuis 2010, dépannage, salle de bains, chauffe-eau. Clientèle de particuliers, devis gratuit, intervention sous 48 h."
+                onChange={(e) => setBrief(e.target.value)}
+              />
+            </Field>
+            <p className="text-sm text-muted-foreground">
+              Avec une description, l&apos;assistant rédige tout le site : accueil, présentation,
+              prestations, référencement et couleurs. Vous relisez avant de publier.
+            </p>
+            <Button
+              onClick={() =>
+                create.mutate(undefined, {
+                  onSuccess: () => {
+                    if (brief.trim().length >= 15) setBriefPending(true);
+                  },
+                })
+              }
+              disabled={!canEdit || create.isPending}
+            >
+              {brief.trim().length >= 15 ? <SparklesIcon /> : <PlusIcon />}
+              {create.isPending
+                ? "Création…"
+                : brief.trim().length >= 15
+                  ? "Créer et rédiger mon site"
+                  : "Créer mon site"}
             </Button>
           </CardContent>
         </Card>
@@ -350,7 +417,40 @@ export function WebsiteEditor() {
 
   return (
     <UploadsContext.Provider value={trackUploads}>
-      <div className="mx-auto w-full max-w-6xl space-y-6 px-8 py-8">
+      <Dialog open={briefOpen} onOpenChange={setBriefOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rédiger le site avec l&apos;assistant</DialogTitle>
+            <DialogDescription>
+              Décrivez votre activité : métier, ville, prestations, clientèle, ce qui vous
+              distingue. L&apos;assistant réécrit les textes, les prestations et les couleurs ; vos
+              photos, coordonnées et actualités sont gardées. Rien n&apos;est publié avant votre
+              relecture.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            aria-label="Description de l'activité"
+            rows={6}
+            maxLength={3000}
+            value={brief}
+            placeholder="Ex. : Plombier à Cahors depuis 2010, dépannage, salle de bains, chauffe-eau. Clientèle de particuliers, devis gratuit, intervention sous 48 h."
+            onChange={(e) => setBrief(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setBriefOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={() => void writeWithAssistant()}
+              disabled={brief.trim().length < 15 || generate.isPending}
+            >
+              {generate.isPending ? <Loader2Icon className="animate-spin" /> : <SparklesIcon />}
+              {generate.isPending ? "Rédaction en cours…" : "Rédiger le site"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 md:px-8 md:py-8">
         <PageHeader
           title="Mon site"
           description={
@@ -374,6 +474,14 @@ export function WebsiteEditor() {
           actions={
             canEdit ? (
               <>
+                <Button
+                  variant="ghost"
+                  onClick={() => setBriefOpen(true)}
+                  disabled={generate.isPending}
+                >
+                  {generate.isPending ? <Loader2Icon className="animate-spin" /> : <SparklesIcon />}
+                  {generate.isPending ? "Rédaction…" : "Rédiger avec l'assistant"}
+                </Button>
                 <Button
                   variant="secondary"
                   onClick={() => void saveDraft()}

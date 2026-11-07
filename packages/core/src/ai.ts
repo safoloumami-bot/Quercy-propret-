@@ -3,7 +3,7 @@ import { z } from "zod";
 import { PLANS, type PlanKey } from "./billing";
 
 /** Crédits consommés : une question (avec toutes ses étapes d'outils) ou une lecture de document. */
-export const AI_CREDIT_COST = { chat: 1, extraction: 3 } as const;
+export const AI_CREDIT_COST = { chat: 1, extraction: 3, website: 5 } as const;
 export type AiUsageKind = keyof typeof AI_CREDIT_COST;
 
 /** Crédits mensuels de l'espace : crédits par membre de l'offre × nombre de membres. */

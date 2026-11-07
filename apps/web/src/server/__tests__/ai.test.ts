@@ -262,3 +262,54 @@ describe("historique borné", () => {
     expect(trimHistory(history, 5)).toEqual(history);
   });
 });
+
+describe("site rédigé par l'assistant", () => {
+  it("rédige textes et prestations sans toucher aux coordonnées ; rien n'est enregistré", async () => {
+    await prisma.organization.update({
+      where: { id: orgId },
+      data: { modules: { push: "website" } },
+    });
+    await ownerApi.website.create();
+    const { site } = await ownerApi.website.get();
+    const draft = { ...site!.draft, contact: { ...site!.draft.contact, phone: "05 65 00 00 42" } };
+    const before = requests.length;
+
+    const r = await ownerApi.website.generate({
+      description: "Plombier à Cahors : dépannage, salle de bains, chauffe-eau. Devis gratuit.",
+      content: draft,
+      theme: site!.theme,
+    });
+    expect(r.content.hero.title).toBe("Votre plombier de confiance dans le Lot");
+    expect(r.content.services.items.map((i) => i.name)).toEqual([
+      "Dépannage",
+      "Salle de bains",
+      "Chauffe-eau",
+    ]);
+    expect(r.content.sections[0]).toBe("services");
+    expect(r.content.contact.phone).toBe("05 65 00 00 42");
+    expect(r.content.contact.area).toBe("Cahors et 30 km alentour");
+    expect(r.theme.accent).toBe("#1F4E79");
+    const sent = JSON.stringify(requests.slice(before).at(-1)!.body.messages);
+    expect(sent).toContain("<site_demande>");
+
+    // Le brouillon enregistré n'a pas changé : l'équipe relit avant d'enregistrer.
+    const after = await ownerApi.website.get();
+    expect(after.site!.draft.hero.title).toBe(site!.draft.hero.title);
+    const usage = await prisma.aiUsage.findFirstOrThrow({
+      where: { organizationId: orgId, kind: "website" },
+    });
+    expect(usage.credits).toBe(5);
+
+    const worker = await fx.user("worker-site");
+    await fx.member(orgId, worker.id, "worker");
+    const workerApi = await fx.caller(worker, orgId);
+    await expectCode(
+      workerApi.website.generate({
+        description: "x".repeat(20),
+        content: draft,
+        theme: site!.theme,
+      }),
+      "FORBIDDEN",
+    );
+  });
+});

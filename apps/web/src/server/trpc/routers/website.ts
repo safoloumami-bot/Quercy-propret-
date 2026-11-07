@@ -1,4 +1,5 @@
 import {
+  applyWebsiteGeneration,
   defaultWebsiteContent,
   websiteChecklist,
   websiteContentSchema,
@@ -11,6 +12,7 @@ import { Prisma, prisma } from "@quercy/db";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { WebsiteGenerationError, generateWebsite } from "../../ai/website";
 import { env } from "../../env";
 import { signedFileUrl } from "../../storage";
 import { tradePresetFor } from "../../trade-presets";
@@ -131,6 +133,54 @@ export const websiteRouter = createTRPCRouter({
         data: { draft: input.content, ...(input.theme ? { theme: input.theme } : {}) },
       });
       return { ok: true };
+    }),
+
+  /**
+   * Rédige le site avec l'assistant à partir d'une description libre. Rien n'est enregistré :
+   * le résultat revient dans l'éditeur, à relire, enregistrer puis publier.
+   */
+  generate: orgProcedure
+    .input(
+      z.object({
+        description: z
+          .string()
+          .trim()
+          .min(15, { error: "Décrivez votre activité en une ou deux phrases au moins." })
+          .max(3000),
+        content: websiteContentSchema,
+        theme: websiteThemeSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireModule(ctx);
+      authorize(ctx, "website", "update", "Votre rôle ne permet pas de modifier le site.");
+      const [trade, products] = await Promise.all([
+        tradePresetFor(ctx.workspace.organization.trade),
+        ctx.db.product.findMany({
+          where: { active: true, type: "service", deletedAt: null },
+          select: { name: true },
+          orderBy: { name: "asc" },
+          take: 40,
+        }),
+      ]);
+      try {
+        const generated = await generateWebsite({
+          workspace: ctx.workspace,
+          userId: ctx.user.id,
+          description: input.description,
+          current: input.content,
+          tradeLabel: ctx.workspace.organization.trade ? trade.label : null,
+          catalog: products.map((p) => p.name),
+        });
+        await recordAudit(ctx, { action: "website.generate", entityType: "website" });
+        return applyWebsiteGeneration(input.content, input.theme, generated, {
+          catalogItems: products.length,
+        });
+      } catch (e) {
+        if (e instanceof WebsiteGenerationError)
+          throw new TRPCError({ code: e.code, message: e.message });
+        throw e;
+      }
     }),
 
   /** Met en ligne le brouillon. */

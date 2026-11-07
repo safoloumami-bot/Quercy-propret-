@@ -269,3 +269,116 @@ export function websiteFileIds(content: WebsiteContent): string[] {
     .map((i) => i.fileId);
   return [...new Set(ids)];
 }
+
+/**
+ * Site rédigé par l'assistant à partir d'une description libre de l'activité. Seuls les textes,
+ * les prestations, l'ordre des sections et l'apparence sont proposés : photos, coordonnées,
+ * actualités et mentions légales restent ceux de l'entreprise.
+ */
+export const websiteGenerationSchema = z.object({
+  hero: z.object({
+    eyebrow: z
+      .string()
+      .describe("Accroche courte au-dessus du titre (métier et ville), 80 caractères max."),
+    title: z.string().describe("Titre principal de l'accueil, 120 caractères max."),
+    subtitle: z.string().describe("Phrase d'accroche sous le titre, 300 caractères max."),
+    ctaLabel: z
+      .string()
+      .describe("Texte du bouton d'appel (« Demander un devis »), 40 caractères max."),
+  }),
+  about: z.object({
+    title: z.string().describe("Titre de la présentation, 120 caractères max."),
+    text: z
+      .string()
+      .describe(
+        "Présentation de l'entreprise en 2 à 4 paragraphes séparés par une ligne vide, 3000 caractères max.",
+      ),
+  }),
+  services: z.object({
+    title: z.string(),
+    intro: z.string().describe("300 caractères max."),
+    items: z
+      .array(
+        z.object({
+          name: z.string(),
+          description: z.string().describe("Une ou deux phrases."),
+          price: z
+            .string()
+            .describe("Vide si aucun prix n'a été donné : ne jamais inventer de prix."),
+        }),
+      )
+      .describe("3 à 8 prestations."),
+  }),
+  galleryTitle: z.string(),
+  hoursNote: z
+    .string()
+    .describe("Précision sur les horaires (« Sur rendez-vous le samedi »), vide sinon."),
+  area: z
+    .string()
+    .describe("Zone d'intervention (« Cahors et 30 km alentour »), vide si inconnue."),
+  seo: z.object({
+    title: z.string().describe("Titre pour Google, 70 caractères max."),
+    description: z.string().describe("Description pour Google, 160 caractères max."),
+  }),
+  sections: z
+    .array(
+      z.enum(WEBSITE_SECTIONS.map((s) => s.key) as [WebsiteSectionKey, ...WebsiteSectionKey[]]),
+    )
+    .describe("Sections affichées, dans l'ordre."),
+  theme: z.object({
+    accent: z.string().describe("Couleur principale adaptée au métier, au format #RRGGBB."),
+    font: z.enum(["sans", "serif"]),
+  }),
+});
+export type WebsiteGeneration = z.infer<typeof websiteGenerationSchema>;
+
+const clip = (value: string, max: number) => value.trim().slice(0, max);
+
+/**
+ * Applique un site rédigé par l'assistant au brouillon : textes et prestations remplacés,
+ * photos, coordonnées, actualités et mentions légales conservées. Les prestations rédigées ne
+ * remplacent le catalogue que s'il est vide.
+ */
+export function applyWebsiteGeneration(
+  current: WebsiteContent,
+  theme: WebsiteTheme,
+  g: WebsiteGeneration,
+  options: { catalogItems: number },
+): { content: WebsiteContent; theme: WebsiteTheme } {
+  const items = g.services.items
+    .filter((i) => i.name.trim())
+    .slice(0, 40)
+    .map((i) => ({
+      name: clip(i.name, 120),
+      description: clip(i.description, 500),
+      price: clip(i.price, 40),
+    }));
+  const sections = [...new Set(g.sections)];
+  const content = websiteContentSchema.parse({
+    ...current,
+    hero: {
+      ...current.hero,
+      eyebrow: clip(g.hero.eyebrow, 80),
+      title: clip(g.hero.title, 120) || current.hero.title,
+      subtitle: clip(g.hero.subtitle, 300),
+      ctaLabel: clip(g.hero.ctaLabel, 40),
+    },
+    about: { ...current.about, title: clip(g.about.title, 120), text: clip(g.about.text, 3000) },
+    services: {
+      ...current.services,
+      title: clip(g.services.title, 120),
+      intro: clip(g.services.intro, 500),
+      fromCatalog: options.catalogItems > 0 ? current.services.fromCatalog : false,
+      items: items.length ? items : current.services.items,
+    },
+    gallery: { ...current.gallery, title: clip(g.galleryTitle, 120) },
+    hours: { ...current.hours, note: clip(g.hoursNote, 300) },
+    contact: { ...current.contact, area: clip(g.area, 200) || current.contact.area },
+    seo: { title: clip(g.seo.title, 70), description: clip(g.seo.description, 160) },
+    sections: sections.length ? sections : current.sections,
+  });
+  const accent = /^#[0-9a-fA-F]{6}$/.test(g.theme.accent.trim())
+    ? g.theme.accent.trim()
+    : theme.accent;
+  return { content, theme: websiteThemeSchema.parse({ ...theme, accent, font: g.theme.font }) };
+}

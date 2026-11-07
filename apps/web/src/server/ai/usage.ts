@@ -23,6 +23,8 @@ export async function aiCredits(workspace: ResolvedWorkspace) {
 
 /** Message affiché quand les crédits du mois sont épuisés (ou insuffisants). */
 export function creditsExhaustedMessage(kind: AiUsageKind) {
+  if (kind === "website")
+    return `La rédaction du site consomme ${AI_CREDIT_COST.website} crédits d'assistant et il n'en reste pas assez ce mois-ci. Passez à l'offre supérieure ou attendez le 1er du mois.`;
   return kind === "extraction"
     ? `La lecture d'un document consomme ${AI_CREDIT_COST.extraction} crédits et il n'en reste pas assez ce mois-ci. Passez à l'offre supérieure ou attendez le 1er du mois.`
     : "Les crédits d'assistant du mois sont épuisés. Passez à l'offre supérieure ou attendez le 1er du mois.";

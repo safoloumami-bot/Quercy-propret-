@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.17.0] — 2026-11-07 — Site rédigé par l'assistant, confort sur téléphone
+
+### Ajouté
+
+- **Site rédigé à partir d'une description** : à la création du site, ou avec « Rédiger avec
+  l'assistant » dans « Mon site », l'équipe décrit son activité en quelques phrases et
+  l'assistant rédige accueil, présentation, prestations, zone d'intervention, référencement,
+  ordre des sections, couleur et police. Photos, coordonnées, actualités et mentions légales
+  sont gardées ; aucun prix ni fait n'est inventé ; rien n'est enregistré ni publié avant
+  relecture. Coûte 5 crédits d'assistant (`website.generate`).
+
+### Modifié
+
+- Téléphone : tableau de bord sur une colonne, menu des Réglages en bandeau défilant,
+  raccourcis clavier masqués, boutons du planning qui passent à la ligne, marges réduites
+  dans « Mon site ».
+- Serveur gardé éveillé aux heures de travail (`/api/ping`, fonction planifiée `reveil`).
+
 ## [1.16.0] — 2026-11-03 — Site web modifiable par l'entreprise
 
 ### Ajouté

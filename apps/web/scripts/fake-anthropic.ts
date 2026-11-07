@@ -253,6 +253,39 @@ async function readBody(req: IncomingMessage): Promise<Body> {
   return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Body;
 }
 
+/** Site rédigé (réponse structurée de la création du site par l'assistant). */
+export const WEBSITE = {
+  hero: {
+    eyebrow: "Plomberie à Cahors",
+    title: "Votre plombier de confiance dans le Lot",
+    subtitle: "Dépannage, rénovation de salle de bains et chauffe-eau, avec devis gratuit.",
+    ctaLabel: "Demander un devis",
+  },
+  about: {
+    title: "Une entreprise artisanale à votre écoute",
+    text: "Nous intervenons chez les particuliers et les professionnels.\n\nChaque chantier est suivi de près, du devis à la fin des travaux.",
+  },
+  services: {
+    title: "Nos prestations",
+    intro: "Du petit dépannage à la salle de bains complète.",
+    items: [
+      { name: "Dépannage", description: "Fuites, débouchage, robinetterie.", price: "" },
+      { name: "Salle de bains", description: "Rénovation complète clé en main.", price: "" },
+      { name: "Chauffe-eau", description: "Remplacement et entretien.", price: "" },
+    ],
+  },
+  galleryTitle: "Nos réalisations",
+  hoursNote: "",
+  area: "Cahors et 30 km alentour",
+  seo: {
+    title: "Plombier à Cahors — dépannage et salle de bains",
+    description:
+      "Plombier à Cahors : dépannage, rénovation de salle de bains, chauffe-eau. Devis gratuit.",
+  },
+  sections: ["services", "about", "gallery", "hours", "contact"],
+  theme: { accent: "#1F4E79", font: "sans" },
+};
+
 export function startFakeAnthropic(
   port = 0,
 ): Promise<{ server: Server; url: string; requests: RecordedRequest[] }> {
@@ -276,7 +309,14 @@ export function startFakeAnthropic(
               type: "message",
               role: "assistant",
               model: body.model,
-              content: [{ type: "text", text: JSON.stringify(EXTRACTION) }],
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(
+                    JSON.stringify(body.messages).includes("<site_demande>") ? WEBSITE : EXTRACTION,
+                  ),
+                },
+              ],
               stop_reason: "end_turn",
               stop_sequence: null,
               usage,
