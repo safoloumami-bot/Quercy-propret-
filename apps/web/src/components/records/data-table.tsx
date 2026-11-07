@@ -64,6 +64,7 @@ import { useUserOptions } from "./field-editor";
 import { formatAggregate } from "./field-display";
 import { FilterBuilder } from "./filter-builder";
 import {
+  CARD_HEIGHT,
   type ColumnLayout,
   ROW_HEIGHTS,
   type RowActions,
@@ -75,6 +76,7 @@ import type { EntityPermissions, Row } from "./types";
 import { useRecordMutations } from "./use-record-mutations";
 import { useViewState } from "./use-view-state";
 import { ViewsBar } from "./views-bar";
+import { PHONE_QUERY, useMediaQuery } from "@/lib/use-media";
 
 const PAGE_SIZE = 100;
 
@@ -331,7 +333,10 @@ export function DataTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, byKey, table, columnSizing]);
   const totalWidth = SELECT_COLUMN_WIDTH + layout.reduce((sum, c) => sum + c.width, 0);
-  const rowHeight = ROW_HEIGHTS[config.density];
+  // Téléphone : chaque fiche devient une carte (titre et trois informations), sans colonnes.
+  const phone = useMediaQuery(PHONE_QUERY);
+  const cards = phone && !groupField;
+  const rowHeight = cards ? CARD_HEIGHT : ROW_HEIGHTS[config.density];
 
   const virtualizer = useVirtualizer({
     count: groupField ? 0 : rows.length + (list.hasNextPage ? 1 : 0),
@@ -722,8 +727,8 @@ export function DataTable({
               )}
             </div>
           ) : (
-            <div style={{ width: totalWidth, minWidth: "100%" }}>
-              {header}
+            <div style={{ width: cards ? "100%" : totalWidth, minWidth: "100%" }}>
+              {cards ? null : header}
               <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
                 {virtualItems.map((item) => {
                   const row = rows[item.index];
@@ -756,11 +761,12 @@ export function DataTable({
                       editingKey={editing?.id === row.id ? editing.key : null}
                       canEdit={permissions.update}
                       actions={actions}
+                      card={cards}
                       style={{
                         position: "absolute",
                         top: 0,
                         left: 0,
-                        width: totalWidth,
+                        width: cards ? "100%" : totalWidth,
                         transform: `translateY(${item.start}px)`,
                       }}
                     />

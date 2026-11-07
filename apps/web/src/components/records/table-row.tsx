@@ -35,6 +35,9 @@ export const SELECT_COLUMN_WIDTH = 40;
 
 export const ROW_HEIGHTS = { compact: 32, normal: 40, comfortable: 52 } as const;
 
+/** Hauteur d'une fiche affichée en carte (téléphone). */
+export const CARD_HEIGHT = 84;
+
 export interface RowActions {
   onOpen: (row: Row) => void;
   onOpenPage: (row: Row) => void;
@@ -60,6 +63,7 @@ export const TableRow = React.memo(function TableRow({
   actions,
   style,
   index,
+  card = false,
 }: {
   row: Row;
   columns: ColumnLayout[];
@@ -71,9 +75,64 @@ export const TableRow = React.memo(function TableRow({
   actions: RowActions;
   style?: React.CSSProperties;
   index: number;
+  /** Téléphone : carte (titre puis trois informations) au lieu de colonnes. */
+  card?: boolean;
 }) {
   const firstEditable = columns.find((c) => c.field.editable && c.field.type !== "image")?.field
     .key;
+  if (card) {
+    const [primary, ...rest] = columns;
+    const details = rest
+      .filter(
+        ({ field }) => field.type !== "image" && row[field.key] != null && row[field.key] !== "",
+      )
+      .slice(0, 3);
+    return (
+      <div
+        role="row"
+        aria-rowindex={index + 2}
+        aria-selected={selected}
+        style={{ height, ...style }}
+        className={cn(
+          "flex items-center gap-3 border-b border-border bg-background px-3 text-sm active:bg-muted",
+          selected && "bg-primary/6",
+        )}
+      >
+        <div
+          role="gridcell"
+          className="flex size-8 shrink-0 items-center justify-center"
+          onClick={(e) => {
+            e.stopPropagation();
+            actions.onToggleSelect(row, false);
+          }}
+        >
+          <Checkbox checked={selected} aria-label={`Sélectionner ${row.title}`} tabIndex={-1} />
+        </div>
+        <button
+          type="button"
+          role="gridcell"
+          className="min-w-0 flex-1 space-y-1 py-2 text-left outline-none"
+          onClick={() => {
+            actions.onFocusRow(index);
+            actions.onOpen(row);
+          }}
+        >
+          <span className="block truncate font-medium">
+            {primary ? <FieldDisplay field={primary.field} row={row} /> : row.title}
+          </span>
+          {details.length ? (
+            <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 overflow-hidden text-xs text-muted-foreground [&>span]:max-w-full [&>span]:truncate">
+              {details.map(({ field }) => (
+                <span key={field.key} className="inline-flex min-w-0 items-center gap-1">
+                  <FieldDisplay field={field} row={row} />
+                </span>
+              ))}
+            </span>
+          ) : null}
+        </button>
+      </div>
+    );
+  }
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
