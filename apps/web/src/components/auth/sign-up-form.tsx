@@ -13,6 +13,7 @@ import { z } from "zod";
 
 import { FormField, fieldAria } from "@/components/form-field";
 import { authClient, authErrorMessage } from "@/lib/auth-client";
+import { pagesLegales } from "@/lib/site-public";
 
 import { SocialButtons } from "./social-buttons";
 
@@ -93,8 +94,24 @@ export function SignUpForm({
           {isSubmitting ? "Création du compte…" : "Créer mon compte"}
         </Button>
         <p className="text-center text-xs text-muted-foreground">
-          En créant un compte, vous acceptez les conditions d&apos;utilisation et la politique de
-          confidentialité.
+          En créant un compte, vous acceptez les{" "}
+          <a href={pagesLegales.cgu} target="_blank" rel="noopener" className="underline underline-offset-2">
+            conditions d&apos;utilisation
+          </a>
+          , les{" "}
+          <a href={pagesLegales.cgv} target="_blank" rel="noopener" className="underline underline-offset-2">
+            conditions de vente
+          </a>{" "}
+          et la{" "}
+          <a
+            href={pagesLegales.confidentialite}
+            target="_blank"
+            rel="noopener"
+            className="underline underline-offset-2"
+          >
+            politique de confidentialité
+          </a>
+          .
         </p>
       </form>
     </div>
