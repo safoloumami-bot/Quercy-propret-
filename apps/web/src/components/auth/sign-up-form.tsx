@@ -95,11 +95,21 @@ export function SignUpForm({
         </Button>
         <p className="text-center text-xs text-muted-foreground">
           En créant un compte, vous acceptez les{" "}
-          <a href={pagesLegales.cgu} target="_blank" rel="noopener" className="underline underline-offset-2">
+          <a
+            href={pagesLegales.cgu}
+            target="_blank"
+            rel="noopener"
+            className="underline underline-offset-2"
+          >
             conditions d&apos;utilisation
           </a>
           , les{" "}
-          <a href={pagesLegales.cgv} target="_blank" rel="noopener" className="underline underline-offset-2">
+          <a
+            href={pagesLegales.cgv}
+            target="_blank"
+            rel="noopener"
+            className="underline underline-offset-2"
+          >
             conditions de vente
           </a>{" "}
           et la{" "}
