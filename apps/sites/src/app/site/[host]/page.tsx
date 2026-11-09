@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { Site } from "@/components/site";
+import { VisitBeacon } from "@/components/visit-beacon";
 import { fetchSite, imageUrl } from "@/lib/api";
 
 type Props = { params: Promise<{ host: string }> };
@@ -30,5 +31,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function SitePage({ params }: Props) {
   const site = await fetchSite(decodeURIComponent((await params).host));
   if (!site) notFound();
-  return <Site site={site} base={(await headers()).get("x-site-base") ?? ""} />;
+  return (
+    <>
+      <Site site={site} base={(await headers()).get("x-site-base") ?? ""} />
+      <VisitBeacon />
+    </>
+  );
 }

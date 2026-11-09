@@ -11,6 +11,7 @@ import { RealtimeListener } from "../realtime-listener";
 import { ClipboardGuard } from "./clipboard-guard";
 import { CommandPalette } from "./command-palette";
 import { NavigationProgress } from "./navigation-progress";
+import { VisitBeacon } from "./visit-beacon";
 import { OfflineStatus } from "./offline-status";
 import { RecordTabsBar, RecordTabsProvider } from "./record-tabs";
 import { AccessProvider } from "./access-context";
@@ -81,6 +82,7 @@ export function AppShell({
               <NavigationProgress />
             </React.Suspense>
             <ClipboardGuard />
+            <VisitBeacon />
             <GlobalShortcuts />
             <RealtimeListener />
             <a

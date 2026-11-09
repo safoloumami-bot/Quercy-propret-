@@ -111,3 +111,12 @@ Google, et choisit une couleur et une police adaptées à votre métier.
 Vos photos, coordonnées et actualités ne sont pas touchées, et l'assistant n'invente ni prix
 ni chiffres. Relisez, corrigez si besoin, ajoutez vos photos, puis enregistrez et publiez :
 rien n'est mis en ligne avant.
+
+## Statistiques de votre site
+
+Dans « Mon site », une fois le site publié, la carte « Visites — 30 jours » montre combien de
+personnes sont venues, les pages vues, la part de visiteurs sur téléphone et d'où ils
+viennent (Google, Facebook, annuaires…).
+
+Les visites sont comptées sans cookie ni traceur publicitaire : vous n'avez aucun bandeau à
+faire accepter, et aucune adresse IP n'est conservée.

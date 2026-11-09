@@ -13,6 +13,7 @@ import { prisma } from "@quercy/db";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { lastDays, visitStats } from "../../analytics/visits";
 import { runStripeEvent } from "../../billing/webhook";
 import { clearTradePresetCache, listTradePresets } from "../../trade-presets";
 import { authedProcedure, createTRPCRouter } from "../init";
@@ -28,6 +29,16 @@ const adminProcedure = authedProcedure.use(({ ctx, next }) => {
   }
   return next();
 });
+
+/** Utilisateurs connectés au moins une fois sur `days` jours (hors sessions d'assistance). */
+async function activeUsers(now: number, days: number): Promise<number> {
+  const rows = await prisma.session.findMany({
+    where: { updatedAt: { gte: new Date(now - days * DAY) }, impersonatedBy: null },
+    distinct: ["userId"],
+    select: { userId: true },
+  });
+  return rows.length;
+}
 
 const PAYING: SubscriptionStatus[] = ["ACTIVE", "PAST_DUE", "TRIALING"];
 const DAY = 86_400_000;
@@ -115,6 +126,118 @@ export const adminRouter = createTRPCRouter({
         };
       });
     }),
+
+  /**
+   * Surveillance de la plateforme sur 30 jours : inscriptions, utilisateurs actifs, visites
+   * des sites des entreprises et du logiciel, derniers événements (inscriptions, abonnements).
+   */
+  activity: adminProcedure.query(async () => {
+    const now = Date.now();
+    const since = new Date(now - 30 * DAY);
+    const [orgs, users, active1, active7, active30, sites, app, siteViews, subscriptions] =
+      await Promise.all([
+        prisma.organization.findMany({
+          where: { deletedAt: null, createdAt: { gte: since } },
+          select: { id: true, name: true, createdAt: true, trade: true, plan: true },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.user.findMany({
+          where: { deletedAt: null, createdAt: { gte: since } },
+          select: { id: true, name: true, email: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+        }),
+        activeUsers(now, 1),
+        activeUsers(now, 7),
+        activeUsers(now, 30),
+        visitStats({ kind: "site" }),
+        visitStats({ kind: "app" }),
+        prisma.pageView.groupBy({
+          by: ["organizationId"],
+          where: { kind: "site", createdAt: { gte: since } },
+          _count: { _all: true },
+          orderBy: { _count: { organizationId: "desc" } },
+          take: 10,
+        }),
+        prisma.stripeEvent.findMany({
+          where: {
+            status: "PROCESSED",
+            type: {
+              in: [
+                "checkout.session.completed",
+                "customer.subscription.deleted",
+                "invoice.payment_failed",
+              ],
+            },
+          },
+          select: { id: true, type: true, organizationId: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 20,
+        }),
+      ]);
+    const names = new Map(
+      (
+        await prisma.organization.findMany({
+          where: {
+            id: {
+              in: [
+                ...siteViews.map((v) => v.organizationId),
+                ...subscriptions.map((e) => e.organizationId),
+              ].filter((id): id is string => Boolean(id)),
+            },
+          },
+          select: { id: true, name: true },
+        })
+      ).map((o) => [o.id, o.name]),
+    );
+    const signupsByDay = new Map(lastDays(30).map((d) => [d, { organizations: 0, users: 0 }]));
+    for (const o of orgs) {
+      const d = signupsByDay.get(o.createdAt.toISOString().slice(0, 10));
+      if (d) d.organizations += 1;
+    }
+    for (const u of users) {
+      const d = signupsByDay.get(u.createdAt.toISOString().slice(0, 10));
+      if (d) d.users += 1;
+    }
+    const EVENT_LABEL: Record<string, string> = {
+      "checkout.session.completed": "Abonnement souscrit",
+      "customer.subscription.deleted": "Abonnement résilié",
+      "invoice.payment_failed": "Paiement refusé",
+    };
+    return {
+      signups: [...signupsByDay].map(([day, v]) => ({ day, ...v })),
+      newOrganizations: orgs.length,
+      newUsers: users.length,
+      activeUsers: { day: active1, week: active7, month: active30 },
+      sites,
+      app,
+      topSites: siteViews.map((v) => ({
+        name: names.get(v.organizationId ?? "") ?? "Site supprimé",
+        views: v._count._all,
+      })),
+      feed: [
+        ...orgs.slice(0, 15).map((o) => ({
+          at: o.createdAt,
+          kind: "signup" as const,
+          label: `Nouvel espace : ${o.name}`,
+          detail: o.trade ?? "",
+        })),
+        ...users.slice(0, 15).map((u) => ({
+          at: u.createdAt,
+          kind: "user" as const,
+          label: `Nouvel utilisateur : ${u.name}`,
+          detail: u.email,
+        })),
+        ...subscriptions.map((e) => ({
+          at: e.createdAt,
+          kind: "billing" as const,
+          label: EVENT_LABEL[e.type] ?? e.type,
+          detail: names.get(e.organizationId ?? "") ?? "",
+        })),
+      ]
+        .sort((a, b) => b.at.getTime() - a.at.getTime())
+        .slice(0, 25),
+    };
+  }),
 
   failedEvents: adminProcedure.query(() =>
     prisma.stripeEvent.findMany({

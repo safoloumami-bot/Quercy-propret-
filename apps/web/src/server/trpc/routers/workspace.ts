@@ -19,6 +19,7 @@ import { z } from "zod";
 import { syncSeats } from "../../billing/seats";
 import { PlanLimitError } from "../../billing/state";
 import { createInvitations } from "../../invitations";
+import { alertPlatform } from "../../platform-alerts";
 import { findTradePreset, listTradePresets, tradePresetFor } from "../../trade-presets";
 import { applyTradePreset } from "../../trades";
 import { parsePreferences } from "../../workspace";
@@ -101,6 +102,10 @@ export const workspaceRouter = createTRPCRouter({
     });
 
     await setActiveOrganization(ctx.session.session.token, org.id);
+    void alertPlatform(`Nouvel espace : ${org.name}`, [
+      `${ctx.user.name} (${ctx.user.email}) vient de créer l'espace « ${org.name} ».`,
+      `Métier : ${trade ?? "non précisé"} · modules : ${input.modules.length} · essai de ${TRIAL_DAYS} jours.`,
+    ]);
 
     if (input.invitations.length > 0) {
       const roles = await prisma.role.findMany({

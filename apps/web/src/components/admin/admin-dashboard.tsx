@@ -21,6 +21,7 @@ import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
+import { PlatformMonitor } from "./platform-monitor";
 import { PLAN_LABELS } from "@/lib/format";
 import { authClient, authErrorMessage } from "@/lib/auth-client";
 import { errorMessage, useTRPC } from "@/lib/trpc";
@@ -98,11 +99,13 @@ export function AdminDashboard() {
     <>
       <PageHeader
         title="Tableau de bord de la plateforme"
-        description="Clients, revenus récurrents et santé de la facturation."
+        description="Inscriptions, activité, visites, clients, revenus et facturation."
       />
 
+      <PlatformMonitor />
+
       {stats.isPending ? (
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
           {Array.from({ length: 5 }, (_, i) => (
             <Skeleton key={i} className="h-28" />
           ))}
@@ -131,11 +134,11 @@ export function AdminDashboard() {
       )}
 
       <section aria-labelledby="orgs-title" className="space-y-3">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 id="orgs-title" className="text-base font-semibold">
             Espaces clients
           </h2>
-          <div className="relative w-72">
+          <div className="relative w-full sm:w-72">
             <SearchIcon
               className="pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground"
               aria-hidden

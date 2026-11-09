@@ -52,6 +52,7 @@ import * as React from "react";
 import { PageHeader } from "@/components/page-header";
 import { errorMessage, useTRPC } from "@/lib/trpc";
 
+import { SiteStats } from "./site-stats";
 import { uploadSiteImage } from "./upload";
 
 type Images = Record<string, string>;
@@ -1509,6 +1510,7 @@ export function WebsiteEditor() {
               Vos modifications restent en brouillon tant que vous ne cliquez pas sur « Publier ».
               Le site public n&apos;affiche que la version publiée.
             </p>
+            {site.isPublished ? <SiteStats /> : null}
           </aside>
         </div>
       </div>

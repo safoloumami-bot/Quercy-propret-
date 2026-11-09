@@ -7,6 +7,7 @@ import type Stripe from "stripe";
 import { sendEmail } from "../email/send";
 import { PaymentFailedEmail } from "../email/templates";
 import { env } from "../env";
+import { alertPlatform } from "../platform-alerts";
 import { applySubscription } from "./sync";
 
 type Outcome = { organizationId: string | null; ignored: boolean };
@@ -51,13 +52,28 @@ async function handle(event: Stripe.Event): Promise<Outcome> {
           stripeSubscriptionId: id(session.subscription),
         },
       });
+      await alertPlatform("Nouvel abonnement", [
+        `Un espace vient de souscrire un abonnement (${session.amount_total ? `${(session.amount_total / 100).toFixed(2)} €` : "montant non communiqué"}).`,
+        `Espace : ${(await prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }))?.name ?? organizationId}`,
+      ]);
       return { organizationId, ignored: false };
     }
     case "customer.subscription.created":
     case "customer.subscription.updated":
       return applySubscription(event.data.object);
-    case "customer.subscription.deleted":
-      return applySubscription(event.data.object, true);
+    case "customer.subscription.deleted": {
+      const outcome = await applySubscription(event.data.object, true);
+      if (outcome.organizationId) {
+        const org = await prisma.organization.findUnique({
+          where: { id: outcome.organizationId },
+          select: { name: true },
+        });
+        await alertPlatform("Abonnement résilié", [
+          `L'espace « ${org?.name ?? outcome.organizationId} » a résilié son abonnement.`,
+        ]);
+      }
+      return outcome;
+    }
     case "invoice.payment_failed": {
       const org = await organizationForCustomer(id(event.data.object.customer));
       if (!org) return { organizationId: null, ignored: true };
@@ -66,6 +82,9 @@ async function handle(event: Stripe.Event): Promise<Outcome> {
         data: { pastDueSince: org.pastDueSince ?? new Date() },
       });
       await notifyOwners(org.id, org.name);
+      await alertPlatform("Paiement refusé", [
+        `Le paiement de l'espace « ${org.name} » a été refusé.`,
+      ]);
       return { organizationId: org.id, ignored: false };
     }
     case "invoice.paid": {

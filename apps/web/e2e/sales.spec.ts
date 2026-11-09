@@ -145,7 +145,11 @@ test.describe("CRM et projets", () => {
     await createCompany(page, first);
     await createCompany(page, `${first} SARL`);
     await page.goto("/crm/doublons");
-    const pair = page.getByRole("listitem").filter({ hasText: `${first} SARL` });
+    // La paire créée ici (et pas une paire laissée par un essai précédent) : les deux noms.
+    const pair = page
+      .getByRole("listitem")
+      .filter({ hasText: `${first} SARL` })
+      .filter({ hasText: new RegExp(`${first}(?! SARL)`) });
     await expect(pair).toBeVisible();
     await pair.getByRole("button", { name: "Conserver celle-ci" }).first().click();
     await page.getByRole("dialog").getByRole("button", { name: "Fusionner" }).click();

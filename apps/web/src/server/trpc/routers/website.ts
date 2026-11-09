@@ -13,6 +13,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { WebsiteGenerationError, generateWebsite } from "../../ai/website";
+import { visitStats } from "../../analytics/visits";
 import { env } from "../../env";
 import { signedFileUrl } from "../../storage";
 import { tradePresetFor } from "../../trade-presets";
@@ -70,6 +71,13 @@ export const websiteRouter = createTRPCRouter({
         images: await previewUrls(ctx.organizationId, websiteFileIds(draft)),
       },
     };
+  }),
+
+  /** Visites du site sur 30 jours (sans cookie) : visiteurs, pages, provenance. */
+  stats: orgProcedure.query(async ({ ctx }) => {
+    requireModule(ctx);
+    authorize(ctx, "website", "view");
+    return visitStats({ kind: "site", organizationId: ctx.organizationId });
   }),
 
   /** Crée le site, prérempli avec ce que le logiciel sait déjà de l'entreprise. */

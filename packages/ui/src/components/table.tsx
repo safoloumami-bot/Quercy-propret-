@@ -5,7 +5,7 @@ import { cn } from "../lib/utils";
 /** Tableau simple (listes courtes). Les grands volumes utiliseront le tableau virtualisé. */
 export function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-border bg-card">
+    <div className="relative w-full overflow-x-auto rounded-lg border border-border bg-card">
       <table className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   );

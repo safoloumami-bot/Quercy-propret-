@@ -98,3 +98,26 @@ export function PaymentFailedEmail({
     </EmailLayout>
   );
 }
+
+/** Alerte à l'équipe sebt : inscription, abonnement, résiliation. */
+export function PlatformAlertEmail({
+  title,
+  lines,
+  url,
+}: {
+  title: string;
+  lines: string[];
+  url: string;
+}) {
+  return (
+    <EmailLayout
+      preview={title}
+      title={title}
+      action={{ label: "Ouvrir l'administration", href: url }}
+    >
+      {lines.map((line) => (
+        <Text key={line}>{line}</Text>
+      ))}
+    </EmailLayout>
+  );
+}

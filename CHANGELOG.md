@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.18.0] — 2026-11-09 — Surveillance de la plateforme et statistiques des sites
+
+### Ajouté
+
+- **Surveillance** (`/admin`, équipe sebt) : nouveaux espaces et utilisateurs par jour,
+  utilisateurs actifs (jour, semaine, mois), visites des sites clients (pages vues,
+  visiteurs, mobile, provenance, sites les plus visités), pages du logiciel les plus ouvertes,
+  fil des derniers événements (inscriptions, abonnements, résiliations, paiements refusés).
+- **Alertes email** à l'équipe sebt : nouvel espace, abonnement souscrit ou résilié, paiement
+  refusé.
+- **Visites de « Mon site »** : visiteurs, pages vues et provenance sur 30 jours.
+- Mesure **sans cookie** : empreinte de visiteur renouvelée chaque jour, aucune adresse IP
+  conservée, robots ignorés (table `page_view`, isolée par entreprise).
+
+### Corrigé
+
+- Tableaux : un texte réservé aux lecteurs d'écran n'élargit plus la page sur téléphone.
+
 ## [1.17.0] — 2026-11-07 — Site rédigé par l'assistant, confort sur téléphone
 
 ### Ajouté

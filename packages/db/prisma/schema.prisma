@@ -2976,3 +2976,24 @@ model Website {
 
   @@map("website")
 }
+
+/// Visites mesurées sans cookie : sites des entreprises (« site ») et logiciel (« app »).
+/// Le visiteur est une empreinte qui change chaque jour (aucune adresse IP stockée).
+model PageView {
+  id             String   @id @default(cuid())
+  /// Entreprise dont le site est visité (vide pour le logiciel).
+  organizationId String?
+  /// site, app
+  kind           String
+  path           String
+  /// Site d'origine (nom de domaine seulement).
+  referrer       String?
+  visitor        String
+  /// mobile, desktop
+  device         String   @default("desktop")
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([kind, createdAt])
+  @@map("page_view")
+}
