@@ -14,6 +14,8 @@ export default tseslint.config(
       "**/src-tauri/target/**",
       "**/next-env.d.ts",
       "legacy/**",
+      // Vitrine : projet à part (ses propres dépendances), hors de l'espace de travail.
+      "apps/vitrine/**",
       "**/playwright-report/**",
       "**/test-results/**",
     ],

@@ -1,5 +1,7 @@
 packages:
   - apps/*
+  # Vitrine : projet à part, installé seul (pnpm --ignore-workspace).
+  - "!apps/vitrine"
   - packages/*
 onlyBuiltDependencies:
   - "@prisma/client"

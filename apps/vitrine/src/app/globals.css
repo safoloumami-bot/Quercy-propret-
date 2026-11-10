@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+/*
+  Direction artistique « sebt » : sablier, sable et brun.
+  Les noms de jetons historiques sont conservés pour ne pas toucher l'espace client :
+  - « lagon » est désormais l'accent sable de la marque (#C9A97C) ;
+  - « sable » reste la couleur des bordures claires.
+  La landing (site public) utilise la famille « nuit » : un mode sombre chaud.
+*/
+@theme {
+  /* Espace client et pages d'authentification (mode clair) */
+  --color-encre: #1f1b16;
+  --color-encre-2: #2b2620;
+  --color-encre-3: #3a332b;
+  --color-ecume: #f5efe4;
+  --color-papier: #fbf8f2;
+  --color-sable: #e7decf;
+  --color-gris: #6b6257;
+  --color-lagon: #c9a97c;
+  --color-lagon-fonce: #82623a;
+  --color-lagon-pale: #f1e6d3;
+  --color-corail: #c2412b;
+  --color-corail-pale: #fbe3dc;
+  --color-ambre: #e0a93b;
+
+  /* Site public (mode sombre chaud) */
+  --color-nuit: #110e0b;
+  --color-nuit-2: #191511;
+  --color-nuit-3: #231e19;
+  --color-creme: #f5efe4;
+  --color-taupe: #a89e8f;
+  --color-taupe-2: #8e8477;
+  --color-or: #e2c99f;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --animate-clignote: clignote 1.1s steps(2) infinite;
+  --animate-apparait: apparait 0.5s ease-out both;
+  --animate-halo: halo 14s ease-in-out infinite;
+
+  @keyframes clignote {
+    0% { opacity: 1 }
+    100% { opacity: 0 }
+  }
+  @keyframes apparait {
+    from { opacity: 0; transform: translateY(6px) }
+    to { opacity: 1; transform: none }
+  }
+  /* La seule animation continue du site : le halo du hero respire lentement. */
+  @keyframes halo {
+    0%, 100% { transform: translate(-50%, 0) scale(1); opacity: 0.9 }
+    50% { transform: translate(-48%, 3%) scale(1.06); opacity: 1 }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-papier text-encre antialiased;
+  font-feature-settings: "ss01", "cv11";
+}
+
+::selection {
+  @apply bg-lagon text-encre;
+}
+
+.titre {
+  @apply font-semibold tracking-[-0.035em];
+}
+
+/* Titres du site public : graisse 500, interlettrage serré */
+.titre-pub {
+  @apply font-medium tracking-[-0.04em];
+}
+
+/* Apparition au défilement (voir components/marketing/Apparition.tsx) */
+.revele {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--delai, 0ms);
+}
+.revele.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Grille de lignes fines derrière le hero */
+.grille-fine {
+  background-image:
+    linear-gradient(to right, rgba(245, 239, 228, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(245, 239, 228, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+.grain {
+  background-image: radial-gradient(rgba(31, 27, 22, 0.07) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.grain-sombre {
+  background-image: radial-gradient(rgba(245, 239, 228, 0.08) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.defile::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.defile::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-sable;
+}
+.defile-sombre::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.defile-sombre::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-nuit-3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .revele {
+    transform: none;
+    transition: opacity 0.3s linear;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

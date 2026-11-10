@@ -64,3 +64,26 @@ services:
       # Adresse publique du logiciel (le nom d'hôte interne n'est pas joignable en gratuit).
       - key: SEBT_API_URL
         value: https://sebt-t5gw.onrender.com
+
+  # Vitrine sebt (site public) : projet à part dans apps/vitrine, hors de l'espace de travail.
+  - type: web
+    name: sebt-vitrine
+    runtime: node
+    plan: free
+    region: ohio
+    branch: claude/saas-modulaire-prompt-bgo7mm
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - apps/vitrine/**
+    buildCommand: >-
+      corepack enable && cd apps/vitrine && pnpm install --ignore-workspace --frozen-lockfile
+      && pnpm build
+    startCommand: cd apps/vitrine && node_modules/.bin/next start -p $PORT
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: NEXT_PUBLIC_URL_LOGICIEL
+        value: https://sebt-t5gw.onrender.com
