@@ -2,7 +2,7 @@ name: Réveil
 
 # Garde le logiciel hébergé sur Render éveillé (l'offre gratuite s'endort après 15 minutes
 # sans visite) et, une fois par jour après 5 h UTC, lance ses tâches quotidiennes
-# (RUN_DAILY_ON_PING). Adresse : variable de dépôt SEBT_URL ; sans elle, rien n'est envoyé.
+# (RUN_DAILY_ON_PING). Adresse : variable de dépôt SEBT_URL, sinon l'adresse Render actuelle.
 on:
   schedule:
     - cron: "*/10 * * * *"
@@ -17,7 +17,7 @@ jobs:
     steps:
       - name: Signal de réveil
         env:
-          SEBT_URL: ${{ vars.SEBT_URL }}
+          SEBT_URL: ${{ vars.SEBT_URL || 'https://sebt-t5gw.onrender.com' }}
         run: |
           if [ -z "$SEBT_URL" ]; then echo "SEBT_URL non défini : rien à réveiller."; exit 0; fi
           curl -fsS --max-time 90 --retry 2 "${SEBT_URL%/}/api/ping" || echo "Réveil sans réponse."
