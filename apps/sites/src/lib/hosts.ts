@@ -16,7 +16,12 @@ export function sitesDomain(): string {
 export function isPlatformHost(host: string): boolean {
   const h = host.replace(/:\d+$/, "").toLowerCase();
   const own = process.env.SITES_PLATFORM_HOST?.toLowerCase();
-  return (own ? h === own : false) || h.endsWith(".netlify.app") || h.endsWith(".vercel.app");
+  return (
+    (own ? h === own : false) ||
+    h.endsWith(".netlify.app") ||
+    h.endsWith(".vercel.app") ||
+    h.endsWith(".onrender.com")
+  );
 }
 
 const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;

@@ -3007,3 +3007,14 @@ model PlatformState {
 
   @@map("platform_state")
 }
+
+/// Contenu des fichiers quand ils sont rangés dans la base (STORAGE_DRIVER=database,
+/// hébergement sans disque permanent). La fiche du fichier reste dans `stored_file`.
+model StoredBlob {
+  key       String   @id
+  data      Bytes
+  mimeType  String
+  createdAt DateTime @default(now())
+
+  @@map("stored_blob")
+}

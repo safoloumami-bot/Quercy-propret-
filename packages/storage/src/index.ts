@@ -10,6 +10,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getStore } from "@netlify/blobs";
+import { prisma } from "@quercy/db";
 
 /** Taille maximale d'un fichier envoyé. */
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -81,12 +82,13 @@ export function storageConfig() {
 }
 
 /**
- * Pilote de stockage : S3 si demandé ; sur Netlify, son stockage intégré (Netlify Blobs),
- * sans aucun réglage ; sinon le disque local.
+ * Pilote de stockage : S3 ou base de données si demandé ; sur Netlify, son stockage intégré
+ * (Netlify Blobs), sans aucun réglage ; sinon le disque local.
  */
-function storageDriver(): "s3" | "netlify" | "local" {
+function storageDriver(): "s3" | "netlify" | "database" | "local" {
   const asked = process.env.STORAGE_DRIVER;
-  if (asked === "s3" || asked === "netlify" || asked === "local") return asked;
+  if (asked === "s3" || asked === "netlify" || asked === "database" || asked === "local")
+    return asked;
   return process.env.NETLIFY_BLOBS_CONTEXT || process.env.NETLIFY ? "netlify" : "local";
 }
 
@@ -145,6 +147,15 @@ export async function putObject(key: string, body: Uint8Array, mimeType: string)
     await blobs().set(key, bytes.buffer, { metadata: { mimeType } });
     return;
   }
+  if (storageConfig().driver === "database") {
+    const data = Uint8Array.from(body);
+    await prisma.storedBlob.upsert({
+      where: { key },
+      create: { key, data, mimeType },
+      update: { data, mimeType },
+    });
+    return;
+  }
   const file = localPath(key);
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, body);
@@ -156,6 +167,11 @@ export async function readObject(key: string): Promise<Uint8Array> {
     if (!data) throw Object.assign(new Error("Fichier introuvable."), { code: "ENOENT" });
     return new Uint8Array(data);
   }
+  if (storageConfig().driver === "database") {
+    const row = await prisma.storedBlob.findUnique({ where: { key }, select: { data: true } });
+    if (!row) throw Object.assign(new Error("Fichier introuvable."), { code: "ENOENT" });
+    return new Uint8Array(row.data);
+  }
   return readFile(localPath(key));
 }
 
@@ -166,6 +182,10 @@ export async function deleteObject(key: string): Promise<void> {
   }
   if (storageConfig().driver === "netlify") {
     await blobs().delete(key);
+    return;
+  }
+  if (storageConfig().driver === "database") {
+    await prisma.storedBlob.deleteMany({ where: { key } });
     return;
   }
   await rm(localPath(key), { force: true });

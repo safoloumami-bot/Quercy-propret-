@@ -20,7 +20,9 @@ export interface PublishedSite {
 
 /** Adresse du logiciel (API publique des sites). */
 export function apiBase(): string {
-  return (process.env.SEBT_API_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const url = (process.env.SEBT_API_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  // Render (fromService) ne donne que le nom d'hôte : https par défaut.
+  return /^https?:\/\//.test(url) ? url : `https://${url}`;
 }
 
 /** Site publié pour ce nom d'hôte ; null s'il n'existe pas (ou n'est pas publié). */

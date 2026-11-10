@@ -507,6 +507,9 @@ importers:
       '@netlify/blobs':
         specifier: ^11.1.3
         version: 11.1.3
+      '@quercy/db':
+        specifier: workspace:*
+        version: link:../db
     devDependencies:
       '@types/node':
         specifier: ^22.18.0

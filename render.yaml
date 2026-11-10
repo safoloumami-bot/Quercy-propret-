@@ -1,7 +1,11 @@
-# Hébergement Render (Blueprint) : le logiciel sebt sur une offre gratuite, gardé éveillé par
-# le flux GitHub « Réveil » (.github/workflows/reveil.yml) qui lance aussi les tâches du jour
-# (RUN_DAILY_ON_PING). Région Ohio : à côté de la base Neon (aws-us-east-2).
-# Les sites des entreprises restent sur Netlify (sebt-sites).
+# Hébergement Render (Blueprint), offre gratuite, région Ohio (à côté de la base Neon,
+# aws-us-east-2) :
+#   - sebt : le logiciel, gardé éveillé par le flux GitHub « Réveil » (.github/workflows/reveil.yml)
+#     qui lance aussi les tâches du jour (RUN_DAILY_ON_PING) ;
+#   - sebt-sites : les sites des entreprises (s'endort après 15 minutes sans visite).
+# Fichiers rangés dans la base (STORAGE_DRIVER=database) : l'offre gratuite n'a pas de disque.
+# Les adresses croisées (SITES_APP_URL, SITES_BASE_URL du logiciel) sont réglées après la
+# création, une fois les adresses .onrender.com connues.
 services:
   - type: web
     name: sebt
@@ -26,29 +30,39 @@ services:
       - key: RUN_DAILY_ON_PING
         value: "1"
       - key: STORAGE_DRIVER
-        value: s3
-      # Valeurs secrètes ou propres à l'installation : renseignées dans Render, jamais ici.
+        value: database
+      - key: ENABLE_DEV_MAILBOX
+        value: "true"
+      # Ancien hébergement : ses fichiers sont recopiés dans la base au premier réveil.
+      - key: LEGACY_FILES_URL
+        value: https://radiant-vacherin-c49bd4.netlify.app
+      - key: NEXT_PUBLIC_SENTRY_DSN
+        value: https://e7ddc919225e2985ceb43e5c4359a91e@o4512267264393216.ingest.de.sentry.io/4512386726035536
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      # Base Neon : renseignée à la création, jamais dans le dépôt.
       - key: DATABASE_URL
         sync: false
-      - key: BETTER_AUTH_SECRET
-        sync: false
-      - key: NEXT_PUBLIC_APP_URL
-        sync: false
-      - key: ENCRYPTION_KEY
-        sync: false
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
-      - key: EMAIL_FROM
-        sync: false
-      - key: S3_BUCKET
-        sync: false
-      - key: S3_ENDPOINT
-        sync: false
-      - key: S3_REGION
-        sync: false
-      - key: S3_ACCESS_KEY_ID
-        sync: false
-      - key: S3_SECRET_ACCESS_KEY
-        sync: false
+
+  - type: web
+    name: sebt-sites
+    runtime: node
+    plan: free
+    region: ohio
+    branch: claude/saas-modulaire-prompt-bgo7mm
+    autoDeploy: true
+    buildCommand: >-
+      corepack enable && pnpm install --frozen-lockfile --filter '@quercy/sites...'
+      && pnpm --filter '@quercy/sites...' build
+    startCommand: cd apps/sites && node_modules/.bin/next start -p $PORT
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      # Adresse du logiciel (nom d'hôte ; https ajouté par l'application).
+      - key: SEBT_API_URL
+        fromService:
+          type: web
+          name: sebt
+          property: host

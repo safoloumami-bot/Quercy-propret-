@@ -1,5 +1,6 @@
 import { maybeRunDailyJobs } from "@/server/daily-on-ping";
 import { env } from "@/server/env";
+import { importLegacyFiles } from "@/server/legacy-files";
 
 export const dynamic = "force-dynamic";
 
@@ -10,5 +11,6 @@ export const dynamic = "force-dynamic";
  */
 export function GET() {
   if (env().RUN_DAILY_ON_PING) void maybeRunDailyJobs();
+  if (env().LEGACY_FILES_URL) void importLegacyFiles().catch(() => undefined);
   return new Response("ok", { headers: { "cache-control": "no-store" } });
 }

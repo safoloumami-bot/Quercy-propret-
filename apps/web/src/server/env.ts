@@ -41,6 +41,8 @@ const schema = z.object({
   AI_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("medium"),
   /** Domaine des sites des entreprises (module « Site web ») : <adresse>.<SITES_DOMAIN>. */
   SITES_DOMAIN: z.string().default("sebt.site"),
+  /** Ancienne adresse du logiciel (changement d'hébergement) : ses fichiers y sont recopiés. */
+  LEGACY_FILES_URL: z.url().optional(),
   /** Hébergement sans tâche planifiée (Render) : le signal de réveil lance les tâches du jour. */
   RUN_DAILY_ON_PING: z
     .enum(["0", "1", "true", "false"])
@@ -77,7 +79,11 @@ export function env(): ServerEnv {
       // Netlify fournit l'adresse du site dans URL quand aucune adresse n'est configurée.
       APP_URL:
         parsed.data.BETTER_AUTH_URL ??
-        (process.env.NEXT_PUBLIC_APP_URL || process.env.URL || parsed.data.NEXT_PUBLIC_APP_URL),
+        (process.env.NEXT_PUBLIC_APP_URL ||
+          process.env.URL ||
+          // Render fournit l'adresse publique du service.
+          process.env.RENDER_EXTERNAL_URL ||
+          parsed.data.NEXT_PUBLIC_APP_URL),
     };
   }
   return cached;
