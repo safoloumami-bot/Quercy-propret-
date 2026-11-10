@@ -27,8 +27,9 @@ services:
         value: production
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
+      # Tâches du matin : « 1 » seulement quand Netlify ne les lance plus (sinon doublons).
       - key: RUN_DAILY_ON_PING
-        value: "1"
+        value: "0"
       - key: STORAGE_DRIVER
         value: database
       - key: ENABLE_DEV_MAILBOX
