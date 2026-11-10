@@ -54,37 +54,30 @@ export function AuthShell({
 /** Fond du panneau : brun très foncé, halo sable et trame discrète. */
 function DarkPanel({ children }: { children: React.ReactNode }) {
   return (
-    <aside className="relative hidden overflow-hidden bg-[#110e0b] text-[#f5efe4] lg:flex lg:items-center lg:px-16 lg:py-14">
-      {/* Jonction avec la partie claire : un filet sable qui s'efface aux extrémités. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-[#c9a97c]/35 to-transparent"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-black/30 to-transparent"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-40 -right-40 h-[620px] w-[620px] rounded-full bg-[radial-gradient(closest-side,rgba(226,201,159,0.18),transparent)] blur-2xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 [background-image:linear-gradient(#f5efe4_1px,transparent_1px),linear-gradient(90deg,#f5efe4_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_70%_60%_at_70%_20%,black,transparent)] [background-size:56px_56px] opacity-[0.05]"
-      />
-      {/* Une seule colonne centrée : marque, message, encart, sans vide entre les blocs. */}
-      <div className="relative mx-auto flex w-full max-w-lg flex-col gap-12">
-        {/* eslint-disable-next-line @next/next/no-img-element -- icône de la marque */}
-        <img
-          src="/brand/sebt-mark.svg"
-          alt=""
-          width={44}
-          height={44}
-          className="size-11 rounded-xl"
+    <div className="hidden lg:block lg:p-3">
+      <aside className="relative flex h-full items-center overflow-hidden rounded-[28px] bg-[#110e0b] px-16 py-14 text-[#f5efe4] shadow-[0_30px_80px_-30px_rgba(60,40,15,0.45)] ring-1 ring-[#c9a97c]/10">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-40 -right-40 h-[620px] w-[620px] rounded-full bg-[radial-gradient(closest-side,rgba(226,201,159,0.18),transparent)] blur-2xl"
         />
-        {children}
-      </div>
-    </aside>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 [background-image:linear-gradient(#f5efe4_1px,transparent_1px),linear-gradient(90deg,#f5efe4_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_70%_60%_at_70%_20%,black,transparent)] [background-size:56px_56px] opacity-[0.05]"
+        />
+        {/* Une seule colonne centrée : marque, message, encart, sans vide entre les blocs. */}
+        <div className="relative mx-auto flex w-full max-w-lg flex-col gap-12">
+          {/* eslint-disable-next-line @next/next/no-img-element -- icône de la marque */}
+          <img
+            src="/brand/sebt-mark.svg"
+            alt=""
+            width={44}
+            height={44}
+            className="size-11 rounded-xl"
+          />
+          {children}
+        </div>
+      </aside>
+    </div>
   );
 }
 
