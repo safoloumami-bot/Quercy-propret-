@@ -32,6 +32,13 @@ services:
         value: "0"
       - key: STORAGE_DRIVER
         value: database
+      # Envoi des emails (Resend). Adresse d'essai tant que le domaine sebt.cloud n'est pas
+      # vérifié chez Resend : elle n'envoie qu'à l'adresse du compte Resend.
+      - key: EMAIL_FROM
+        value: sebt <onboarding@resend.dev>
+      # Clé Resend : saisie dans le tableau de bord Render, jamais dans le dépôt.
+      - key: RESEND_API_KEY
+        sync: false
       # Jamais « true » en ligne : la boîte de test serait lisible par tous (liens de connexion).
       - key: ENABLE_DEV_MAILBOX
         value: "false"
