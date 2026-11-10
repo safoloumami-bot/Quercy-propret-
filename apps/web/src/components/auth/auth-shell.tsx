@@ -1,11 +1,11 @@
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, type LucideIcon } from "lucide-react";
 import type * as React from "react";
 
 /*
- * Écrans d'authentification : formulaire à gauche, présentation de sebt à droite
- * (connexion et inscription seulement : sans intérêt pour un mot de passe oublié).
- * Le panneau de droite reprend l'identité du site public (fond brun très foncé, sable) :
- * ses couleurs sont celles de la marque, pas des jetons de l'espace.
+ * Écrans d'authentification : formulaire à gauche, panneau sombre à droite.
+ * Le panneau reprend l'identité du site public (fond brun très foncé, sable) : ses couleurs
+ * sont celles de la marque, pas des jetons de l'espace. Connexion et inscription y présentent
+ * sebt ; les écrans de mot de passe y donnent une aide utile (HelpPanel).
  */
 
 const POINTS = [
@@ -17,19 +17,14 @@ const POINTS = [
 
 export function AuthShell({
   children,
-  showcase = true,
+  aside = <Showcase />,
 }: {
   children: React.ReactNode;
-  showcase?: boolean;
+  /** Contenu du panneau de droite (par défaut : la présentation de sebt). */
+  aside?: React.ReactNode;
 }) {
   return (
-    <div
-      className={
-        showcase
-          ? "grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(480px,1fr)_1fr]"
-          : "grid min-h-dvh grid-cols-1"
-      }
-    >
+    <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(480px,1fr)_1fr]">
       <main className="flex flex-col px-10 py-10">
         {/* eslint-disable-next-line @next/next/no-img-element -- logo vectoriel de la marque */}
         <img
@@ -46,13 +41,13 @@ export function AuthShell({
           Vos données circulent chiffrées et restent isolées par entreprise.
         </p>
       </main>
-
-      {showcase && <Showcase />}
+      <DarkPanel>{aside}</DarkPanel>
     </div>
   );
 }
 
-function Showcase() {
+/** Fond du panneau : brun très foncé, halo sable et trame discrète. */
+function DarkPanel({ children }: { children: React.ReactNode }) {
   return (
     <aside className="relative hidden overflow-hidden bg-[#110e0b] text-[#f5efe4] lg:flex lg:flex-col lg:justify-between lg:px-16 lg:py-14">
       <div
@@ -63,7 +58,6 @@ function Showcase() {
         aria-hidden
         className="pointer-events-none absolute inset-0 [background-image:linear-gradient(#f5efe4_1px,transparent_1px),linear-gradient(90deg,#f5efe4_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_70%_60%_at_70%_20%,black,transparent)] [background-size:56px_56px] opacity-[0.05]"
       />
-
       {/* eslint-disable-next-line @next/next/no-img-element -- icône de la marque */}
       <img
         src="/brand/sebt-mark.svg"
@@ -72,11 +66,22 @@ function Showcase() {
         height={44}
         className="relative size-11 rounded-xl"
       />
+      {children}
+    </aside>
+  );
+}
 
+function Kicker({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="font-mono text-[12.5px] tracking-wide text-[#e2c99f] uppercase">{children}</p>
+  );
+}
+
+function Showcase() {
+  return (
+    <>
       <div className="relative max-w-md">
-        <p className="font-mono text-[12.5px] tracking-wide text-[#e2c99f] uppercase">
-          Logiciel de gestion
-        </p>
+        <Kicker>Logiciel de gestion</Kicker>
         <h2 className="mt-4 text-[2.6rem] leading-[1.05] font-semibold tracking-[-0.03em]">
           Toute votre entreprise, <span className="text-[#a89e8f]">en moins de temps.</span>
         </h2>
@@ -89,7 +94,6 @@ function Showcase() {
           ))}
         </ul>
       </div>
-
       <div className="relative flex items-center gap-4 rounded-2xl border border-[#f5efe4]/[0.08] bg-[#191511]/80 p-4 backdrop-blur">
         <span className="grid size-10 place-items-center rounded-full bg-[#e2c99f] text-sm font-semibold text-[#1f1b16]">
           €
@@ -102,6 +106,64 @@ function Showcase() {
           +1 440 €
         </span>
       </div>
-    </aside>
+    </>
+  );
+}
+
+export interface HelpItem {
+  icon: LucideIcon;
+  title: string;
+  text: string;
+}
+
+/** Panneau d'aide : ce qu'il faut savoir à cette étape, puis le contact du support. */
+export function HelpPanel({
+  kicker,
+  title,
+  accent,
+  items,
+}: {
+  kicker: string;
+  title: string;
+  accent: string;
+  items: HelpItem[];
+}) {
+  return (
+    <>
+      <div className="relative max-w-md">
+        <Kicker>{kicker}</Kicker>
+        <h2 className="mt-4 text-[2.6rem] leading-[1.05] font-semibold tracking-[-0.03em]">
+          {title} <span className="text-[#a89e8f]">{accent}</span>
+        </h2>
+        <ul className="mt-9 space-y-6">
+          {items.map(({ icon: Icon, title: t, text }) => (
+            <li key={t} className="flex gap-4">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#f5efe4]/[0.08] bg-[#1d1813] text-[#e2c99f]">
+                <Icon className="size-[18px]" aria-hidden />
+              </span>
+              <div className="pt-0.5">
+                <p className="text-[15px] font-medium text-[#f5efe4]">{t}</p>
+                <p className="mt-1 text-sm leading-relaxed text-[#a89e8f]">{text}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="relative flex items-center gap-4 rounded-2xl border border-[#f5efe4]/[0.08] bg-[#191511]/80 p-4 backdrop-blur">
+        <span className="grid size-10 place-items-center rounded-full bg-[#e2c99f] text-sm font-semibold text-[#1f1b16]">
+          ?
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-[#f5efe4]">Toujours bloqué ?</p>
+          <p className="text-xs text-[#8e8477]">Notre équipe vous répond sous 24 h ouvrées</p>
+        </div>
+        <a
+          href="mailto:bonjour@sebt.cloud"
+          className="rounded-md bg-[#e2c99f]/10 px-2.5 py-1.5 text-xs text-[#e2c99f] hover:bg-[#e2c99f]/20"
+        >
+          bonjour@sebt.cloud
+        </a>
+      </div>
+    </>
   );
 }

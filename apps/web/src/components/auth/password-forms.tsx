@@ -5,7 +5,14 @@ import { emailSchema, passwordSchema } from "@quercy/core";
 import { Button } from "@quercy/ui/components/button";
 import { Callout } from "@quercy/ui/components/callout";
 import { Input } from "@quercy/ui/components/input";
-import { CircleAlertIcon, MailCheckIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  CircleAlertIcon,
+  KeyRoundIcon,
+  LockKeyholeIcon,
+  MailCheckIcon,
+  TimerOffIcon,
+} from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { useForm } from "react-hook-form";
@@ -13,6 +20,27 @@ import { z } from "zod";
 
 import { FormField, fieldAria } from "@/components/form-field";
 import { authClient, authErrorMessage } from "@/lib/auth-client";
+
+/** Pastille d'icône en tête des écrans de mot de passe. */
+function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+      {children}
+    </div>
+  );
+}
+
+function BackToSignIn() {
+  return (
+    <Link
+      href="/connexion"
+      className="inline-flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+    >
+      <ArrowLeftIcon className="size-3.5" aria-hidden />
+      Retour à la connexion
+    </Link>
+  );
+}
 
 const forgotSchema = z.object({ email: emailSchema });
 
@@ -37,29 +65,34 @@ export function ForgotPasswordForm({ mailReady = true }: { mailReady?: boolean }
   if (sent) {
     return (
       <div className="space-y-6">
-        <div className="flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <Badge>
           <MailCheckIcon className="size-5" />
-        </div>
+        </Badge>
         <div className="space-y-1.5">
           <h1 className="text-2xl font-semibold tracking-tight">Vérifiez votre boîte mail</h1>
           <p className="text-sm text-muted-foreground">
             Si un compte existe pour <strong className="text-foreground">{sent}</strong>, vous allez
             recevoir un lien pour choisir un nouveau mot de passe. Il est valable une heure.
           </p>
+          <p className="text-sm text-muted-foreground">
+            Rien reçu d&apos;ici quelques minutes ? Regardez dans vos spams.
+          </p>
         </div>
-        <Link href="/connexion" className="text-sm font-medium text-primary hover:underline">
-          Retour à la connexion
-        </Link>
+        <BackToSignIn />
       </div>
     );
   }
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
+      <Badge>
+        <KeyRoundIcon className="size-5" />
+      </Badge>
       <div className="space-y-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight">Mot de passe oublié</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Mot de passe oublié ?</h1>
         <p className="text-sm text-muted-foreground">
-          Indiquez votre adresse : nous vous envoyons un lien de réinitialisation.
+          Pas de panique. Indiquez votre adresse : nous vous envoyons un lien pour en choisir un
+          nouveau.
         </p>
       </div>
       {!mailReady ? (
@@ -85,12 +118,7 @@ export function ForgotPasswordForm({ mailReady = true }: { mailReady?: boolean }
       <Button type="submit" size="lg" className="w-full" disabled={form.formState.isSubmitting}>
         {form.formState.isSubmitting ? "Envoi…" : "Envoyer le lien"}
       </Button>
-      <Link
-        href="/connexion"
-        className="block text-center text-sm text-muted-foreground hover:text-foreground"
-      >
-        Retour à la connexion
-      </Link>
+      <BackToSignIn />
     </form>
   );
 }
@@ -112,6 +140,9 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
   if (!token) {
     return (
       <div className="space-y-6">
+        <Badge>
+          <TimerOffIcon className="size-5" />
+        </Badge>
         <h1 className="text-2xl font-semibold tracking-tight">Lien expiré</h1>
         <p className="text-sm text-muted-foreground">
           Ce lien de réinitialisation n&apos;est plus valable. Demandez-en un nouveau : il reste
@@ -134,6 +165,9 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
   const { errors, isSubmitting } = form.formState;
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
+      <Badge>
+        <LockKeyholeIcon className="size-5" />
+      </Badge>
       <div className="space-y-1.5">
         <h1 className="text-2xl font-semibold tracking-tight">Nouveau mot de passe</h1>
         <p className="text-sm text-muted-foreground">
