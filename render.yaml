@@ -1,0 +1,54 @@
+# Hébergement Render (Blueprint) : le logiciel sebt sur une offre gratuite, gardé éveillé par
+# le flux GitHub « Réveil » (.github/workflows/reveil.yml) qui lance aussi les tâches du jour
+# (RUN_DAILY_ON_PING). Région Ohio : à côté de la base Neon (aws-us-east-2).
+# Les sites des entreprises restent sur Netlify (sebt-sites).
+services:
+  - type: web
+    name: sebt
+    runtime: node
+    plan: free
+    region: ohio
+    branch: claude/saas-modulaire-prompt-bgo7mm
+    autoDeploy: true
+    # Client Prisma, migrations, garde « base non vide », puis construction du logiciel.
+    buildCommand: >-
+      corepack enable && pnpm install --frozen-lockfile --filter '!@quercy/desktop...'
+      && CONTEXT=production bash scripts/netlify-build.sh
+    startCommand: cd apps/web && node_modules/.bin/next start -p $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: RUN_DAILY_ON_PING
+        value: "1"
+      - key: STORAGE_DRIVER
+        value: s3
+      # Valeurs secrètes ou propres à l'installation : renseignées dans Render, jamais ici.
+      - key: DATABASE_URL
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false

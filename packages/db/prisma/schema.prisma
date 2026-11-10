@@ -2997,3 +2997,13 @@ model PageView {
   @@index([kind, createdAt])
   @@map("page_view")
 }
+
+/// Petites valeurs de fonctionnement de la plateforme (ex. : jour de la dernière exécution des
+/// tâches quotidiennes lancées par le signal de réveil, hébergement sans tâche planifiée).
+model PlatformState {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_state")
+}
