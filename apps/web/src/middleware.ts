@@ -8,6 +8,8 @@ const PUBLIC_PREFIXES = [
   "/reinitialiser",
   "/invitation",
   "/document",
+  // Vitrine de sebt (visiteurs non connectés).
+  "/accueil",
   // Guide d'installation sur téléphone, à envoyer aux équipes.
   "/installer",
   "/api",
@@ -28,6 +30,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   if (!SESSION_COOKIES.some((name) => request.cookies.has(name))) {
+    // Visiteur sans session sur l'accueil : la vitrine de sebt (l'adresse reste « / »).
+    if (pathname === "/") return NextResponse.rewrite(new URL("/accueil", request.url));
     const url = new URL("/connexion", request.url);
     if (pathname !== "/") url.searchParams.set("next", `${pathname}${search}`);
     return NextResponse.redirect(url);
