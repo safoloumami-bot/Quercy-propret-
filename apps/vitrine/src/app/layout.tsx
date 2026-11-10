@@ -10,8 +10,18 @@ import "@fontsource-variable/bricolage-grotesque";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(marque.urlSite),
   title: { default: `${marque.nom} : le logiciel de gestion des TPE et PME`, template: `%s · ${marque.nom}` },
   description: marque.accroche,
+  openGraph: {
+    type: "website",
+    locale: "fr_FR",
+    siteName: marque.nom,
+    title: `${marque.nom} : le logiciel de gestion des TPE et PME`,
+    description: marque.accroche,
+    url: "/",
+  },
+  twitter: { card: "summary_large_image" },
   icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }, { url: "/favicon.ico" }], apple: "/apple-touch-icon.png" },
 };
 

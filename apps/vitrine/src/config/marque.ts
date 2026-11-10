@@ -14,6 +14,8 @@ export const marque = {
    * code avec NEXT_PUBLIC_URL_LOGICIEL ; par défaut, l'adresse Render en attendant
    * app.sebt.cloud.
    */
+  /** Adresse publique de cette vitrine (liens de partage, sitemap). Réglable avec NEXT_PUBLIC_URL_SITE. */
+  urlSite: (process.env.NEXT_PUBLIC_URL_SITE || "https://sebt-vitrine-t5gw.onrender.com").replace(/\/$/, ""),
   urlLogiciel: (process.env.NEXT_PUBLIC_URL_LOGICIEL || "https://sebt-t5gw.onrender.com").replace(/\/$/, ""),
 } as const;
 

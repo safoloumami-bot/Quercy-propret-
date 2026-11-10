@@ -88,3 +88,5 @@ services:
         value: "1"
       - key: NEXT_PUBLIC_URL_LOGICIEL
         value: https://sebt-t5gw.onrender.com
+      - key: NEXT_PUBLIC_URL_SITE
+        value: https://sebt-vitrine-t5gw.onrender.com
