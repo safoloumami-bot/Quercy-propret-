@@ -32,8 +32,9 @@ services:
         value: "0"
       - key: STORAGE_DRIVER
         value: database
+      # Jamais « true » en ligne : la boîte de test serait lisible par tous (liens de connexion).
       - key: ENABLE_DEV_MAILBOX
-        value: "true"
+        value: "false"
       # Ancien hébergement : ses fichiers sont recopiés dans la base au premier réveil.
       - key: LEGACY_FILES_URL
         value: https://radiant-vacherin-c49bd4.netlify.app
