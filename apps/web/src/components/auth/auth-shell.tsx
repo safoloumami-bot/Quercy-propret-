@@ -25,7 +25,12 @@ export function AuthShell({
 }) {
   return (
     <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(480px,1fr)_1fr]">
-      <main className="flex flex-col px-10 py-10">
+      <main className="relative isolate flex flex-col overflow-hidden px-10 py-10">
+        {/* Halo sable discret derrière le formulaire : relie les deux moitiés de l'écran. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-1/2 -z-10 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(201,169,124,0.16),transparent)]"
+        />
         {/* eslint-disable-next-line @next/next/no-img-element -- logo vectoriel de la marque */}
         <img
           src="/brand/sebt-logo-clair.svg"
@@ -49,7 +54,16 @@ export function AuthShell({
 /** Fond du panneau : brun très foncé, halo sable et trame discrète. */
 function DarkPanel({ children }: { children: React.ReactNode }) {
   return (
-    <aside className="relative hidden overflow-hidden bg-[#110e0b] text-[#f5efe4] lg:flex lg:flex-col lg:justify-between lg:px-16 lg:py-14">
+    <aside className="relative hidden overflow-hidden bg-[#110e0b] text-[#f5efe4] lg:flex lg:items-center lg:px-16 lg:py-14">
+      {/* Jonction avec la partie claire : un filet sable qui s'efface aux extrémités. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-[#c9a97c]/35 to-transparent"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-black/30 to-transparent"
+      />
       <div
         aria-hidden
         className="pointer-events-none absolute -top-40 -right-40 h-[620px] w-[620px] rounded-full bg-[radial-gradient(closest-side,rgba(226,201,159,0.18),transparent)] blur-2xl"
@@ -58,15 +72,18 @@ function DarkPanel({ children }: { children: React.ReactNode }) {
         aria-hidden
         className="pointer-events-none absolute inset-0 [background-image:linear-gradient(#f5efe4_1px,transparent_1px),linear-gradient(90deg,#f5efe4_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_70%_60%_at_70%_20%,black,transparent)] [background-size:56px_56px] opacity-[0.05]"
       />
-      {/* eslint-disable-next-line @next/next/no-img-element -- icône de la marque */}
-      <img
-        src="/brand/sebt-mark.svg"
-        alt=""
-        width={44}
-        height={44}
-        className="relative size-11 rounded-xl"
-      />
-      {children}
+      {/* Une seule colonne centrée : marque, message, encart, sans vide entre les blocs. */}
+      <div className="relative mx-auto flex w-full max-w-lg flex-col gap-12">
+        {/* eslint-disable-next-line @next/next/no-img-element -- icône de la marque */}
+        <img
+          src="/brand/sebt-mark.svg"
+          alt=""
+          width={44}
+          height={44}
+          className="size-11 rounded-xl"
+        />
+        {children}
+      </div>
     </aside>
   );
 }
@@ -80,9 +97,9 @@ function Kicker({ children }: { children: React.ReactNode }) {
 function Showcase() {
   return (
     <>
-      <div className="relative max-w-md">
+      <div className="relative">
         <Kicker>Logiciel de gestion</Kicker>
-        <h2 className="mt-4 text-[2.6rem] leading-[1.05] font-semibold tracking-[-0.03em]">
+        <h2 className="mt-4 max-w-md text-[2.6rem] leading-[1.05] font-semibold tracking-[-0.03em] text-balance">
           Toute votre entreprise, <span className="text-[#a89e8f]">en moins de temps.</span>
         </h2>
         <ul className="mt-8 space-y-3.5 text-[15px] text-[#a89e8f]">
@@ -130,9 +147,9 @@ export function HelpPanel({
 }) {
   return (
     <>
-      <div className="relative max-w-md">
+      <div className="relative">
         <Kicker>{kicker}</Kicker>
-        <h2 className="mt-4 text-[2.6rem] leading-[1.05] font-semibold tracking-[-0.03em]">
+        <h2 className="mt-4 max-w-md text-[2.6rem] leading-[1.05] font-semibold tracking-[-0.03em] text-balance">
           {title} <span className="text-[#a89e8f]">{accent}</span>
         </h2>
         <ul className="mt-9 space-y-6">
@@ -143,7 +160,9 @@ export function HelpPanel({
               </span>
               <div className="pt-0.5">
                 <p className="text-[15px] font-medium text-[#f5efe4]">{t}</p>
-                <p className="mt-1 text-sm leading-relaxed text-[#a89e8f]">{text}</p>
+                <p className="mt-1 max-w-sm text-sm leading-relaxed text-pretty text-[#a89e8f]">
+                  {text}
+                </p>
               </div>
             </li>
           ))}
