@@ -16,6 +16,7 @@ export default function Accueil() {
         <PromessesLogiciel />
         <Presentation />
         <Modules />
+        <SitesWeb />
         <CorpsDeMetier />
         <Assistant />
         <Terrain />
@@ -23,7 +24,6 @@ export default function Accueil() {
         <Partout />
         <Securite />
         <TarifsLogiciel />
-        <SitesWeb />
         <FaqLogiciel />
         <AppelLogiciel />
       </main>
