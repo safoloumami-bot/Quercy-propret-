@@ -892,7 +892,7 @@ export function TarifsLogiciel({ titre = true, comparatif = false }: { titre?: b
 export function SitesWeb() {
   const services = [
     ["Site web", "Réalisé avec vous, hébergé, avec votre nom de domaine et vos emails."],
-    ["Appli à votre nom", "Rendez-vous, suivi, devis et factures pour vos clients, reliés au logiciel."],
+    ["Appli pour vos clients", "Commande, réservation, fidélité : à votre nom, sur leur téléphone, reliée au logiciel."],
     ["Logo et supports", "Une identité qui raconte votre métier, déclinée sur tous vos supports."],
   ] as const;
   return (
@@ -920,7 +920,7 @@ export function SitesWeb() {
           <SiteExemple />
           {/* Téléphone : sous le site sur mobile, en surimpression à partir de la tablette. */}
           <AppliExemple className="mx-auto mt-8 sm:absolute sm:right-0 sm:-bottom-8 sm:mt-0 lg:right-2" />
-          <p className="mt-6 font-mono text-[12px] text-taupe-2 sm:mt-14">Exemple de réalisation : site, appli client et identité d&apos;une menuiserie.</p>
+          <p className="mt-6 font-mono text-[12px] text-taupe-2 sm:mt-14">Exemple de réalisation : le site, l&apos;appli des clients et l&apos;identité d&apos;un restaurant.</p>
         </Apparition>
 
         <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-creme/[0.08] bg-creme/[0.06] sm:grid-cols-3">
