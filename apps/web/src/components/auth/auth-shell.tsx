@@ -55,10 +55,10 @@ export function AuthShell({
 function DarkPanel({ children }: { children: React.ReactNode }) {
   return (
     <div className="hidden lg:block lg:p-3">
-      <aside className="relative flex h-full items-center overflow-hidden rounded-[28px] bg-[#110e0b] px-16 py-14 text-[#f5efe4] shadow-[0_30px_80px_-30px_rgba(60,40,15,0.45)] ring-1 ring-[#c9a97c]/10">
+      <aside className="relative flex h-full items-center overflow-hidden rounded-[28px] bg-[linear-gradient(155deg,#43321f_0%,#33261a_45%,#261c13_100%)] px-16 py-14 text-[#f5efe4] shadow-[0_30px_80px_-30px_rgba(90,60,25,0.5)] ring-1 ring-[#c9a97c]/10">
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-40 -right-40 h-[620px] w-[620px] rounded-full bg-[radial-gradient(closest-side,rgba(226,201,159,0.18),transparent)] blur-2xl"
+          className="pointer-events-none absolute -top-40 -right-40 h-[620px] w-[620px] rounded-full bg-[radial-gradient(closest-side,rgba(226,201,159,0.22),transparent)] blur-2xl"
         />
         <div
           aria-hidden
@@ -104,7 +104,7 @@ function Showcase() {
           ))}
         </ul>
       </div>
-      <div className="relative flex items-center gap-4 rounded-2xl border border-[#f5efe4]/[0.08] bg-[#191511]/80 p-4 backdrop-blur">
+      <div className="relative flex items-center gap-4 rounded-2xl border border-[#f5efe4]/[0.08] bg-[#2a2016]/70 p-4 backdrop-blur">
         <span className="grid size-10 place-items-center rounded-full bg-[#e2c99f] text-sm font-semibold text-[#1f1b16]">
           €
         </span>
@@ -148,7 +148,7 @@ export function HelpPanel({
         <ul className="mt-9 space-y-6">
           {items.map(({ icon: Icon, title: t, text }) => (
             <li key={t} className="flex gap-4">
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#f5efe4]/[0.08] bg-[#1d1813] text-[#e2c99f]">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#f5efe4]/[0.08] bg-[#3a2c1e]/70 text-[#e2c99f]">
                 <Icon className="size-[18px]" aria-hidden />
               </span>
               <div className="pt-0.5">
@@ -161,7 +161,7 @@ export function HelpPanel({
           ))}
         </ul>
       </div>
-      <div className="relative flex items-center gap-4 rounded-2xl border border-[#f5efe4]/[0.08] bg-[#191511]/80 p-4 backdrop-blur">
+      <div className="relative flex items-center gap-4 rounded-2xl border border-[#f5efe4]/[0.08] bg-[#2a2016]/70 p-4 backdrop-blur">
         <span className="grid size-10 place-items-center rounded-full bg-[#e2c99f] text-sm font-semibold text-[#1f1b16]">
           ?
         </span>
