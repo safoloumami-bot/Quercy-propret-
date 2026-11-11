@@ -27,9 +27,9 @@ services:
         value: production
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
-      # Tâches du matin : « 1 » seulement quand Netlify ne les lance plus (sinon doublons).
+      # Tâches du matin lancées par Render (la fonction planifiée Netlify ne fait plus rien).
       - key: RUN_DAILY_ON_PING
-        value: "0"
+        value: "1"
       - key: STORAGE_DRIVER
         value: database
       # Envoi des emails (Resend). Adresse d'essai tant que le domaine sebt.cloud n'est pas
