@@ -103,7 +103,23 @@ const CLIENTS = [
  * principal) et deux équipes. Idempotent : peut être relancé sans doublon.
  * Le jeu complet sur 12 mois (clients, factures, projets…) s'ajoute avec les modules.
  */
+/**
+ * Les comptes de démonstration ont un mot de passe public (ce dépôt est public) : le jeu de
+ * démo ne s'installe que sur une base locale, jamais sur une base en ligne.
+ */
+function assertLocalDatabase() {
+  const url = process.env.DATABASE_URL ?? "";
+  const local =
+    /@(localhost|127\.0\.0\.1|postgres|db)(:\d+)?\//.test(url) || url.includes("host=/");
+  if (!local && process.env.ALLOW_DEMO_SEED !== "1") {
+    throw new Error(
+      "Jeu de démonstration refusé : la base n'est pas locale (mot de passe de démo public).",
+    );
+  }
+}
+
 async function main() {
+  assertLocalDatabase();
   const org = await prisma.organization.upsert({
     where: { slug: "quercy-proprete" },
     update: {

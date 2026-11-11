@@ -222,11 +222,17 @@ export function WidgetBody({
               <li key={i.id}>
                 <Link
                   href={recordPath("invoice", i.id)}
-                  className="flex items-center justify-between gap-2 py-1.5 hover:underline"
+                  className="flex items-start justify-between gap-3 py-1.5 hover:underline"
                 >
-                  <span className="truncate">{i.label}</span>
-                  <span className="shrink-0 tabular-nums">
-                    {formatCents(i.cents)}{" "}
+                  {/* Sur deux lignes : numéro et client à gauche, montant et retard à droite. */}
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate">{i.label.split(" · ")[0]}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {i.label.split(" · ").slice(1).join(" · ")}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end tabular-nums">
+                    {formatCents(i.cents)}
                     <span className="text-xs text-destructive">+{i.days} j</span>
                   </span>
                 </Link>

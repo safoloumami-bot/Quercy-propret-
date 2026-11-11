@@ -133,7 +133,10 @@ export function Sidebar({
         </SidebarTooltip>
       </div>
 
-      <nav aria-label="Navigation principale" className="flex-1 overflow-y-auto px-2">
+      <nav
+        aria-label="Navigation principale"
+        className="flex-1 overflow-y-auto [mask-image:linear-gradient(to_bottom,black_calc(100%-28px),transparent)] px-2"
+      >
         {filterSections([...SIDEBAR_SECTIONS, ...MODULE_SECTIONS], permissions, modules).map(
           (section) => (
             <div key={section.id} className="mb-4">

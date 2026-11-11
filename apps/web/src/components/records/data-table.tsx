@@ -783,7 +783,9 @@ export function DataTable({
           <span>
             {groupField
               ? "Vue regroupée"
-              : `${total.toLocaleString("fr-FR")} ${total > 1 ? noun : labels.singular.toLowerCase()}`}
+              : list.isPending
+                ? "Chargement…"
+                : `${total.toLocaleString("fr-FR")} ${total > 1 ? noun : labels.singular.toLowerCase()}`}
             {filtersActive ? " (filtré)" : ""}
           </span>
           {list.isFetching && !list.isPending ? <span>Actualisation…</span> : null}
