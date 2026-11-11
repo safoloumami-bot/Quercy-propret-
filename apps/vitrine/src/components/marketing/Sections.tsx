@@ -11,6 +11,7 @@ import { offresWeb, offresVps, inclusVps, extensionsDomaines, euros, type Period
 import { disponibiliteDomaine, nettoyerNomDomaine } from "@/lib/domaines";
 import { marque } from "@/config/marque";
 import { Apparition } from "./Apparition";
+import { DonneesFaq } from "./DonneesStructurees";
 
 /* ---------- Briques communes ---------- */
 
@@ -458,6 +459,7 @@ export function Faq() {
             Une autre question ? <a href={`mailto:${marque.emailSupport}`} className="text-creme underline decoration-creme/30 underline-offset-4 hover:decoration-lagon">Écrivez-nous</a>.
           </p>
         </div>
+        <DonneesFaq questions={questions} />
         <div className="divide-y divide-creme/[0.08] border-y border-creme/[0.08]">
           {questions.map(([q, r], i) => (
             <div key={q}>
@@ -471,7 +473,8 @@ export function Faq() {
                   {ouverte === i ? <Minus className="size-4 shrink-0 text-taupe" aria-hidden /> : <Plus className="size-4 shrink-0 text-taupe" aria-hidden />}
                 </button>
               </h3>
-              {ouverte === i && <p className="animate-apparait pb-6 text-[15px] leading-relaxed text-taupe">{r}</p>}
+              {/* Réponse toujours présente dans la page (lisible par les moteurs de recherche), masquée tant que la question est fermée. */}
+              <p hidden={ouverte !== i} className="animate-apparait pb-6 text-[15px] leading-relaxed text-taupe">{r}</p>
             </div>
           ))}
         </div>
