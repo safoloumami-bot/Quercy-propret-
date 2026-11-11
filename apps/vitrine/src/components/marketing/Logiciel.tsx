@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { LienBouton, cx } from "@/components/ui";
 import { DonneesFaq } from "@/components/marketing/DonneesStructurees";
+import { AppliExemple, SiteExemple } from "@/components/marketing/ExempleMarque";
 import { marque, liensLogiciel } from "@/config/marque";
 import { categories, comparatifLogiciel, joursEssai, metiersLogiciel, modules, offresLogiciel, prixParMois, reconnaitreMetier, type CategorieModule } from "@/config/logiciel";
 import { Apparition } from "./Apparition";
@@ -889,31 +890,47 @@ export function TarifsLogiciel({ titre = true, comparatif = false }: { titre?: b
 /* ---------- Offre complémentaire : sites web ---------- */
 
 export function SitesWeb() {
+  const services = [
+    ["Site web", "Réalisé avec vous, hébergé, avec votre nom de domaine et vos emails."],
+    ["Appli à votre nom", "Rendez-vous, suivi, devis et factures pour vos clients, reliés au logiciel."],
+    ["Logo et supports", "Une identité qui raconte votre métier, déclinée sur tous vos supports."],
+  ] as const;
   return (
-    <section className="border-t border-creme/[0.06]">
-      <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-20 md:grid-cols-[1.2fr_1fr] md:py-24">
-        <div>
-          <p className="font-mono text-[12.5px] tracking-wide text-or uppercase">Aussi chez {marque.nom}</p>
-          <h2 className="titre-pub mt-3 text-[2rem] leading-[1.08] text-creme md:text-[2.6rem]">
-            Votre site, vos applis, votre logo. <span className="text-taupe">Au même endroit que le reste.</span>
-          </h2>
-          <p className="mt-5 max-w-lg text-taupe">
-            Voyez votre site en une minute, gratuitement. Notre équipe le réalise ensuite avec vous, et s&apos;occupe de l&apos;hébergement, du nom de domaine et des emails. Applis et identité visuelle sur demande.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <LienBouton href="/sites" variante="nuit" taille="lg">
-              Voir mon site en une minute <ArrowRight className="size-4" />
-            </LienBouton>
-            <LienBouton href="/sites#sur-mesure" variante="fantomeNuit" taille="lg">
-              Applis et logo sur demande
-            </LienBouton>
-          </div>
+    <section id="sites" className="relative scroll-mt-20 overflow-hidden border-t border-creme/[0.06]">
+      <div aria-hidden className="pointer-events-none absolute top-1/3 right-0 h-[520px] w-[720px] translate-x-1/4 rounded-full bg-[radial-gradient(closest-side,rgba(201,169,124,0.16),transparent)] blur-2xl" />
+      <div className="relative mx-auto max-w-6xl px-6 py-24 md:py-32">
+        <div className="grid items-end gap-8 lg:grid-cols-[1.1fr_1fr]">
+          <TitreSection surtitre={`Aussi chez ${marque.nom}`} affirmation="Votre site, votre appli, votre logo." precision="Faits pour vous, par notre équipe." />
+          <Apparition>
+            <p className="max-w-lg text-lg leading-relaxed text-taupe">
+              Voyez votre site en une minute, gratuitement. Notre équipe le réalise ensuite avec vous, avec l&apos;appli et l&apos;identité qui vont avec. Tout est relié à votre logiciel : une demande de devis arrive directement dans vos ventes.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <LienBouton href="/sites" variante="nuit" taille="lg">
+                Voir mon site en une minute <ArrowRight className="size-4" />
+              </LienBouton>
+              <LienBouton href="/sites#sur-mesure" variante="fantomeNuit" taille="lg">
+                Appli et logo sur devis
+              </LienBouton>
+            </div>
+          </Apparition>
         </div>
-        <Fragment className="space-y-2 p-5 font-sans text-[14px]">
-          {["Aperçu gratuit de votre site en une minute", "Site réalisé avec vous, sur devis", "Hébergement, domaine et emails gérés pour vous", "Applis, logo et identité visuelle sur demande"].map((t) => (
-            <p key={t} className="flex items-center gap-2.5 text-creme"><Check className="size-4 text-lagon" aria-hidden /> {t}</p>
+
+        <Apparition className="relative mt-14 sm:pr-28 lg:pr-56">
+          <SiteExemple />
+          {/* Téléphone : sous le site sur mobile, en surimpression à partir de la tablette. */}
+          <AppliExemple className="mx-auto mt-8 sm:absolute sm:right-0 sm:-bottom-8 sm:mt-0 lg:right-2" />
+          <p className="mt-6 font-mono text-[12px] text-taupe-2 sm:mt-14">Exemple de réalisation : site, appli client et identité d&apos;une menuiserie.</p>
+        </Apparition>
+
+        <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-creme/[0.08] bg-creme/[0.06] sm:grid-cols-3">
+          {services.map(([t, d]) => (
+            <div key={t} className="bg-nuit p-6">
+              <p className="flex items-center gap-2.5 font-medium text-creme"><Check className="size-4 text-lagon" aria-hidden /> {t}</p>
+              <p className="mt-2 text-[14.5px] leading-relaxed text-taupe">{d}</p>
+            </div>
           ))}
-        </Fragment>
+        </div>
       </div>
     </section>
   );

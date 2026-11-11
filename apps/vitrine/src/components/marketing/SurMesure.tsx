@@ -6,6 +6,7 @@ import type { SiteGenere } from "@/lib/generateur";
 import { Bouton, cx } from "@/components/ui";
 import { marque } from "@/config/marque";
 import { Apparition } from "./Apparition";
+import { AppliExemple, IdentiteExemple } from "./ExempleMarque";
 import { TitreSection } from "./Sections";
 
 // Services sur demande : réalisés par l'équipe, sur devis. Les visuels sont des illustrations.
@@ -59,52 +60,13 @@ const etapes = [
   ["On livre", "Retouches comprises, puis mise en ligne, publication ou fichiers prêts à imprimer."],
 ] as const;
 
-/** Visuel : pistes de logo et appli, formes abstraites (aucune marque réelle). */
+/** Visuel : l'identité complète d'une entreprise d'exemple et son appli client. */
 function Visuel() {
-  const pistes = [
-    ["#e2c99f", "rounded-full", "Piste A"],
-    ["#c9a97c", "rounded-[10px] rotate-45 scale-75", "Piste B"],
-    ["#f5efe4", "rounded-t-full", "Piste C"],
-  ] as const;
   return (
-    <div className="relative mx-auto h-[420px] w-full max-w-[460px]" aria-hidden>
-      <div className="absolute top-0 left-0 w-[300px] rounded-[26px] bg-black p-2 shadow-[0_50px_120px_-30px_rgba(0,0,0,0.95)] ring-1 ring-creme/10">
-        <div className="rounded-[20px] bg-[linear-gradient(160deg,#1d1813_0%,#110e0b_70%)] p-5">
-          <p className="text-[12px] text-taupe-2">Identité · 3 pistes</p>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            {pistes.map(([c, forme, l]) => (
-              <div key={l} className="rounded-xl bg-creme/[0.04] p-3 text-center">
-                <span className={cx("mx-auto block size-9", forme)} style={{ background: c }} />
-                <p className="mt-2 text-[10.5px] text-taupe">{l}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 flex gap-1.5">
-            {["#1f1b16", "#c9a97c", "#e2c99f", "#f5efe4"].map((c) => (
-              <span key={c} className="h-6 flex-1 rounded-md ring-1 ring-creme/10" style={{ background: c }} />
-            ))}
-          </div>
-          <p className="mt-4 text-[22px] font-semibold tracking-[-0.03em] text-creme">Atelier Martin</p>
-          <p className="text-[11.5px] text-taupe-2">Geist · 600 / 400</p>
-        </div>
-      </div>
-      <div className="absolute right-0 bottom-0 w-[200px] rounded-[36px] bg-black p-2 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.95)] ring-1 ring-creme/12">
-        <div className="overflow-hidden rounded-[30px] bg-[#fbf8f2] pb-5 text-[#1f1b16]">
-          <div className="bg-[#1f1b16] px-4 pt-6 pb-4 text-[#f5efe4]">
-            <span className="block size-6 rounded-full bg-[#e2c99f]" />
-            <p className="mt-2 text-[14px] font-semibold">Atelier Martin</p>
-            <p className="text-[10.5px] opacity-70">Prendre rendez-vous</p>
-          </div>
-          <div className="space-y-1.5 p-3">
-            {["Mar. 4 · 09:00", "Mar. 4 · 14:30", "Mer. 5 · 10:00"].map((c, i) => (
-              <div key={c} className={cx("rounded-lg px-3 py-2 text-[11px] ring-1 ring-[#e7decf]", i === 1 ? "bg-[#1f1b16] text-[#f5efe4]" : "bg-white")}>
-                {c}
-              </div>
-            ))}
-            <div className="mt-2 rounded-full bg-[#c9a97c] py-2 text-center text-[11px] font-medium">Réserver</div>
-          </div>
-        </div>
-      </div>
+    <div className="relative mx-auto w-full max-w-[500px] sm:pb-20">
+      <IdentiteExemple className="w-full sm:w-[292px]" />
+      {/* Téléphone : sous l'identité sur mobile, en surimpression à partir de la tablette. */}
+      <AppliExemple className="mx-auto mt-8 sm:absolute sm:right-0 sm:bottom-0 sm:mt-0 sm:origin-bottom-right sm:scale-[0.88]" />
     </div>
   );
 }
