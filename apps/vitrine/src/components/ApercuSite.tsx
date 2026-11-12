@@ -314,7 +314,7 @@ function Galerie({ t, s, site }: { t: Theme; s: SectionSite; site: SiteGenere })
   const base = s.items?.length ? s.items : [{ titre: "" }, { titre: "" }, { titre: "" }, { titre: "" }];
   // Avec de vraies photos, chaque image garde sa propre légende (le prix d'un produit est conservé).
   const serie = photosPour(site.secteur);
-  const items = serie ? serie.galerie.map(([, legende], i) => ({ titre: legende, prix: base[i]?.prix })) : base;
+  const items: NonNullable<SectionSite["items"]> = serie ? serie.galerie.map(([, legende], i) => ({ titre: legende, prix: base[i]?.prix })) : base;
   const produits = items.some((x) => x.prix);
   const mosaique = !produits && items.length === 4;
   const grille = mosaique ? "grid-cols-2 @3xl:grid-cols-4 @3xl:grid-rows-[230px_230px]" : produits ? "grid-cols-2 @3xl:grid-cols-4" : "grid-cols-2 @3xl:grid-cols-3";
