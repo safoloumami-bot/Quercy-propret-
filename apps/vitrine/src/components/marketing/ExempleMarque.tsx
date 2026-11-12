@@ -233,7 +233,7 @@ export function IdentiteExemple({ site, className }: { site: SiteGenere; classNa
           </span>
         </div>
         <div className="relative aspect-[1.6] overflow-hidden rounded-lg">
-          <Photo id={serie?.galerie[3] ?? serie?.hero} className="size-full" />
+          <Photo id={serie?.galerie[3]?.[0] ?? serie?.hero} className="size-full" />
           <div className="absolute inset-0 bg-black/40" />
           <span className="absolute bottom-2.5 left-3 text-white">
             <LogoExemple site={site} taille={12} couleur="#ffffff" point="#ffffff" />
