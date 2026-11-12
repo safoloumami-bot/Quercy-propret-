@@ -73,7 +73,9 @@ services:
       - key: SEBT_API_URL
         value: https://sebt-t5gw.onrender.com
 
-  # Vitrine sebt (site public) : projet à part dans apps/vitrine, hors de l'espace de travail.
+  # Vitrine sebt (site public, https://sebt.onrender.com) : projet à part dans apps/vitrine, hors
+  # de l'espace de travail. Le service « sebt » qui la sert a été créé à part (pour obtenir cette
+  # adresse courte) ; ce bloc garde la configuration de référence de l'ancien service.
   - type: web
     name: sebt-vitrine
     runtime: node
@@ -96,4 +98,4 @@ services:
       - key: NEXT_PUBLIC_URL_LOGICIEL
         value: https://sebt-t5gw.onrender.com
       - key: NEXT_PUBLIC_URL_SITE
-        value: https://sebt-vitrine-t5gw.onrender.com
+        value: https://sebt.onrender.com
