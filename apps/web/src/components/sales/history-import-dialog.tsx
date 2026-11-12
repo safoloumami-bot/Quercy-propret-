@@ -3,6 +3,8 @@
 import {
   type HistoryFieldKey,
   type HistoryKind,
+  type SalesExtraction,
+  extractionToHistoryRow,
   formatCents,
   guessHistoryMapping,
   historyFields,
@@ -29,7 +31,14 @@ import {
 import { toast } from "@quercy/ui/components/toaster";
 import { cn } from "@quercy/ui/lib/utils";
 import { useMutation } from "@tanstack/react-query";
-import { CircleAlertIcon, DownloadIcon, FileUpIcon, HistoryIcon } from "lucide-react";
+import {
+  CircleAlertIcon,
+  DownloadIcon,
+  FileUpIcon,
+  HistoryIcon,
+  LoaderCircleIcon,
+  SparklesIcon,
+} from "lucide-react";
 import * as React from "react";
 
 import { readTable } from "@/components/records/import-dialog";
@@ -39,6 +48,22 @@ import { errorMessage, useTRPC } from "@/lib/trpc";
 type Step = "file" | "mapping" | "review" | "done";
 const SKIP = "__skip__";
 const MAX_ROWS = 5000;
+const MAX_PDFS = 30;
+const PDF_TYPES = /\.(pdf|jpe?g|png|webp|gif)$/i;
+/** Ordre des colonnes d'un lot de PDF lus par l'IA (une colonne par champ). */
+const PDF_COLUMNS: HistoryFieldKey[] = [
+  "number",
+  "issueDate",
+  "dueDate",
+  "client",
+  "subject",
+  "totalExcl",
+  "tax",
+  "total",
+  "vatRate",
+  "paid",
+  "invoiceNumber",
+];
 const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeZone: "UTC" });
 
 const COPY: Record<HistoryKind, { plural: string; one: string; feminine: boolean }> = {
@@ -79,6 +104,9 @@ export function HistoryImportDialog({
   const [mapping, setMapping] = React.useState<Record<number, string>>({});
   const [dragging, setDragging] = React.useState(false);
   const [readError, setReadError] = React.useState<string | null>(null);
+  /** Lecture des PDF en cours : fichiers lus sur total. */
+  const [reading, setReading] = React.useState<{ done: number; total: number } | null>(null);
+  const [notes, setNotes] = React.useState<string[]>([]);
   const run = useMutation(trpc.sales.importHistory.mutationOptions());
 
   React.useEffect(() => {
@@ -88,16 +116,73 @@ export function HistoryImportDialog({
       setRows([]);
       setMapping({});
       setReadError(null);
+      setNotes([]);
+      setReading(null);
       run.reset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  /** PDF ou photos : chaque document est lu par l'IA, puis passe par le même aperçu. */
+  async function loadPdfs(files: File[]) {
+    if (files.length > MAX_PDFS)
+      return setReadError(
+        `${MAX_PDFS} documents au plus par lot. Pour un gros historique, l'export CSV ou Excel de votre ancien logiciel est plus rapide.`,
+      );
+    const fieldsHere = new Set(fields.map((f) => f.key));
+    const columns = PDF_COLUMNS.filter((k) => fieldsHere.has(k));
+    const table: string[][] = [];
+    const found: string[] = [];
+    setReading({ done: 0, total: files.length });
+    for (const [i, file] of files.entries()) {
+      const body = new FormData();
+      body.set("file", file);
+      try {
+        const response = await fetch("/api/ventes/reprise", { method: "POST", body });
+        const json = (await response.json().catch(() => ({}))) as {
+          data?: SalesExtraction;
+          error?: string;
+        };
+        if (!response.ok || !json.data) {
+          found.push(`${file.name} : ${json.error ?? "lecture impossible."}`);
+          // Plus de crédits ou service coupé : inutile d'insister sur les fichiers suivants.
+          if ([402, 403, 503].includes(response.status)) break;
+        } else {
+          const row = extractionToHistoryRow(json.data);
+          table.push(columns.map((k) => row[k] ?? ""));
+          if (json.data.notes) found.push(`${file.name} : ${json.data.notes}`);
+        }
+      } catch {
+        found.push(`${file.name} : connexion interrompue.`);
+      }
+      setReading({ done: i + 1, total: files.length });
+    }
+    setReading(null);
+    setNotes(found);
+    if (table.length === 0) return setReadError(found[0] ?? "Aucun document n'a pu être lu.");
+    setFileName(
+      `${table.length} document${table.length > 1 ? "s" : ""} lu${table.length > 1 ? "s" : ""}`,
+    );
+    setHeaders(columns.map((k) => fields.find((f) => f.key === k)?.label ?? k));
+    setRows(table);
+    setMapping(Object.fromEntries(columns.map((k, i) => [i, k])));
+    setStep("mapping");
+  }
+
+  function pick(list: FileList | null | undefined) {
+    const files = [...(list ?? [])];
+    if (files.length === 0) return;
+    if (files.every((f) => PDF_TYPES.test(f.name))) return void loadPdfs(files);
+    if (files.length > 1)
+      return setReadError("Un seul fichier CSV ou Excel à la fois (ou plusieurs PDF).");
+    void load(files[0]!);
+  }
+
   async function load(file: File) {
     setReadError(null);
     if (!/\.(csv|xlsx|txt)$/i.test(file.name))
       return setReadError(
-        "Formats acceptés : CSV ou Excel (.xlsx). Depuis votre ancien logiciel, cherchez « Exporter » dans la liste des factures.",
+        "Formats acceptés : CSV, Excel (.xlsx), PDF ou photos. Depuis votre ancien logiciel, cherchez « Exporter » dans la liste des factures.",
       );
     try {
       const table = await readTable(file);
@@ -190,41 +275,53 @@ export function HistoryImportDialog({
 
         {step === "file" ? (
           <div className="space-y-4">
-            <label
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragging(true);
-              }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragging(false);
-                const file = e.dataTransfer.files[0];
-                if (file) void load(file);
-              }}
-              className={cn(
-                "flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border px-6 py-10 text-center transition-colors hover:border-primary/50",
-                dragging && "border-primary bg-primary/5",
-              )}
-            >
-              <FileUpIcon className="size-6 text-primary" />
-              <span className="text-sm font-medium">
-                Glissez votre fichier ici ou cliquez pour le choisir
-              </span>
-              <span className="text-xs text-muted-foreground">
-                CSV ou Excel .xlsx, une ligne par {copy.one} — {MAX_ROWS.toLocaleString("fr-FR")}{" "}
-                lignes maximum
-              </span>
-              <input
-                type="file"
-                accept=".csv,.xlsx,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                className="sr-only"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void load(file);
+            {reading ? (
+              <div className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 px-6 py-10 text-center">
+                <LoaderCircleIcon className="size-6 animate-spin text-primary" />
+                <span className="text-sm font-medium">
+                  Lecture des documents : {reading.done} sur {reading.total}
+                </span>
+                <span className="h-1.5 w-48 rounded-full bg-muted">
+                  <span
+                    className="block h-1.5 rounded-full bg-primary transition-all"
+                    style={{ width: `${(reading.done / reading.total) * 100}%` }}
+                  />
+                </span>
+              </div>
+            ) : (
+              <label
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragging(true);
                 }}
-              />
-            </label>
+                onDragLeave={() => setDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragging(false);
+                  pick(e.dataTransfer.files);
+                }}
+                className={cn(
+                  "flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border px-6 py-10 text-center transition-colors hover:border-primary/50",
+                  dragging && "border-primary bg-primary/5",
+                )}
+              >
+                <FileUpIcon className="size-6 text-primary" />
+                <span className="text-sm font-medium">
+                  Glissez votre fichier ici ou cliquez pour le choisir
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Export CSV ou Excel (jusqu&apos;à {MAX_ROWS.toLocaleString("fr-FR")} lignes), ou
+                  jusqu&apos;à {MAX_PDFS} PDF et photos lus automatiquement
+                </span>
+                <input
+                  type="file"
+                  multiple
+                  accept=".csv,.xlsx,.txt,.pdf,.jpg,.jpeg,.png,.webp,.gif,text/csv,application/pdf,image/*,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  className="sr-only"
+                  onChange={(e) => pick(e.target.files)}
+                />
+              </label>
+            )}
             {readError ? (
               <Callout variant="danger" icon={<CircleAlertIcon />}>
                 {readError}
@@ -232,9 +329,12 @@ export function HistoryImportDialog({
             ) : null}
             <ul className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
               <li className="rounded-md bg-muted/50 p-3">
-                <span className="mb-1 block font-medium text-foreground">Colonnes reconnues</span>
-                Les exports de Sellsy, Axonaut, Pennylane, EBP, Henrri, Tiime ou Excel sont lus tels
-                quels.
+                <span className="mb-1 block font-medium text-foreground">
+                  <SparklesIcon className="mr-1 inline size-3 text-primary" />
+                  Tout est reconnu
+                </span>
+                Exports Sellsy, Axonaut, Pennylane, EBP, Henrri, Tiime, Excel… ou simples PDF, lus
+                par l&apos;IA (3 crédits par document).
               </li>
               <li className="rounded-md bg-muted/50 p-3">
                 <span className="mb-1 block font-medium text-foreground">Rien en double</span>
@@ -257,6 +357,16 @@ export function HistoryImportDialog({
 
         {step === "mapping" ? (
           <div className="max-h-[55vh] space-y-3 overflow-y-auto">
+            {notes.length > 0 ? (
+              <Callout variant="warning" icon={<CircleAlertIcon />}>
+                <p className="font-medium">À vérifier :</p>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs">
+                  {notes.slice(0, 10).map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
+              </Callout>
+            ) : null}
             {missing.length > 0 ? (
               <Callout variant="warning" icon={<CircleAlertIcon />}>
                 À associer : {missing.map((f) => f.label).join(", ")}.

@@ -170,3 +170,31 @@ describe("sebtSequence", () => {
     expect(sebtSequence("F2025-42", "FA")).toBeNull();
   });
 });
+
+describe("extractionToHistoryRow", () => {
+  it("transforme une lecture IA en ligne de reprise contrôlable", async () => {
+    const { extractionToHistoryRow } = await import("../sales-history");
+    const row = extractionToHistoryRow({
+      documentType: "invoice",
+      documentNumber: "F-12",
+      issueDate: "2025-04-01",
+      dueDate: null,
+      customerName: "Boulangerie Martin",
+      subject: "Dépannage",
+      totalExcludingTax: 100,
+      totalTax: 20,
+      totalIncludingTax: 120,
+      vatRate: 20,
+      amountPaid: null,
+      originalInvoiceNumber: null,
+      notes: null,
+    });
+    const { rows, errors } = normalizeHistoryRows("INVOICE", [row]);
+    expect(errors).toEqual([]);
+    expect(rows[0]).toMatchObject({
+      number: "F-12",
+      client: "Boulangerie Martin",
+      totalCents: 12000,
+    });
+  });
+});

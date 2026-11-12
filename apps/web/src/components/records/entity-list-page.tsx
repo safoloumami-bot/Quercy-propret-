@@ -56,6 +56,15 @@ export function EntityListPage({
     (row: Row) => router.push(`${base}/${row.id}`),
     [router, base],
   );
+  // Lien « ?importer=1 » (premiers pas) : ouvre directement l'assistant d'import.
+  React.useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("importer") !== "1") return;
+    if (permissions.create && (!def.customPage || historyKind)) setImporting(true);
+    url.searchParams.delete("importer");
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const create = React.useCallback((defaults?: Record<string, unknown>) => {
     setCreateDefaults(defaults ?? {});
     setCreating(true);

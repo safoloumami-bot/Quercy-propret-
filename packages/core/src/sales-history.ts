@@ -555,3 +555,53 @@ export function sebtSequence(
   const m = new RegExp(`^${escaped}-(\\d{4})-(\\d+)$`).exec(number.trim());
   return m ? { year: Number(m[1]), sequence: Number(m[2]) } : null;
 }
+
+/** Lecture d'un document de vente émis (PDF ou photo) par l'IA, pour la reprise d'historique. */
+export const salesExtractionSchema = z.object({
+  documentType: z.enum(["invoice", "credit_note", "quote", "other"]),
+  documentNumber: z.string().nullable(),
+  issueDate: z.string().nullable().describe("AAAA-MM-JJ"),
+  dueDate: z.string().nullable().describe("AAAA-MM-JJ : échéance ou fin de validité"),
+  customerName: z
+    .string()
+    .nullable()
+    .describe("Client destinataire (raison sociale, ou nom et prénom d'un particulier)"),
+  subject: z.string().nullable().describe("Objet du document, ou résumé en quelques mots"),
+  totalExcludingTax: z.number().nullable(),
+  totalTax: z.number().nullable(),
+  totalIncludingTax: z.number().nullable(),
+  vatRate: z.number().nullable().describe("Taux de TVA principal en %, null si plusieurs"),
+  amountPaid: z
+    .number()
+    .nullable()
+    .describe("Montant déjà réglé s'il est imprimé (acompte, mention « acquittée »), sinon null"),
+  originalInvoiceNumber: z
+    .string()
+    .nullable()
+    .describe("Avoir : numéro de la facture qu'il corrige, sinon null"),
+  notes: z.string().nullable().describe("Points d'attention : incohérences, zones illisibles"),
+});
+export type SalesExtraction = z.infer<typeof salesExtractionSchema>;
+
+function amountText(n: number | null): string {
+  return n === null ? "" : n.toFixed(2);
+}
+
+/** Ligne de reprise (champ → texte) tirée d'une lecture par l'IA. */
+export function extractionToHistoryRow(
+  e: SalesExtraction,
+): Partial<Record<HistoryFieldKey, string>> {
+  return {
+    number: e.documentNumber ?? "",
+    issueDate: e.issueDate ?? "",
+    dueDate: e.dueDate ?? "",
+    client: e.customerName ?? "",
+    subject: e.subject ?? "",
+    totalExcl: amountText(e.totalExcludingTax),
+    tax: amountText(e.totalTax),
+    total: amountText(e.totalIncludingTax),
+    vatRate: e.vatRate === null ? "" : String(e.vatRate),
+    paid: amountText(e.amountPaid),
+    invoiceNumber: e.originalInvoiceNumber ?? "",
+  };
+}
