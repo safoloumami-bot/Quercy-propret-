@@ -6,7 +6,7 @@ import type { SiteGenere } from "@/lib/generateur";
 import { Bouton, cx } from "@/components/ui";
 import { marque } from "@/config/marque";
 import { Apparition } from "./Apparition";
-import { AppliExemple, IdentiteExemple } from "./ExempleMarque";
+import { AppliExemple, IdentiteExemple, siteExemple } from "./ExempleMarque";
 import { TitreSection } from "./Sections";
 
 // Services sur demande : réalisés par l'équipe, sur devis. Les visuels sont des illustrations.
@@ -60,13 +60,13 @@ const etapes = [
   ["On livre", "Retouches comprises, puis mise en ligne, publication ou fichiers prêts à imprimer."],
 ] as const;
 
-/** Visuel : l'identité complète d'une entreprise d'exemple et son appli client. */
+/** Visuel : l'identité et l'appli du restaurant d'exemple généré plus haut dans la page. */
 function Visuel() {
   return (
     <div className="relative mx-auto w-full max-w-[500px] sm:pb-20">
-      <IdentiteExemple className="w-full sm:w-[292px]" />
+      <IdentiteExemple site={siteExemple} className="w-full sm:w-[292px]" />
       {/* Téléphone : sous l'identité sur mobile, en surimpression à partir de la tablette. */}
-      <AppliExemple className="mx-auto mt-8 sm:absolute sm:right-0 sm:bottom-0 sm:mt-0 sm:origin-bottom-right sm:scale-[0.88]" />
+      <AppliExemple site={siteExemple} className="mx-auto mt-8 sm:absolute sm:right-0 sm:bottom-0 sm:mt-0 sm:origin-bottom-right sm:scale-[0.88]" />
     </div>
   );
 }

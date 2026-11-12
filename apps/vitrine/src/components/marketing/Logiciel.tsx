@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { LienBouton, cx } from "@/components/ui";
 import { DonneesFaq } from "@/components/marketing/DonneesStructurees";
-import { AppliExemple, SiteExemple } from "@/components/marketing/ExempleMarque";
+import { AppliExemple, SiteExemple, siteExemple } from "@/components/marketing/ExempleMarque";
 import { marque, liensLogiciel } from "@/config/marque";
 import { categories, comparatifLogiciel, joursEssai, metiersLogiciel, modules, offresLogiciel, prixParMois, reconnaitreMetier, type CategorieModule } from "@/config/logiciel";
 import { Apparition } from "./Apparition";
@@ -917,10 +917,10 @@ export function SitesWeb() {
         </div>
 
         <Apparition className="relative mt-14 sm:pr-28 lg:pr-56">
-          <SiteExemple />
+          <SiteExemple site={siteExemple} />
           {/* Téléphone : sous le site sur mobile, en surimpression à partir de la tablette. */}
-          <AppliExemple className="mx-auto mt-8 sm:absolute sm:right-0 sm:-bottom-8 sm:mt-0 lg:right-2" />
-          <p className="mt-6 font-mono text-[12px] text-taupe-2 sm:mt-14">Exemple de réalisation : le site, l&apos;appli des clients et l&apos;identité d&apos;un restaurant.</p>
+          <AppliExemple site={siteExemple} className="mx-auto mt-8 sm:absolute sm:right-0 sm:-bottom-8 sm:mt-0 lg:right-2" />
+          <p className="mt-6 font-mono text-[12px] text-taupe-2 sm:mt-14">Un exemple : le site généré en une minute pour un restaurant, et l&apos;appli de ses clients qui va avec.</p>
         </Apparition>
 
         <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-creme/[0.08] bg-creme/[0.06] sm:grid-cols-3">

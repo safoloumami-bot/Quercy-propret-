@@ -1,81 +1,68 @@
-import { CalendarDays, Clock, Heart, MapPin, Plus, ShoppingBag, Star, UserRound, UtensilsCrossed } from "lucide-react";
+import { CalendarDays, Heart, Plus, ShoppingBag, Star, UserRound, UtensilsCrossed } from "lucide-react";
+import { ApercuSite, policeTitres } from "@/components/ApercuSite";
 import { cx } from "@/components/ui";
+import { melanger, texteSur } from "@/lib/couleurs";
+import { exemplesPrompts, genererSite, type SiteGenere } from "@/lib/generateur";
+import { photoPlat, photosPour, urlPhoto } from "@/lib/photos";
 
-// Exemple de réalisation complète pour un restaurant fictif, « Olivette » : un logo, un site,
-// une appli pour ses clients (commander, réserver, fidélité) et une identité, aux mêmes
-// couleurs. Sert d'illustration, ce n'est pas un client réel. Dans un vrai projet, les photos
-// sont celles du client.
+// Un seul exemple pour tout le site : le restaurant que le créateur génère par défaut. Son
+// site (le vrai rendu du générateur), l'appli de ses clients et son identité reprennent le
+// même nom, les mêmes couleurs, la même police et les mêmes photos.
 
-const olive = "#2c3620";
-const oliveClair = "#55663a";
-const tomate = "#c2452d";
-const creme = "#f7f1e4";
-const papier = "#fffdf7";
-const encre = "#1d1a14";
-const gris = "#6f6a5d";
-const serif = "'Fraunces Variable', Georgia, serif";
+/** Le site d'exemple : exactement ce que produit le créateur pour la première description. */
+export const siteExemple: SiteGenere = genererSite(exemplesPrompts[0] ?? "");
 
-// Photos Unsplash (licence Unsplash, auteurs dans public/exemples/CREDITS.md), chargées depuis
-// leur serveur d'images comme Unsplash le demande.
-const photos = {
-  table: "photo-1717251883191-9a1411878790", // huîtres sur glace et citron, vues de dessus
-  poulpe: "photo-1626232441076-a2a5ada2256a", // poulpe grillé, aïoli au safran, assiette bleue
-  pates: "photo-1693820206774-d4a769355142", // spaghetti aux herbes, vues de dessus
-  moules: "photo-1710775694428-5f6e66ae6a4c", // moules, pain grillé, citron
-  spritz: "photo-1725541592916-83dc6c458b53", // spritz orange dans la lumière du soir
-} as const;
+export function slugSite(nom: string) {
+  return nom.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
 
-const plats = [
-  [photos.poulpe, "Poulpe grillé", "Aïoli au safran du Quercy, citron", "21 €"],
-  [photos.pates, "Linguine aux herbes", "Herbes du jardin, huile d'olive, parmesan", "15 €"],
-  [photos.moules, "Moules marinières", "Pain grillé au levain, citron", "17 €"],
-] as const;
+function marque(site: SiteGenere) {
+  const { fond, texte, accent, doux } = site.palette;
+  const police = policeTitres(site);
+  return {
+    fond,
+    texte,
+    accent,
+    doux,
+    surAccent: texteSur(accent, texte),
+    discret: melanger(texte, fond, 0.42),
+    ligne: melanger(texte, fond, 0.86),
+    carte: melanger(fond, "#ffffff", 0.6),
+    titres: { fontFamily: police.titres, fontWeight: police.poids, letterSpacing: police.interlettrage } as const,
+  };
+}
 
-/** Le logo : le nom en italique, avec une olive à la place du point du i. */
-export function LogoExemple({ taille = 22, couleur = olive, point = tomate }: { taille?: number; couleur?: string; point?: string }) {
+/** Le logo : le nom dans la police des titres, ponctué d'un point à la couleur de la marque. */
+export function LogoExemple({ site, taille = 22, couleur, point }: { site: SiteGenere; taille?: number; couleur?: string; point?: string }) {
+  const m = marque(site);
   return (
-    <span
-      role="img"
-      aria-label="Logo Olivette"
-      className="inline-flex items-baseline leading-none whitespace-nowrap"
-      style={{ fontFamily: serif, fontStyle: "italic", fontWeight: 560, fontSize: taille, letterSpacing: "-0.035em", color: couleur }}
-    >
-      ol
-      <span className="relative">
-        ı
-        <span className="absolute left-1/2 rounded-full" style={{ width: "0.2em", height: "0.25em", top: "0.1em", background: point, transform: "translateX(-35%) rotate(18deg)" }} />
+    <span role="img" aria-label={`Logo ${site.nom}`} className="inline-block leading-none whitespace-nowrap" style={{ ...m.titres, fontSize: taille, color: couleur ?? m.texte }}>
+      {site.nom}
+      <span style={{ color: point ?? m.accent }}>.</span>
+    </span>
+  );
+}
+
+/** Le sceau : l'initiale et le point, pour l'icône de l'appli et les petits formats. */
+export function SceauExemple({ site, taille = 40, fond, couleur, point }: { site: SiteGenere; taille?: number; fond?: string; couleur?: string; point?: string }) {
+  const m = marque(site);
+  const initiales = site.nom.split(/\s+/).filter((mot) => mot.length > 2).map((mot) => mot.charAt(0)).join("").slice(0, 2) || site.nom.charAt(0);
+  return (
+    <span className="grid shrink-0 place-items-center rounded-[28%]" style={{ width: taille, height: taille, background: fond ?? m.accent }} aria-hidden>
+      <span style={{ ...m.titres, fontSize: taille * 0.44, lineHeight: 1, color: couleur ?? m.surAccent }}>
+        {initiales}
+        <span style={{ color: point ?? couleur ?? m.surAccent, opacity: 0.7 }}>.</span>
       </span>
-      vette
     </span>
   );
 }
 
-/** Le sceau : la version ronde du logo, pour l'icône de l'appli et les petits formats. */
-export function SceauExemple({ taille = 40, fond = olive, couleur = creme, point = tomate }: { taille?: number; fond?: string; couleur?: string; point?: string }) {
-  return (
-    <span className="relative grid shrink-0 place-items-center rounded-full" style={{ width: taille, height: taille, background: fond }} aria-hidden>
-      <span style={{ fontFamily: serif, fontStyle: "italic", fontWeight: 600, fontSize: taille * 0.62, lineHeight: 1, color: couleur, transform: "translateY(-6%)" }}>o</span>
-      <span className="absolute rounded-full" style={{ width: taille * 0.14, height: taille * 0.14, right: taille * 0.2, top: taille * 0.2, background: point }} />
-    </span>
-  );
+function Photo({ id, largeur = 640, className }: { id?: string; largeur?: number; className?: string }) {
+  return <span className={cx("block bg-cover bg-center", className)} style={{ backgroundColor: "#d9cdb8", backgroundImage: id ? `url("${urlPhoto(id, largeur)}")` : undefined }} />;
 }
 
-/**
- * Une vraie photo, cadrée pour remplir son bloc. `secours` : image locale affichée si le
- * serveur d'Unsplash ne répond pas (sinon, un fond uni).
- */
-function Photo({ id, largeur = 640, secours, className }: { id: string; largeur?: number; secours?: string; className?: string }) {
-  const url = `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${largeur}&q=80`;
-  return (
-    <span
-      className={cx("block bg-cover bg-center", className)}
-      style={{ backgroundColor: "#e4dac4", backgroundImage: secours ? `url("${url}"), url("${secours}")` : `url("${url}")` }}
-    />
-  );
-}
-
-/** Le site : accueil complet (menu, accroche, photo, carte, horaires, réservation). */
-export function SiteExemple({ className }: { className?: string }) {
+/** Le site : le rendu du générateur, dans une fenêtre de navigateur. */
+export function SiteExemple({ site, className }: { site: SiteGenere; className?: string }) {
   return (
     <div className={cx("overflow-hidden rounded-2xl border border-creme/10 bg-nuit-2 shadow-[0_50px_120px_-30px_rgba(0,0,0,0.9)]", className)} aria-hidden>
       <div className="flex items-center gap-3 border-b border-creme/[0.08] px-4 py-2.5">
@@ -84,74 +71,25 @@ export function SiteExemple({ className }: { className?: string }) {
           <span className="size-2.5 rounded-full bg-creme/15" />
           <span className="size-2.5 rounded-full bg-creme/15" />
         </div>
-        <div className="flex-1 rounded-md bg-creme/[0.05] px-3 py-1 font-mono text-[11px] text-taupe">olivette-cahors.fr</div>
+        <div className="flex-1 rounded-md bg-creme/[0.05] px-3 py-1 font-mono text-[11px] text-taupe">{slugSite(site.nom)}.sebt.site</div>
       </div>
-      <div style={{ background: creme, color: encre }}>
-        <div className="flex items-center justify-between px-5 py-3.5 sm:px-7">
-          <LogoExemple taille={24} />
-          <span className="hidden items-center gap-5 text-[11px] font-medium sm:flex" style={{ color: gris }}>
-            <span>La carte</span>
-            <span>Le lieu</span>
-            <span>À emporter</span>
-            <span className="rounded-full px-3.5 py-1.5" style={{ background: olive, color: creme }}>Réserver</span>
-          </span>
-        </div>
-
-        <div className="grid gap-5 px-5 pb-6 sm:grid-cols-[1fr_1.1fr] sm:items-center sm:px-7">
-          <div>
-            <p className="text-[9.5px] font-semibold tracking-[0.2em] uppercase" style={{ color: tomate }}>Cuisine du marché · Cahors</p>
-            <p className="mt-3 text-[30px] leading-[1.02] sm:text-[38px]" style={{ fontFamily: serif, fontWeight: 480, letterSpacing: "-0.03em" }}>
-              Ce que le marché <span style={{ fontStyle: "italic", color: oliveClair }}>a de meilleur</span>, chaque midi.
-            </p>
-            <p className="mt-3.5 max-w-[34ch] text-[12px] leading-relaxed" style={{ color: gris }}>
-              Une carte courte qui change avec les saisons, des producteurs du Lot, et une table où l&apos;on prend son temps.
-            </p>
-            <div className="mt-5 flex flex-wrap items-center gap-2.5">
-              <span className="rounded-full px-4 py-2.5 text-[11.5px] font-medium" style={{ background: tomate, color: papier }}>Réserver une table</span>
-              <span className="rounded-full px-4 py-2.5 text-[11.5px] font-medium" style={{ boxShadow: `inset 0 0 0 1px ${olive}`, color: olive }}>Commander à emporter</span>
-            </div>
-            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-1.5 text-[10.5px]" style={{ color: gris }}>
-              <span className="flex items-center gap-1.5"><Clock className="size-3.5" style={{ color: olive }} /> Mardi au samedi, midi et soir</span>
-              <span className="flex items-center gap-1.5"><MapPin className="size-3.5" style={{ color: olive }} /> 12 rue du Portail, Cahors</span>
-            </div>
-          </div>
-          <div className="relative">
-            <Photo id={photos.table} largeur={1200} secours="/exemples/table.jpg" className="aspect-[4/3] w-full rounded-xl" />
-            <div className="absolute -bottom-3 left-3 rounded-lg px-3 py-2 shadow-[0_12px_30px_-10px_rgba(0,0,0,0.45)]" style={{ background: papier }}>
-              <p className="text-[9px] tracking-[0.14em] uppercase" style={{ color: gris }}>Menu du midi</p>
-              <p className="text-[13px]" style={{ fontFamily: serif, fontWeight: 520 }}>Entrée, plat, dessert · 24 €</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-5 pt-2 pb-6 sm:px-7">
-          <div className="flex items-baseline justify-between">
-            <p className="text-[17px]" style={{ fontFamily: serif, fontWeight: 520, letterSpacing: "-0.02em" }}>À la carte cette semaine</p>
-            <p className="text-[10.5px] underline underline-offset-2" style={{ color: olive }}>Voir toute la carte</p>
-          </div>
-          <div className="mt-3 grid grid-cols-3 gap-2.5 sm:gap-3.5">
-            {plats.map(([id, nom, detail, prix]) => (
-              <div key={nom}>
-                <Photo id={id} className="aspect-[4/3] w-full rounded-lg" />
-                <div className="mt-2 flex items-baseline justify-between gap-2">
-                  <p className="text-[11px] leading-tight font-semibold sm:text-[12px]">{nom}</p>
-                  <p className="hidden shrink-0 text-[11px] sm:block" style={{ color: tomate }}>{prix}</p>
-                </div>
-                <p className="mt-0.5 hidden text-[9.5px] leading-snug sm:block" style={{ color: gris }}>{detail}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="relative max-h-[560px] overflow-hidden md:max-h-[640px]">
+        <ApercuSite site={site} />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-nuit-2 to-transparent" />
       </div>
     </div>
   );
 }
 
-/** L'appli des clients du restaurant : commander à emporter, réserver, cumuler des points. */
-export function AppliExemple({ className }: { className?: string }) {
+/** L'appli des clients du même commerce : commander, réserver, cumuler des points. */
+export function AppliExemple({ site, className }: { site: SiteGenere; className?: string }) {
+  const m = marque(site);
+  const serie = photosPour(site.secteur);
+  const carte = site.sections.find((s) => s.type === "menu")?.items ?? [];
+  const [duJour, ...suite] = carte;
   return (
     <div className={cx("w-[236px] rounded-[40px] bg-black p-[7px] shadow-[0_50px_110px_-25px_rgba(0,0,0,0.95)] ring-1 ring-creme/15", className)} aria-hidden>
-      <div className="relative overflow-hidden rounded-[33px]" style={{ background: creme, color: encre }}>
+      <div className="relative overflow-hidden rounded-[33px]" style={{ background: m.fond, color: m.texte }}>
         <div className="flex items-center justify-between px-5 pt-2.5 text-[9px] font-semibold">
           <span>12:08</span>
           <span className="h-[15px] w-[62px] rounded-full bg-black" />
@@ -159,65 +97,67 @@ export function AppliExemple({ className }: { className?: string }) {
         </div>
         <div className="flex items-center justify-between px-4 pt-3">
           <span>
-            <span className="block text-[9px]" style={{ color: gris }}>Bonjour Léa</span>
-            <LogoExemple taille={19} />
+            <span className="block text-[9px]" style={{ color: m.discret }}>Bonjour Léa</span>
+            <LogoExemple site={site} taille={17} />
           </span>
-          <span className="grid size-7 place-items-center rounded-full" style={{ background: papier, boxShadow: "inset 0 0 0 1px #e6dcc6" }}>
-            <ShoppingBag className="size-3.5" style={{ color: olive }} />
+          <span className="grid size-7 place-items-center rounded-full" style={{ background: m.carte, boxShadow: `inset 0 0 0 1px ${m.ligne}` }}>
+            <ShoppingBag className="size-3.5" style={{ color: m.accent }} />
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-1 rounded-full p-1 text-center text-[9.5px] font-medium" style={{ background: "#ebe2cf", margin: "12px 16px 0" }}>
-          <span className="rounded-full py-1.5" style={{ background: olive, color: creme }}>À emporter</span>
-          <span className="py-1.5" style={{ color: gris }}>Réserver une table</span>
+        <div className="grid grid-cols-2 gap-1 rounded-full p-1 text-center text-[9.5px] font-medium" style={{ background: m.doux, margin: "12px 16px 0" }}>
+          <span className="rounded-full py-1.5" style={{ background: m.texte, color: m.fond }}>À emporter</span>
+          <span className="py-1.5" style={{ color: m.discret }}>Réserver une table</span>
         </div>
 
-        <div className="relative mx-4 mt-3 overflow-hidden rounded-2xl">
-          <Photo id={photos.poulpe} className="h-[92px] w-full" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-          <div className="absolute right-3 bottom-2.5 left-3 flex items-end justify-between" style={{ color: papier }}>
-            <span className="min-w-0">
-              <span className="block text-[7.5px] tracking-[0.14em] uppercase opacity-85">Plat du jour</span>
-              <span className="block text-[12px] leading-tight whitespace-nowrap" style={{ fontFamily: serif, fontWeight: 520 }}>Poulpe grillé, aïoli au safran</span>
-            </span>
-            <span className="shrink-0 rounded-full px-2 py-1 text-[9.5px] font-semibold whitespace-nowrap" style={{ background: tomate }}>21 €</span>
+        {duJour && (
+          <div className="relative mx-4 mt-3 overflow-hidden rounded-2xl">
+            <Photo id={photoPlat(duJour.titre) ?? serie?.hero} className="h-[92px] w-full" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+            <div className="absolute right-3 bottom-2.5 left-3 flex items-end justify-between text-white">
+              <span className="min-w-0">
+                <span className="block text-[7.5px] tracking-[0.14em] uppercase opacity-85">Plat du jour</span>
+                <span className="block text-[12.5px] leading-tight whitespace-nowrap" style={m.titres}>{duJour.titre}</span>
+              </span>
+              <span className="shrink-0 rounded-full px-2 py-1 text-[9.5px] font-semibold whitespace-nowrap" style={{ background: m.accent, color: m.surAccent }}>{duJour.prix}</span>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="mt-3 flex items-baseline justify-between px-4">
-          <p className="text-[12.5px]" style={{ fontFamily: serif, fontWeight: 560 }}>La carte</p>
-          <p className="text-[8.5px]" style={{ color: gris }}>Prêt en 20 min</p>
+          <p className="text-[12.5px]" style={m.titres}>La carte</p>
+          <p className="text-[8.5px]" style={{ color: m.discret }}>Prêt en 20 min</p>
         </div>
         <div className="mt-1.5 space-y-1.5 px-4">
-          {[plats[1], plats[2]].map(([id, nom, detail, prix], i) => (
-            <div key={nom} className="flex items-center gap-2.5 rounded-xl p-1.5" style={{ background: papier, boxShadow: "inset 0 0 0 1px #ece3cf" }}>
-              <Photo id={id} largeur={200} className="size-11 shrink-0 rounded-lg" />
+          {suite.slice(0, 2).map((it, i) => (
+            <div key={it.titre} className="flex items-center gap-2.5 rounded-xl p-1.5" style={{ background: m.carte, boxShadow: `inset 0 0 0 1px ${m.ligne}` }}>
+              <Photo id={photoPlat(it.titre)} largeur={200} className="size-11 shrink-0 rounded-lg" />
               <span className="min-w-0 flex-1 leading-tight">
-                <span className="block truncate text-[10px] font-semibold">{nom}</span>
-                <span className="block truncate text-[8px]" style={{ color: gris }}>{detail}</span>
-                <span className="text-[9.5px] font-medium" style={{ color: tomate }}>{prix}</span>
+                <span className="block truncate text-[10px] font-semibold">{it.titre}</span>
+                <span className="block truncate text-[8px]" style={{ color: m.discret }}>{it.texte}</span>
+                <span className="text-[9.5px] font-medium" style={{ color: m.accent }}>{it.prix}</span>
               </span>
-              <span className="grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-semibold" style={i === 0 ? { background: olive, color: creme } : { boxShadow: `inset 0 0 0 1px ${olive}`, color: olive }}>
+              <span className="grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-semibold" style={i === 0 ? { background: m.texte, color: m.fond } : { boxShadow: `inset 0 0 0 1px ${m.texte}`, color: m.texte }}>
                 {i === 0 ? "1" : <Plus className="size-3" />}
               </span>
             </div>
           ))}
         </div>
 
-        <div className="mx-4 mt-2 flex items-center gap-2.5 rounded-xl px-3 py-2" style={{ background: "#e9ecd9" }}>
-          <Star className="size-3.5 shrink-0" style={{ color: oliveClair, fill: oliveClair }} />
+        <div className="mx-4 mt-2 flex items-center gap-2.5 rounded-xl px-3 py-2" style={{ background: m.doux }}>
+          <Star className="size-3.5 shrink-0" style={{ color: m.accent, fill: m.accent }} />
           <span className="flex-1 text-[8.5px] leading-tight">
             <span className="block font-semibold">Carte de fidélité · 8 sur 10</span>
-            <span style={{ color: gris }}>Encore 2 commandes, un dessert offert</span>
+            <span style={{ color: m.discret }}>Encore 2 commandes, un dessert offert</span>
           </span>
         </div>
 
-        <div className="mx-4 mt-2.5 flex items-center justify-between rounded-full px-4 py-2.5 text-[10px] font-medium shadow-[0_10px_22px_-10px_rgba(0,0,0,0.5)]" style={{ background: tomate, color: papier }}>
+        <div className="mx-4 mt-2.5 flex items-center justify-between rounded-full px-4 py-2.5 text-[10px] font-medium shadow-[0_10px_22px_-10px_rgba(0,0,0,0.5)]" style={{ background: m.accent, color: m.surAccent }}>
           <span>Voir le panier · 1 article</span>
-          <span className="font-semibold">15 €</span>
+          <span className="font-semibold">{suite[0]?.prix}</span>
         </div>
 
-        <div className="mt-2.5 grid grid-cols-4 border-t px-2 pt-2 pb-3 text-center text-[7.5px] font-medium" style={{ borderColor: "#e6dcc6", background: papier, color: "#9a9486" }}>
+        <div className="mt-2.5 grid grid-cols-4 border-t px-2 pt-2 pb-3 text-center text-[7.5px] font-medium" style={{ borderColor: m.ligne, background: m.carte, color: m.discret }}>
           {(
             [
               [UtensilsCrossed, "La carte", true],
@@ -226,7 +166,7 @@ export function AppliExemple({ className }: { className?: string }) {
               [UserRound, "Compte", false],
             ] as const
           ).map(([Icone, l, actif]) => (
-            <span key={l} className="flex flex-col items-center gap-1" style={actif ? { color: olive } : undefined}>
+            <span key={l} className="flex flex-col items-center gap-1" style={actif ? { color: m.accent } : undefined}>
               <Icone className="size-4" />
               {l}
             </span>
@@ -237,68 +177,66 @@ export function AppliExemple({ className }: { className?: string }) {
   );
 }
 
-/** L'identité : le logo et ses déclinaisons, les couleurs, les polices, les supports. */
-export function IdentiteExemple({ className }: { className?: string }) {
+/** L'identité du même commerce : logo et déclinaisons, couleurs, polices, supports. */
+export function IdentiteExemple({ site, className }: { site: SiteGenere; className?: string }) {
+  const m = marque(site);
+  const serie = photosPour(site.secteur);
   const couleurs = [
-    [olive, "Olive"],
-    [tomate, "Tomate"],
-    [creme, "Crème"],
-    [encre, "Encre"],
+    [m.accent, "Couleur de marque"],
+    [m.texte, "Encre"],
+    [m.doux, "Sable"],
+    [m.fond, "Papier"],
   ] as const;
+  const nomPolice = /'([^']+?)(?: Variable)?'/.exec(m.titres.fontFamily)?.[1] ?? "Geist";
   return (
     <div className={cx("rounded-[26px] border border-creme/10 bg-[linear-gradient(160deg,#1d1813_0%,#110e0b_70%)] p-5 shadow-[0_50px_120px_-30px_rgba(0,0,0,0.95)]", className)} aria-hidden>
-      <div className="flex items-center justify-between">
-        <p className="text-[12px] text-taupe-2">Identité visuelle · restaurant Olivette</p>
-        <p className="rounded-full border border-creme/10 px-2 py-0.5 text-[10px] text-taupe-2">Exemple</p>
-      </div>
+      <p className="text-[12px] text-taupe-2">Identité visuelle · {site.nom}</p>
       <div className="mt-4 grid grid-cols-[1.5fr_1fr] gap-2">
-        <div className="grid place-items-center rounded-xl py-8" style={{ background: creme }}>
-          <LogoExemple taille={34} />
+        <div className="grid place-items-center rounded-xl px-3 py-8" style={{ background: m.fond }}>
+          <LogoExemple site={site} taille={26} />
         </div>
         <div className="grid grid-rows-2 gap-2">
-          <div className="grid place-items-center rounded-xl" style={{ background: olive }}>
-            <LogoExemple taille={19} couleur={creme} />
+          <div className="grid place-items-center rounded-xl" style={{ background: m.texte }}>
+            <LogoExemple site={site} taille={13} couleur={m.fond} />
           </div>
-          <div className="grid place-items-center rounded-xl" style={{ background: tomate }}>
-            <SceauExemple taille={30} fond={creme} couleur={olive} point={tomate} />
+          <div className="grid place-items-center rounded-xl" style={{ background: m.doux }}>
+            <SceauExemple site={site} taille={30} />
           </div>
         </div>
       </div>
       <p className="mt-3 text-[11.5px] leading-relaxed text-taupe">
-        Le nom écrit comme à la main, et une olive à la place du point du i : on le reconnaît sans image.
+        Le même logo, les mêmes couleurs et la même police sur le site, dans l&apos;appli et sur les supports imprimés.
       </p>
       <div className="mt-3 grid grid-cols-4 gap-1.5">
         {couleurs.map(([c, n]) => (
           <div key={n}>
             <span className="block h-8 rounded-md ring-1 ring-creme/10" style={{ background: c }} />
-            <p className="mt-1 text-[9.5px] text-taupe-2">{n}</p>
+            <p className="mt-1 text-[9px] leading-tight text-taupe-2">{n}</p>
           </div>
         ))}
       </div>
       <div className="mt-3 flex items-baseline justify-between rounded-lg border border-creme/[0.08] px-3 py-2.5 text-creme">
-        <span className="text-[19px]" style={{ fontFamily: serif, fontWeight: 480, letterSpacing: "-0.02em" }}>
-          Titres <span style={{ fontStyle: "italic" }}>Fraunces</span>
-        </span>
-        <span className="text-[11.5px] text-taupe">Textes en Geist</span>
+        <span className="text-[17px] whitespace-nowrap" style={m.titres}>{nomPolice}</span>
+        <span className="text-[11px] whitespace-nowrap text-taupe">pour les titres</span>
       </div>
       {/* Supports : carte de fidélité et visuel pour les réseaux */}
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <div className="flex aspect-[1.6] flex-col justify-between rounded-lg p-3" style={{ background: olive, color: creme }}>
-          <LogoExemple taille={15} couleur={creme} />
+        <div className="flex aspect-[1.6] flex-col justify-between rounded-lg p-3" style={{ background: m.texte, color: m.fond }}>
+          <LogoExemple site={site} taille={12} couleur={m.fond} />
           <span>
             <span className="flex gap-1">
               {Array.from({ length: 10 }, (_, i) => (
-                <span key={i} className="size-2 rounded-full" style={{ background: i < 8 ? tomate : "rgba(247,241,228,0.2)" }} />
+                <span key={i} className="size-2 rounded-full" style={{ background: i < 8 ? m.accent : melanger(m.fond, m.texte, 0.75) }} />
               ))}
             </span>
             <span className="mt-1.5 block text-[7.5px] opacity-70">Carte de fidélité</span>
           </span>
         </div>
         <div className="relative aspect-[1.6] overflow-hidden rounded-lg">
-          <Photo id={photos.spritz} secours="/exemples/cafe.jpg" className="size-full" />
-          <div className="absolute inset-0 bg-black/35" />
-          <span className="absolute bottom-2.5 left-3" style={{ color: papier }}>
-            <LogoExemple taille={15} couleur={papier} point={papier} />
+          <Photo id={serie?.galerie[3] ?? serie?.hero} className="size-full" />
+          <div className="absolute inset-0 bg-black/40" />
+          <span className="absolute bottom-2.5 left-3 text-white">
+            <LogoExemple site={site} taille={12} couleur="#ffffff" point="#ffffff" />
             <span className="mt-1 block text-[7.5px] opacity-85">Visuel pour les réseaux</span>
           </span>
         </div>

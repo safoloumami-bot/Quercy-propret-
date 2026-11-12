@@ -1,14 +1,16 @@
-# Photos de l'exemple « Olivette »
+# Photos des sites générés
 
 Photos sous [licence Unsplash](https://unsplash.com/license) (usage libre, y compris commercial),
-chargées depuis images.unsplash.com.
+chargées depuis images.unsplash.com. Les identifiants et leur description sont dans
+`src/lib/photos.ts`. Sélections reprises des modèles MIT de 8B (github.com/8bsite), dont les
+fichiers CREDITS.md donnent l'auteur de chaque photo :
 
-| Photo | Auteur | Page |
-|---|---|---|
-| Huîtres sur glace et citron | Mitili Mitili | https://unsplash.com/photos/RyGw6mu6Emg |
-| Poulpe grillé sur assiette bleue | J. Balla Photography | https://unsplash.com/photos/IZLPicIi-I0 |
-| Spaghetti aux herbes | Imad 786 | https://unsplash.com/photos/Ckka_jsngpM |
-| Moules, pain grillé et citron | Lisha Riabinina | https://unsplash.com/photos/A55vhZCfPsI |
-| Spritz dans la lumière du soir | (voir Unsplash) | photo-1725541592916-83dc6c458b53 |
-
-Images de secours locales (`table.jpg`, `cafe.jpg`) : exemples du dépôt mui/material-ui (MIT).
+- Restaurant : restaurant-website-template
+- Boulangerie : bakery-website-template
+- Coiffure : hair-salon-website-template
+- Rénovation, menuiserie, peinture : construction-company-website-template
+- Plomberie : plumber-website-template
+- Sport et yoga : group-fitness-website-template
+- Céramique : pottery-studio-website-template
+- Vêtements : fashion-brand-website-template
+- Hébergement : boutique-hotel-website-template

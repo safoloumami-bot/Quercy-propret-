@@ -3,6 +3,7 @@ import { ArrowRight, Clock, Mail, MapPin, Menu, Minus, Phone, Plus } from "lucid
 import type { SectionSite, SiteGenere, Typo } from "@/lib/generateur";
 import { contraste, lisible, luminance, melanger, texteSur } from "@/lib/couleurs";
 import { Visuel } from "@/components/Visuel";
+import { photoPlat, photosPour, urlPhoto } from "@/lib/photos";
 
 // Rendu d'un site généré. La mise en page s'adapte à la largeur de son conteneur (requêtes de
 // conteneur), pas à celle de la fenêtre : le même composant sert pour l'aperçu ordinateur,
@@ -20,6 +21,30 @@ const rayons = {
   doux: { bouton: "rounded-xl", carte: "rounded-2xl", image: "rounded-2xl" },
   net: { bouton: "rounded-[6px]", carte: "rounded-md", image: "rounded-md" },
 };
+
+/** Police des titres d'un site généré (aussi utilisée pour son logo). */
+export function policeTitres(site: SiteGenere) {
+  return polices[site.typo ?? (site.police === "serif" ? "elegante" : "moderne")];
+}
+
+/**
+ * Image d'un site généré : une vraie photo du métier quand il en existe une série, posée sur
+ * l'illustration dessinée (qui reste visible si la photo ne se charge pas).
+ * `graine` : 1 à 3 = haut de page, 7 = à propos, 10 et plus = galerie.
+ */
+function Image({ site, graine, sombre = false, className }: { site: SiteGenere; graine: number; sombre?: boolean; className?: string }) {
+  const serie = photosPour(site.secteur);
+  if (!serie) return <Visuel palette={site.palette} motif={site.motif} graine={graine} sombre={sombre} className={className} />;
+  const id = graine >= 10 ? serie.galerie[(graine - 10) % serie.galerie.length]! : graine === 7 ? serie.apropos : serie.hero;
+  const calque = { gridArea: "1 / 1", minWidth: 0, minHeight: 0 } as const;
+  return (
+    <span className={className} style={{ display: "grid", overflow: "hidden" }} aria-hidden>
+      <Visuel palette={site.palette} motif={site.motif} graine={graine} sombre={sombre} className="h-full w-full" style={calque} />
+      <span className="bg-cover bg-center" style={{ ...calque, backgroundImage: `url("${urlPhoto(id, graine <= 3 ? 1400 : 800)}")` }} />
+      {sombre && <span style={{ ...calque, background: "rgba(0,0,0,0.28)" }} />}
+    </span>
+  );
+}
 
 function theme(site: SiteGenere) {
   const { fond, texte, accent, doux } = site.palette;
@@ -90,16 +115,12 @@ function Navigation({ t, site, surImage }: { t: Theme; site: SiteGenere; surImag
   return (
     <nav className={surImage ? "absolute inset-x-0 top-0 z-10" : ""} style={{ color: couleur }}>
       <Conteneur className="flex h-[72px] items-center justify-between gap-6">
-        <span className="flex min-w-0 items-center gap-2.5">
-          <span
-            style={{ background: surImage ? "rgba(255,255,255,0.16)" : t.accent, color: surImage ? "#fff" : t.surAccent, fontFamily: t.police.titres }}
-            className={`grid size-8 shrink-0 place-items-center text-[15px] font-semibold ${t.r.bouton === "rounded-full" ? "rounded-full" : "rounded-md"}`}
-          >
-            {site.nom.charAt(0)}
-          </span>
-          <Titre t={t} as="p" className="truncate text-[17px] @3xl:text-lg">{site.nom}</Titre>
-        </span>
-        <span className="hidden items-center gap-7 text-[14.5px] @3xl:flex" style={{ opacity: 0.82 }}>
+        {/* Logo : le nom dans la police des titres, ponctué d'un point à la couleur de la marque. */}
+        <Titre t={t} as="p" className="shrink-0 text-[21px] whitespace-nowrap @3xl:text-[23px]">
+          {site.nom}
+          <span style={{ color: surImage ? "#ffffff" : t.accentTexte, opacity: surImage ? 0.85 : 1 }}>.</span>
+        </Titre>
+        <span className="hidden items-center gap-7 text-[14.5px] whitespace-nowrap @5xl:flex" style={{ opacity: 0.82 }}>
           {liens.map((s) => (
             <span key={s.titre}>{s.type === "contact" ? "Contact" : (s.surtitre ?? s.titre)}</span>
           ))}
@@ -120,7 +141,7 @@ function Hero({ t, site }: { t: Theme; site: SiteGenere }) {
   if (mise === "plein") {
     return (
       <header className="relative isolate overflow-hidden">
-        <Visuel palette={site.palette} motif={site.motif} graine={1} sombre className="absolute inset-0 -z-20 h-full w-full" />
+        <Image site={site} graine={1} sombre className="absolute inset-0 -z-20 h-full w-full" />
         <div className="absolute inset-0 -z-10" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.1) 35%, rgba(0,0,0,0.6) 100%)" }} />
         <Navigation t={t} site={site} surImage />
         <Conteneur className="flex min-h-[540px] flex-col justify-end pt-32 pb-14 text-white @3xl:min-h-[620px] @3xl:pb-20">
@@ -152,7 +173,7 @@ function Hero({ t, site }: { t: Theme; site: SiteGenere }) {
         </Conteneur>
         <Conteneur className="pb-16 @3xl:pb-24">
           <div className={`overflow-hidden ${t.r.image}`}>
-            <Visuel palette={site.palette} motif={site.motif} graine={2} className="block aspect-[4/3] w-full @3xl:aspect-[21/9]" />
+            <Image site={site} graine={2} className="block aspect-[4/3] w-full @3xl:aspect-[21/9]" />
           </div>
         </Conteneur>
       </header>
@@ -174,7 +195,7 @@ function Hero({ t, site }: { t: Theme; site: SiteGenere }) {
         </div>
         <div className="relative">
           <div className={`overflow-hidden ${t.r.image}`}>
-            <Visuel palette={site.palette} motif={site.motif} graine={3} className="block aspect-[4/3] w-full @3xl:aspect-[4/5]" />
+            <Image site={site} graine={3} className="block aspect-[4/3] w-full @3xl:aspect-[4/5]" />
           </div>
           {site.infos?.bandeau && (
             <div
@@ -211,9 +232,24 @@ function Atouts({ t, s }: { t: Theme; s: SectionSite }) {
 }
 
 function Carte({ t, s }: { t: Theme; s: SectionSite }) {
+  // Les plats qui ont une vraie photo sont mis en avant au-dessus de la carte.
+  const illustres = (s.items ?? []).filter((it) => photoPlat(it.titre));
   return (
     <Conteneur className="py-16 @3xl:py-24">
       <EnTeteSection t={t} s={s} />
+      {illustres.length > 0 && (
+        <div className="mt-10 grid grid-cols-2 gap-4 @3xl:mt-14 @3xl:grid-cols-4">
+          {illustres.map((it) => (
+            <figure key={it.titre}>
+              <span className={`block aspect-[4/5] bg-cover bg-center ${t.r.image}`} style={{ background: `${t.doux} url("${urlPhoto(photoPlat(it.titre)!, 600)}") center / cover` }} />
+              <figcaption className="mt-3 flex items-baseline justify-between gap-3 text-[14.5px]">
+                <span className="font-medium">{it.titre}</span>
+                <span style={{ color: t.accentTexte }} className="whitespace-nowrap">{it.prix}</span>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
       <div className="mt-10 grid gap-x-16 @3xl:mt-14 @3xl:grid-cols-2">
         {(s.items ?? []).map((it) => (
           <div key={it.titre} className="border-b py-5" style={{ borderColor: t.ligne }}>
@@ -289,7 +325,7 @@ function Galerie({ t, s, site }: { t: Theme; s: SectionSite; site: SiteGenere })
           return (
             <figure key={i} className={`relative ${place}`}>
               <div className={`overflow-hidden ${t.r.image} ${forme}`}>
-                <Visuel palette={site.palette} motif={site.motif} graine={10 + i} className="block h-full w-full" />
+                <Image site={site} graine={10 + i} className="block h-full w-full" />
               </div>
               {produits ? (
                 <figcaption className="mt-3 flex items-baseline justify-between gap-3 text-[15px]">
@@ -316,7 +352,7 @@ function APropos({ t, s, site }: { t: Theme; s: SectionSite; site: SiteGenere })
   return (
     <Conteneur className="grid items-center gap-10 py-16 @3xl:grid-cols-2 @3xl:gap-16 @3xl:py-24">
       <div className={`overflow-hidden ${t.r.image}`}>
-        <Visuel palette={site.palette} motif={site.motif} graine={7} className="block aspect-[4/3] w-full" />
+        <Image site={site} graine={7} className="block aspect-[4/3] w-full" />
       </div>
       <div>
         <EnTeteSection t={t} s={{ ...s, texte: undefined }} />

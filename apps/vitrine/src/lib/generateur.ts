@@ -111,10 +111,10 @@ const modeles: Modele[] = [
         { titre: "Des vins choisis", texte: "Une cave courte, des vignerons que nous connaissons." },
       ] },
       { type: "menu", surtitre: "Entrées, plats, desserts", titre: "La carte du moment", items: [
-        { titre: "Velouté de potimarron", texte: "Noisettes torréfiées, huile de courge", prix: "9 €" },
-        { titre: "Œuf parfait", texte: "Champignons des bois, crème de lard", prix: "11 €" },
-        { titre: "Magret rôti", texte: "Purée de céleri, jus corsé", prix: "24 €" },
-        { titre: "Dos de cabillaud", texte: "Beurre blanc, poireaux fondants", prix: "22 €" },
+        { titre: "Poulpe grillé", texte: "Aïoli au safran, citron confit", prix: "21 €" },
+        { titre: "Linguine aux herbes", texte: "Herbes du jardin, huile d'olive, parmesan", prix: "15 €" },
+        { titre: "Moules marinières", texte: "Pain grillé au levain, citron", prix: "17 €" },
+        { titre: "Huîtres n° 3", texte: "Les six, citron et pain de seigle", prix: "14 €" },
         { titre: "Tarte fine aux pommes", texte: "Crème crue, caramel au beurre salé", prix: "8 €" },
         { titre: "Mousse au chocolat", texte: "Grué de cacao, fleur de sel", prix: "8 €" },
       ] },
@@ -722,6 +722,6 @@ export function modifierSite(site: SiteGenere, demande: string): { site: SiteGen
 export const exemplesPrompts = [
   "Un site pour mon restaurant « Le Petit Quai » à Bordeaux, ambiance chaleureuse",
   "Un plombier chauffagiste à Toulouse qui veut recevoir des demandes de devis",
-  "Une boutique en ligne de bijoux faits main, couleur dorée",
-  "Le portfolio d'une photographe de mariage, thème sombre",
+  "Une boutique en ligne de céramiques faites main",
+  "Une chambre d'hôtes en bord de mer à Biarritz",
 ];
