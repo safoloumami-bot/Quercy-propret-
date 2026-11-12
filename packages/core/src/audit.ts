@@ -78,6 +78,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "sales.settings.update": "a modifié les paramètres de vente",
   "sales.quote.accepted_online": "a accepté le devis en ligne",
   "sales.invoice_time": "a facturé le temps passé",
+  "sales.history.import": "a repris l'historique des documents",
+  "admin.access.granted": "a ouvert un accès offert par sebt",
   "crm.merge": "a fusionné des doublons",
   "report.create": "a créé un rapport",
   "report.update": "a modifié un rapport",

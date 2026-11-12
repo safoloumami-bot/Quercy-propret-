@@ -5,6 +5,7 @@ import {
   PAYMENT_METHODS,
   RECURRING_INTERVALS,
   documentLinesSchema,
+  historyRowSchema,
   recordPath,
   salesSettingsSchema,
 } from "@quercy/core";
@@ -35,6 +36,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { env } from "../../env";
+import { importSalesHistory } from "../../imports/sales-history";
 import { publish } from "../../realtime";
 import { delegate, entityContext, type RecordsCtx } from "../../records/context";
 import { decryptSecret, encryptSecret, maskSecret } from "../../secrets";
@@ -695,6 +697,47 @@ export const salesRouter = createTRPCRouter({
    * Facture fournisseur reçue (PDF Factur-X ou XML CII/UBL), déposée à la main : enregistrée
    * dans Achats, fournisseur retrouvé ou créé.
    */
+  /**
+   * Reprise de l'historique (factures, avoirs, devis d'un autre logiciel). `dryRun` vérifie
+   * sans rien écrire : doublons, clients à créer, avoirs sans facture d'origine.
+   */
+  importHistory: orgProcedure
+    .input(
+      z.object({
+        kind: z.enum(["INVOICE", "CREDIT_NOTE", "QUOTE"]),
+        rows: z.array(historyRowSchema).min(1).max(5000),
+        dryRun: z.boolean(),
+        filename: z.string().max(200).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const entity = DOCUMENT_ENTITY[input.kind];
+      await entityContext(ctx, entity, "create");
+      const result = await importSalesHistory({
+        organizationId: ctx.organizationId,
+        userId: ctx.user.id,
+        kind: input.kind,
+        rows: input.rows,
+        dryRun: input.dryRun,
+      });
+      if (!input.dryRun && result.ids.length > 0) {
+        await recordAudit(ctx, {
+          action: "sales.history.import",
+          entityType: entity,
+          metadata: {
+            imported: result.imported,
+            duplicates: result.duplicates.length,
+            newClients: result.newClients.length,
+            filename: input.filename ?? null,
+          },
+        });
+        await changed(ctx, entity, result.ids);
+        if (result.newClients.length) await changed(ctx, "company", []);
+      }
+      const { ids: _ids, ...summary } = result;
+      return summary;
+    }),
+
   importEInvoice: orgProcedure
     .input(
       z.object({

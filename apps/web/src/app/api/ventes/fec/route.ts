@@ -1,4 +1,4 @@
-import { buildFec, grantedScope } from "@quercy/core";
+import { HISTORY_TAG, buildFec, grantedScope } from "@quercy/core";
 import { NextResponse } from "next/server";
 
 import { fileRequestContext } from "@/server/files/access";
@@ -34,6 +34,8 @@ export async function GET(request: Request) {
         number: { not: null },
         status: { notIn: ["draft", "cancelled"] },
         issueDate: { gte: from, lt: to },
+        // Documents repris : déjà comptabilisés par l'ancien logiciel.
+        NOT: { tags: { has: HISTORY_TAG } },
       },
       include: { company: { select: { name: true } } },
     }),
@@ -42,7 +44,7 @@ export async function GET(request: Request) {
       include: { supplier: { select: { name: true } } },
     }),
     ctx.db.payment.findMany({
-      where: { date: { gte: from, lt: to } },
+      where: { date: { gte: from, lt: to }, NOT: { document: { tags: { has: HISTORY_TAG } } } },
       include: {
         document: {
           select: { number: true, companyId: true, company: { select: { name: true } } },

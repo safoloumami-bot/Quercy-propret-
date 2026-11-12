@@ -12,6 +12,8 @@ export interface EntityPermissions {
   update: boolean;
   delete: boolean;
   export: boolean;
+  /** Espace en lecture seule (abonnement) : rien ne peut être créé ni modifié. */
+  locked?: boolean;
 }
 
 export interface EntityProps {

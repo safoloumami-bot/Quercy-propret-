@@ -255,6 +255,54 @@ export const adminRouter = createTRPCRouter({
     }),
   ),
 
+  /**
+   * Accès offert par l'équipe sebt (partenaire, test, geste commercial) : prolonge l'essai
+   * Business ou ouvre l'offre Entreprise sans abonnement Stripe. Ne touche jamais à un
+   * abonnement payant en cours.
+   */
+  grantAccess: adminProcedure
+    .input(
+      z.object({
+        organizationId: z.string().min(1),
+        mode: z.enum(["trial", "enterprise"]),
+        days: z.number().int().min(1).max(365).default(30),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const org = await prisma.organization.findFirst({
+        where: { id: input.organizationId, deletedAt: null },
+        select: { id: true, subscriptionStatus: true },
+      });
+      if (!org) throw new TRPCError({ code: "NOT_FOUND", message: "Espace introuvable." });
+      if (["ACTIVE", "PAST_DUE", "UNPAID", "TRIALING"].includes(org.subscriptionStatus)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cet espace a un abonnement Stripe : modifiez-le depuis Stripe.",
+        });
+      }
+      const data =
+        input.mode === "enterprise"
+          ? { plan: "ENTERPRISE" as const, trialEndsAt: null }
+          : {
+              plan: "BUSINESS" as const,
+              trialEndsAt: new Date(Date.now() + input.days * DAY),
+            };
+      await prisma.$transaction([
+        prisma.organization.update({ where: { id: org.id }, data }),
+        prisma.auditLog.create({
+          data: {
+            organizationId: org.id,
+            actorId: ctx.user.id,
+            action: "admin.access.granted",
+            entityType: "organization",
+            entityId: org.id,
+            metadata: { mode: input.mode, days: input.mode === "trial" ? input.days : null },
+          },
+        }),
+      ]);
+      return { plan: data.plan, trialEndsAt: data.trialEndsAt };
+    }),
+
   replayEvent: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ input }) => {

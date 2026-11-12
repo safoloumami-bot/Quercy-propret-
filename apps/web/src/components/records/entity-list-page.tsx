@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 
 import { ImportEInvoiceButton } from "@/components/purchases/import-einvoice-button";
+import { HistoryImportDialog } from "@/components/sales/history-import-dialog";
 import { QuickQuoteButton } from "@/components/sales/quick-quote-dialog";
 
 import { CreateRecordDialog } from "./create-dialog";
@@ -35,6 +36,15 @@ export function EntityListPage({
   const [importing, setImporting] = React.useState(false);
   const [trash, setTrash] = React.useState(false);
   const base = entityPath(entity);
+  // Factures, avoirs et devis : reprise de l'historique d'un autre logiciel.
+  const historyKind =
+    entity === "invoice"
+      ? "INVOICE"
+      : entity === "creditNote"
+        ? "CREDIT_NOTE"
+        : entity === "quote"
+          ? "QUOTE"
+          : null;
   const labels = { singular: def.label, plural: def.labelPlural, feminine: def.feminine };
 
   // Les documents commerciaux s'ouvrent sur leur écran dédié (lignes, totaux, actions).
@@ -69,7 +79,7 @@ export function EntityListPage({
           onOpen={openPanel}
           onOpenPage={openPage}
           onCreate={create}
-          onImport={def.customPage ? undefined : () => setImporting(true)}
+          onImport={def.customPage && !historyKind ? undefined : () => setImporting(true)}
           onTrash={() => setTrash(true)}
         />
       </div>
@@ -105,13 +115,17 @@ export function EntityListPage({
           def.customPage ? router.push(recordPath(entity, row.id)) : setPanelId(row.id)
         }
       />
-      <ImportDialog
-        entity={entity}
-        fields={fields}
-        open={importing}
-        onOpenChange={setImporting}
-        labelPlural={def.labelPlural}
-      />
+      {historyKind ? (
+        <HistoryImportDialog kind={historyKind} open={importing} onOpenChange={setImporting} />
+      ) : (
+        <ImportDialog
+          entity={entity}
+          fields={fields}
+          open={importing}
+          onOpenChange={setImporting}
+          labelPlural={def.labelPlural}
+        />
+      )}
       <TrashDialog
         entity={entity}
         open={trash}
