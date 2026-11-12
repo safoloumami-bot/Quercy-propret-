@@ -15,7 +15,7 @@ export const marque = {
    * app.sebt.cloud.
    */
   /** Adresse publique de cette vitrine (liens de partage, sitemap). Réglable avec NEXT_PUBLIC_URL_SITE. */
-  urlSite: (process.env.NEXT_PUBLIC_URL_SITE || "https://sebt-vitrine-t5gw.onrender.com").replace(/\/$/, ""),
+  urlSite: (process.env.NEXT_PUBLIC_URL_SITE || "https://sebt.onrender.com").replace(/\/$/, ""),
   urlLogiciel: (process.env.NEXT_PUBLIC_URL_LOGICIEL || "https://sebt-t5gw.onrender.com").replace(/\/$/, ""),
 } as const;
 

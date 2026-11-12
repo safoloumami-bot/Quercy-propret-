@@ -30,9 +30,7 @@ export function middleware(request: NextRequest) {
   if (!SESSION_COOKIES.some((name) => request.cookies.has(name))) {
     // Visiteur sans session sur l'accueil : la vitrine de sebt (site à part).
     if (pathname === "/")
-      return NextResponse.redirect(
-        process.env.VITRINE_URL ?? "https://sebt-vitrine-t5gw.onrender.com",
-      );
+      return NextResponse.redirect(process.env.VITRINE_URL ?? "https://sebt.onrender.com");
     const url = new URL("/connexion", request.url);
     if (pathname !== "/") url.searchParams.set("next", `${pathname}${search}`);
     return NextResponse.redirect(url);
