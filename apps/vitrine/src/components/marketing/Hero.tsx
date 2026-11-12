@@ -105,7 +105,7 @@ export function Hero() {
               title={p}
               className="cursor-pointer rounded-full border border-creme/10 px-3 py-1.5 text-[13px] text-taupe transition hover:border-creme/25 hover:text-creme focus-visible:outline-2 focus-visible:outline-lagon"
             >
-              {["Plombier à Toulouse", "Bijoux faits main", "Photographe de mariage"][i]}
+              {["Plombier à Toulouse", "Céramiques faites main", "Chambres d'hôtes"][i]}
             </button>
           ))}
         </div>
