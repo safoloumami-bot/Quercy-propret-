@@ -1,4 +1,4 @@
-import { recordPath, reminderDue, startOfDayUtc } from "@quercy/core";
+import { HISTORY_TAG, recordPath, reminderDue, startOfDayUtc } from "@quercy/core";
 import { prisma } from "@quercy/db";
 
 import { syncEInvoicing } from "./einvoice/service";
@@ -97,9 +97,15 @@ export async function runDailySales(
   });
   result.expiredQuotes = expired.count;
 
-  // 4. Relances automatiques (paliers définis dans les paramètres de vente).
+  // 4. Relances automatiques (paliers définis dans les paramètres de vente). Les factures
+  // reprises d'un autre logiciel n'en reçoivent jamais : leur suivi était fait ailleurs.
   const overdue = await prisma.salesDocument.findMany({
-    where: { kind: "INVOICE", status: "overdue", deletedAt: null },
+    where: {
+      kind: "INVOICE",
+      status: "overdue",
+      deletedAt: null,
+      NOT: { tags: { has: HISTORY_TAG } },
+    },
     select: {
       id: true,
       organizationId: true,

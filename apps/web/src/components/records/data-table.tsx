@@ -44,6 +44,7 @@ import {
   ChevronRightIcon,
   DownloadIcon,
   FileSpreadsheetIcon,
+  LockIcon,
   MoreHorizontalIcon,
   PlusIcon,
   SearchIcon,
@@ -51,6 +52,7 @@ import {
   UploadIcon,
   XIcon,
 } from "lucide-react";
+import Link from "next/link";
 import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -706,20 +708,38 @@ export function DataTable({
                 />
               ) : (
                 <EmptyState
-                  icon={<PlusIcon />}
-                  title={`Aucun${labels.feminine ? "e" : ""} ${labels.singular.toLowerCase()} pour l'instant`}
-                  description={`Créez ${labels.feminine ? "la première" : "le premier"} ou importez votre fichier existant (CSV ou Excel).`}
+                  icon={permissions.locked ? <LockIcon /> : <PlusIcon />}
+                  title={
+                    permissions.locked
+                      ? "Espace en lecture seule"
+                      : `Aucun${labels.feminine ? "e" : ""} ${labels.singular.toLowerCase()} pour l'instant`
+                  }
+                  description={
+                    permissions.locked
+                      ? "Vos données restent consultables, mais rien ne peut être créé ni importé tant que l'offre n'est pas réglée."
+                      : permissions.create
+                        ? onImport
+                          ? `Créez ${labels.feminine ? "la première" : "le premier"} ou importez votre fichier existant (CSV ou Excel).`
+                          : `Créez ${labels.feminine ? "la première" : "le premier"} pour commencer.`
+                        : "Votre rôle ne permet pas d'en créer : demandez à un administrateur de l'espace."
+                  }
                   action={
-                    permissions.create ? (
+                    permissions.locked ? (
+                      <Button size="sm" asChild>
+                        <Link href="/reglages/facturation">Voir les offres</Link>
+                      </Button>
+                    ) : permissions.create ? (
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => onCreate()}>
                           <PlusIcon />
                           Créer
                         </Button>
-                        <Button size="sm" variant="secondary" onClick={onImport}>
-                          <UploadIcon />
-                          Importer
-                        </Button>
+                        {onImport ? (
+                          <Button size="sm" variant="secondary" onClick={onImport}>
+                            <UploadIcon />
+                            Importer
+                          </Button>
+                        ) : null}
                       </div>
                     ) : undefined
                   }

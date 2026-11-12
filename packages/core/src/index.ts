@@ -23,3 +23,4 @@ export * from "./estimates";
 export * from "./finance";
 export * from "./trades";
 export * from "./website";
+export * from "./sales-history";

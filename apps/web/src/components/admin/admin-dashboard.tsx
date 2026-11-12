@@ -16,7 +16,7 @@ import {
 } from "@quercy/ui/components/table";
 import { toast } from "@quercy/ui/components/toaster";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RotateCcwIcon, SearchIcon, UserCogIcon } from "lucide-react";
+import { GiftIcon, RotateCcwIcon, SearchIcon, UserCogIcon } from "lucide-react";
 import * as React from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -78,6 +78,26 @@ export function AdminDashboard() {
             : "Événement rejoué avec succès.",
         );
         void queryClient.invalidateQueries({ queryKey: trpc.admin.failedEvents.queryKey() });
+      },
+      onError: (e) => toast.error(errorMessage(e)),
+    }),
+  );
+
+  const [grantTarget, setGrantTarget] = React.useState<{
+    id: string;
+    name: string;
+    mode: "trial" | "enterprise";
+  } | null>(null);
+  const grant = useMutation(
+    trpc.admin.grantAccess.mutationOptions({
+      onSuccess: ({ plan }) => {
+        toast.success(
+          plan === "ENTERPRISE"
+            ? "Offre Entreprise ouverte : l'espace est débloqué."
+            : "Essai Business prolongé de 30 jours : l'espace est débloqué.",
+        );
+        setGrantTarget(null);
+        void queryClient.invalidateQueries({ queryKey: trpc.admin.organizations.queryKey() });
       },
       onError: (e) => toast.error(errorMessage(e)),
     }),
@@ -166,7 +186,7 @@ export function AdminDashboard() {
                 <TableHead className="text-right">Membres</TableHead>
                 <TableHead className="text-right">MRR</TableHead>
                 <TableHead>Créé le</TableHead>
-                <TableHead className="w-44">
+                <TableHead className="w-80">
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
@@ -209,6 +229,31 @@ export function AdminDashboard() {
                     {dateFormat.format(new Date(o.createdAt))}
                   </TableCell>
                   <TableCell className="text-right">
+                    {!["ACTIVE", "PAST_DUE", "UNPAID", "TRIALING"].includes(
+                      o.subscriptionStatus,
+                    ) ? (
+                      <span className="inline-flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setGrantTarget({ id: o.id, name: o.name, mode: "trial" })}
+                        >
+                          <GiftIcon />
+                          +30 j d&apos;essai
+                        </Button>
+                        {o.plan !== "ENTERPRISE" ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setGrantTarget({ id: o.id, name: o.name, mode: "enterprise" })
+                            }
+                          >
+                            Offrir Entreprise
+                          </Button>
+                        ) : null}
+                      </span>
+                    ) : null}
                     {o.owner ? (
                       <Button
                         variant="ghost"
@@ -297,6 +342,27 @@ export function AdminDashboard() {
         confirmLabel="Ouvrir la session d'assistance"
         pending={impersonating}
         onConfirm={impersonate}
+      />
+      <ConfirmDialog
+        open={grantTarget !== null}
+        onOpenChange={(open) => (open ? null : setGrantTarget(null))}
+        title={
+          grantTarget
+            ? grantTarget.mode === "trial"
+              ? `Prolonger l'essai de « ${grantTarget.name} » ?`
+              : `Offrir l'offre Entreprise à « ${grantTarget.name} » ?`
+            : ""
+        }
+        description={
+          grantTarget?.mode === "trial"
+            ? "L'espace repasse en essai Business pour 30 jours, sans carte bancaire. Toutes les fonctions sont débloquées."
+            : "L'espace passe en offre Entreprise sans abonnement ni limite de durée, jusqu'à ce que vous changiez son offre. L'action est inscrite dans son journal d'audit."
+        }
+        confirmLabel={grantTarget?.mode === "trial" ? "Prolonger l'essai" : "Offrir l'accès"}
+        pending={grant.isPending}
+        onConfirm={() =>
+          grantTarget && grant.mutate({ organizationId: grantTarget.id, mode: grantTarget.mode })
+        }
       />
     </>
   );

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { DashboardGrid } from "@/components/dashboard/dashboard-grid";
+import { GettingStartedCard } from "@/components/home/getting-started";
 import { requireWorkspaceContext } from "@/lib/workspace";
+import { gettingStarted } from "@/server/getting-started";
 
 export const metadata: Metadata = { title: "Accueil" };
 
@@ -11,7 +13,11 @@ function greeting(hour: number): string {
 }
 
 export default async function HomePage() {
-  const { user, organization } = await requireWorkspaceContext();
+  const context = await requireWorkspaceContext();
+  const { user, organization, role } = context;
+  // Premiers pas : pour qui configure l'espace (propriétaire, administrateur).
+  const start =
+    role.systemKey === "owner" || role.systemKey === "admin" ? await gettingStarted(context) : null;
   const { locale, timezone } = organization.preferences;
   const now = new Date();
   const hour = Number(
@@ -40,6 +46,7 @@ export default async function HomePage() {
           {greeting(hour)} {firstName}
         </h1>
       </header>
+      {start ? <GettingStartedCard organizationId={organization.id} data={start} /> : null}
       <DashboardGrid />
     </div>
   );

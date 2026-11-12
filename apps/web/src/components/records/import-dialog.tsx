@@ -42,7 +42,7 @@ function normalize(text: string): string {
 }
 
 /** Lit un CSV ou un fichier Excel côté navigateur : en-têtes + lignes de texte. */
-async function readTable(file: File): Promise<{ headers: string[]; rows: string[][] }> {
+export async function readTable(file: File): Promise<{ headers: string[]; rows: string[][] }> {
   if (/\.xlsx$/i.test(file.name)) {
     const { readSheet } = await import("read-excel-file/browser");
     const sheet = await readSheet(file);

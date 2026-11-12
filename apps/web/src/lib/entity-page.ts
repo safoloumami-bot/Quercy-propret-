@@ -27,6 +27,7 @@ export async function loadEntityPage(entity: EntityKey) {
     update: !readOnly && can(perms, def.module, "update"),
     delete: !readOnly && can(perms, def.module, "delete"),
     export: can(perms, def.module, "export"),
+    locked: readOnly,
   };
   return {
     def,
