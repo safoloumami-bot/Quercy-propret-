@@ -35,7 +35,7 @@ export function policeTitres(site: SiteGenere) {
 function Image({ site, graine, sombre = false, className }: { site: SiteGenere; graine: number; sombre?: boolean; className?: string }) {
   const serie = photosPour(site.secteur);
   if (!serie) return <Visuel palette={site.palette} motif={site.motif} graine={graine} sombre={sombre} className={className} />;
-  const id = graine >= 10 ? serie.galerie[(graine - 10) % serie.galerie.length]! : graine === 7 ? serie.apropos : serie.hero;
+  const id = graine >= 10 ? serie.galerie[(graine - 10) % serie.galerie.length]![0] : graine === 7 ? serie.apropos : serie.hero;
   const calque = { gridArea: "1 / 1", minWidth: 0, minHeight: 0 } as const;
   return (
     <span className={className} style={{ display: "grid", overflow: "hidden" }} aria-hidden>
@@ -311,7 +311,10 @@ function Tarifs({ t, s }: { t: Theme; s: SectionSite }) {
 }
 
 function Galerie({ t, s, site }: { t: Theme; s: SectionSite; site: SiteGenere }) {
-  const items = s.items?.length ? s.items : [{ titre: "" }, { titre: "" }, { titre: "" }, { titre: "" }];
+  const base = s.items?.length ? s.items : [{ titre: "" }, { titre: "" }, { titre: "" }, { titre: "" }];
+  // Avec de vraies photos, chaque image garde sa propre légende (le prix d'un produit est conservé).
+  const serie = photosPour(site.secteur);
+  const items = serie ? serie.galerie.map(([, legende], i) => ({ titre: legende, prix: base[i]?.prix })) : base;
   const produits = items.some((x) => x.prix);
   const mosaique = !produits && items.length === 4;
   const grille = mosaique ? "grid-cols-2 @3xl:grid-cols-4 @3xl:grid-rows-[230px_230px]" : produits ? "grid-cols-2 @3xl:grid-cols-4" : "grid-cols-2 @3xl:grid-cols-3";
