@@ -17,7 +17,7 @@ describe("parseAmountCents", () => {
     expect(parseAmountCents("1234.5")).toBe(123450);
     expect(parseAmountCents("-45")).toBe(-4500);
     expect(parseAmountCents("(45,00)")).toBe(-4500);
-    expect(parseAmountCents("1 000")).toBe(100000);
+    expect(parseAmountCents("1\u202f000")).toBe(100000);
   });
   it("refuse ce qui n'est pas un montant", () => {
     expect(parseAmountCents("")).toBeNull();

@@ -313,7 +313,7 @@ export function parseAmountCents(text: string | null | undefined): number | null
     negative = true;
     s = s.slice(1, -1);
   }
-  s = s.replace(/[\s  ']/g, "").replace(/[€$£]|eur$/gi, "");
+  s = s.replace(/[\s\u00a0\u202f']/g, "").replace(/[€$£]|eur$/gi, "");
   if (s.startsWith("-")) {
     negative = !negative;
     s = s.slice(1);
