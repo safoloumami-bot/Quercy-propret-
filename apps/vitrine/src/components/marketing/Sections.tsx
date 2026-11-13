@@ -18,11 +18,14 @@ import { DonneesFaq } from "./DonneesStructurees";
 // Titre de section en deux tons : une affirmation, puis une précision en gris.
 export function TitreSection({ surtitre, affirmation, precision, centre = false, niveau = 2 }: { surtitre?: string; affirmation: string; precision?: string; centre?: boolean; niveau?: 1 | 2 }) {
   const Balise = niveau === 1 ? "h1" : "h2";
+  // Un titre ne se termine pas par un point : on le retire du dernier segment.
+  const sansPoint = (t: string) => t.replace(/\.$/, "");
+  const [debut, fin] = precision ? [affirmation, sansPoint(precision)] : [sansPoint(affirmation), undefined];
   return (
     <Apparition className={cx("max-w-3xl", centre && "mx-auto text-center")}>
-      {surtitre && <p className="font-mono text-[12.5px] tracking-wide text-or uppercase">{surtitre}</p>}
+      {surtitre && <p className="font-mono text-[13px] text-or">{surtitre}</p>}
       <Balise className={cx("titre-pub mt-3 text-[2.1rem] leading-[1.08] text-creme md:text-[3.25rem]", niveau === 1 && "md:text-6xl")}>
-        {affirmation} {precision && <span className="text-taupe">{precision}</span>}
+        {debut} {fin && <span className="text-taupe">{fin}</span>}
       </Balise>
     </Apparition>
   );
@@ -175,7 +178,7 @@ export function Domaines() {
                 onChange={(e) => setSaisie(e.target.value)}
                 placeholder="monentreprise"
                 aria-label="Nom de domaine recherché"
-                className="h-12 w-full rounded-full border border-creme/10 bg-nuit pr-4 pl-11 text-[15px] text-creme outline-none placeholder:text-taupe-2 focus:border-lagon/50"
+                className="h-12 w-full rounded-[10px] border border-creme/10 bg-nuit pr-4 pl-11 text-[15px] text-creme outline-none placeholder:text-taupe-2 focus:border-lagon/50"
               />
             </div>
             <Bouton taille="lg" type="submit" variante="lagon">Rechercher</Bouton>
@@ -251,7 +254,6 @@ const conversation = [
 export function Agent() {
   return (
     <section id="agent" className="relative scroll-mt-20 overflow-hidden border-t border-creme/[0.06]">
-      <div aria-hidden className="pointer-events-none absolute top-1/2 right-0 h-[600px] w-[700px] -translate-y-1/2 translate-x-1/4 rounded-full bg-[radial-gradient(closest-side,rgba(201,169,124,0.12),transparent)] blur-2xl" />
       <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 py-24 md:py-32 lg:grid-cols-[1fr_1.1fr]">
         <div>
           <TitreSection surtitre="Agent IA" affirmation="Un administrateur qui ne dort jamais." precision="Et qui demande avant d'agir." />
@@ -292,8 +294,8 @@ export function Agent() {
                   {m.texte}
                   {m.action && (
                     <div className="mt-3 flex gap-2" aria-hidden>
-                      <span className="rounded-full bg-lagon px-3 py-1 text-xs font-medium text-nuit">Appliquer</span>
-                      <span className="rounded-full border border-creme/20 px-3 py-1 text-xs">Voir le détail</span>
+                      <span className="rounded-md bg-lagon px-3 py-1 text-xs font-medium text-nuit">Appliquer</span>
+                      <span className="rounded-md border border-creme/20 px-3 py-1 text-xs">Voir le détail</span>
                     </div>
                   )}
                   {m.fini && (
@@ -330,7 +332,7 @@ export function Tarifs({ titre = true }: { titre?: boolean }) {
                 key={o}
                 onClick={() => setOnglet(o)}
                 aria-pressed={onglet === o}
-                className={cx("h-10 cursor-pointer rounded-full px-5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-lagon", onglet === o ? "bg-creme text-nuit" : "text-taupe hover:text-creme")}
+                className={cx("h-10 cursor-pointer rounded-[10px] px-5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-lagon", onglet === o ? "bg-creme text-nuit" : "text-taupe hover:text-creme")}
               >
                 {o === "web" ? <>Hébergement<span className="hidden sm:inline"> et créateur IA</span></> : "Serveurs VPS"}
               </button>
@@ -346,7 +348,7 @@ export function Tarifs({ titre = true }: { titre?: boolean }) {
                 className={cx("relative h-6 w-11 cursor-pointer rounded-full transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lagon", periode === "annuel" ? "bg-lagon" : "bg-creme/15")}
                 aria-label="Paiement annuel"
               >
-                <span className={cx("absolute top-0.5 size-5 rounded-full bg-creme shadow transition-all", periode === "annuel" ? "left-[22px]" : "left-0.5")} />
+                <span className={cx("absolute top-0.5 size-5 rounded-full bg-creme shadow transition-[background-color,border-color,color,opacity,transform]", periode === "annuel" ? "left-[22px]" : "left-0.5")} />
               </button>
               <button onClick={() => setPeriode("annuel")} className={cx("cursor-pointer py-2", periode === "annuel" ? "text-creme" : "text-taupe")}>Annuel</button>
               <span className="font-mono text-[12.5px] text-or">−20 % et domaine offert</span>
@@ -365,13 +367,13 @@ export function Tarifs({ titre = true }: { titre?: boolean }) {
                   className={cx(
                     "relative flex flex-col rounded-2xl p-7",
                     o.misEnAvant
-                      ? "border border-lagon/45 bg-nuit-2 shadow-[0_0_80px_-20px_rgba(201,169,124,0.35)]"
+                      ? "border border-lagon/45 bg-nuit-2"
                       : "border border-creme/[0.08] bg-nuit-2/60",
                   )}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-2xl font-medium tracking-[-0.02em] text-creme">{o.nom}</h3>
-                    {o.misEnAvant && <span className="rounded-full bg-lagon/15 px-2.5 py-1 text-[12px] font-medium text-or">Recommandé</span>}
+                    {o.misEnAvant && <span className="rounded-md bg-lagon/15 px-2.5 py-1 text-[12px] font-medium text-or">Recommandé</span>}
                   </div>
                   <p className="mt-1.5 min-h-10 text-sm text-taupe">{o.pour}</p>
                   <div className="mt-6 flex items-baseline gap-1.5">
@@ -404,12 +406,12 @@ export function Tarifs({ titre = true }: { titre?: boolean }) {
                   key={v.id}
                   className={cx(
                     "relative flex flex-col rounded-2xl p-6",
-                    v.misEnAvant ? "border border-lagon/45 bg-nuit-2 shadow-[0_0_80px_-20px_rgba(201,169,124,0.35)]" : "border border-creme/[0.08] bg-nuit-2/60",
+                    v.misEnAvant ? "border border-lagon/45 bg-nuit-2" : "border border-creme/[0.08] bg-nuit-2/60",
                   )}
                 >
                   <div className="flex items-center justify-between">
                     <h3 className="text-xl font-medium text-creme">{v.nom}</h3>
-                    {v.misEnAvant && <span className="rounded-full bg-lagon/15 px-2.5 py-1 text-[12px] font-medium text-or">Populaire</span>}
+                    {v.misEnAvant && <span className="rounded-md bg-lagon/15 px-2.5 py-1 text-[12px] font-medium text-or">Populaire</span>}
                   </div>
                   <div className="mt-4 flex items-baseline gap-1">
                     <span className="text-4xl font-medium tracking-[-0.04em] text-creme">{v.prixMensuel.toFixed(2).replace(".", ",")} €</span>
@@ -488,13 +490,12 @@ export function Faq() {
 export function AppelFinal() {
   return (
     <section className="relative overflow-hidden border-t border-creme/[0.06]">
-      <div aria-hidden className="pointer-events-none absolute bottom-0 left-1/2 h-[500px] w-[1000px] -translate-x-1/2 translate-y-1/3 rounded-full bg-[radial-gradient(closest-side,rgba(201,169,124,0.25),transparent)] blur-2xl" />
       <div className="relative mx-auto max-w-6xl px-6 py-28 text-center md:py-40">
         <Apparition>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/marque/sebt-icone-sombre.svg" alt="" width={56} height={56} className="mx-auto size-14 rounded-2xl" />
           <h2 className="titre-pub mx-auto mt-8 max-w-3xl text-[2.5rem] leading-[1.04] text-creme md:text-7xl">
-            Le bon moment,<span className="block text-taupe">c&apos;est maintenant.</span>
+            Le bon moment,<span className="block text-taupe">c&apos;est maintenant</span>
           </h2>
           <p className="mx-auto mt-6 max-w-md text-lg text-taupe">L&apos;aperçu est gratuit. Le devis aussi.</p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
