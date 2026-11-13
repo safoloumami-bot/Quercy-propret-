@@ -1,4 +1,4 @@
-import { CalendarDays, Heart, Plus, ShoppingBag, Star, UserRound, UtensilsCrossed } from "lucide-react";
+import { Bell, CalendarDays, Check, FileText, Heart, House, Plus, ShoppingBag, Star, UserRound, UtensilsCrossed } from "lucide-react";
 import { ApercuSite, policeTitres } from "@/components/ApercuSite";
 import { cx } from "@/components/ui";
 import { melanger, texteSur } from "@/lib/couleurs";
@@ -87,6 +87,9 @@ export function AppliExemple({ site, className }: { site: SiteGenere; className?
   const serie = photosPour(site.secteur);
   const carte = site.sections.find((s) => s.type === "menu")?.items ?? [];
   const [duJour, ...suite] = carte;
+  // Métiers de service (nettoyage, artisans…) : pas de carte à commander, mais des passages,
+  // des devis et des factures.
+  if (carte.length === 0) return <AppliService site={site} className={className} />;
   return (
     <div className={cx("w-[236px] rounded-[40px] bg-black p-[7px] shadow-[0_50px_110px_-25px_rgba(0,0,0,0.95)] ring-1 ring-creme/15", className)} aria-hidden>
       <div className="relative overflow-hidden rounded-[33px]" style={{ background: m.fond, color: m.texte }}>
@@ -163,6 +166,99 @@ export function AppliExemple({ site, className }: { site: SiteGenere; className?
               [UtensilsCrossed, "La carte", true],
               [CalendarDays, "Réserver", false],
               [Heart, "Fidélité", false],
+              [UserRound, "Compte", false],
+            ] as const
+          ).map(([Icone, l, actif]) => (
+            <span key={l} className="flex flex-col items-center gap-1" style={actif ? { color: m.accent } : undefined}>
+              <Icone className="size-4" />
+              {l}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** L'appli des clients d'une entreprise de service : prochain passage, devis, factures. */
+function AppliService({ site, className }: { site: SiteGenere; className?: string }) {
+  const m = marque(site);
+  const serie = photosPour(site.secteur);
+  const prestations = site.sections.find((s) => s.type === "services" || s.type === "tarifs")?.items ?? [];
+  const suivi = ["Mardi et vendredi", "Terminé hier"];
+  return (
+    <div className={cx("w-[236px] rounded-[40px] bg-black p-[7px] shadow-[0_50px_110px_-25px_rgba(0,0,0,0.95)] ring-1 ring-creme/15", className)} aria-hidden>
+      <div className="relative overflow-hidden rounded-[33px]" style={{ background: m.fond, color: m.texte }}>
+        <div className="flex items-center justify-between px-5 pt-2.5 text-[9px] font-semibold">
+          <span>8:12</span>
+          <span className="h-[15px] w-[62px] rounded-full bg-black" />
+          <span>5G</span>
+        </div>
+        <div className="flex items-center justify-between px-4 pt-3">
+          <span>
+            <span className="block text-[9px]" style={{ color: m.discret }}>Bonjour Léa</span>
+            <LogoExemple site={site} taille={17} />
+          </span>
+          <span className="grid size-7 place-items-center rounded-full" style={{ background: m.carte, boxShadow: `inset 0 0 0 1px ${m.ligne}` }}>
+            <Bell className="size-3.5" style={{ color: m.accent }} />
+          </span>
+        </div>
+
+        <div className="relative mx-4 mt-3 overflow-hidden rounded-2xl">
+          <Photo id={serie?.hero} className="h-[104px] w-full" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
+          <div className="absolute right-3 bottom-2.5 left-3 flex items-end justify-between text-white">
+            <span className="min-w-0">
+              <span className="block text-[7.5px] tracking-[0.14em] uppercase opacity-85">Prochain passage</span>
+              <span className="block text-[12.5px] leading-tight whitespace-nowrap" style={m.titres}>Jeudi · 8 h 30</span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[9px] font-semibold whitespace-nowrap" style={{ background: m.accent, color: m.surAccent }}>
+              <Check className="size-2.5" />
+              Confirmé
+            </span>
+          </div>
+        </div>
+
+        <div className="mx-4 mt-2.5 grid grid-cols-2 gap-1.5 text-center text-[9.5px] font-medium">
+          <span className="rounded-full py-2" style={{ background: m.texte, color: m.fond }}>Demander un devis</span>
+          <span className="rounded-full py-2" style={{ boxShadow: `inset 0 0 0 1px ${m.texte}` }}>Planifier un passage</span>
+        </div>
+
+        <div className="mt-3 flex items-baseline justify-between px-4">
+          <p className="text-[12.5px]" style={m.titres}>Vos prestations</p>
+          <p className="text-[8.5px]" style={{ color: m.discret }}>Tout voir</p>
+        </div>
+        <div className="mt-1.5 space-y-1.5 px-4">
+          {prestations.slice(0, 2).map((it, i) => (
+            <div key={it.titre} className="flex items-center gap-2.5 rounded-xl p-1.5" style={{ background: m.carte, boxShadow: `inset 0 0 0 1px ${m.ligne}` }}>
+              <Photo id={serie?.galerie[i]?.[0]} largeur={200} className="size-11 shrink-0 rounded-lg" />
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block truncate text-[10px] font-semibold">{it.titre}</span>
+                <span className="block truncate text-[8px]" style={{ color: m.discret }}>{it.texte}</span>
+                <span className="block truncate text-[9px] font-medium" style={{ color: m.accent }}>{suivi[i]}</span>
+              </span>
+              <span className="grid size-6 shrink-0 place-items-center rounded-full" style={i === 0 ? { boxShadow: `inset 0 0 0 1px ${m.texte}`, color: m.texte } : { background: m.texte, color: m.fond }}>
+                {i === 0 ? <CalendarDays className="size-3" /> : <Check className="size-3" />}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mx-4 mt-2 flex items-center gap-2.5 rounded-xl px-3 py-2" style={{ background: m.doux }}>
+          <FileText className="size-3.5 shrink-0" style={{ color: m.accent }} />
+          <span className="flex-1 text-[8.5px] leading-tight">
+            <span className="block font-semibold whitespace-nowrap">Facture · 320 €</span>
+            <span style={{ color: m.discret }}>À régler avant le 30</span>
+          </span>
+          <span className="rounded-full px-2.5 py-1 text-[9px] font-semibold" style={{ background: m.accent, color: m.surAccent }}>Payer</span>
+        </div>
+
+        <div className="mt-3 grid grid-cols-4 border-t px-2 pt-2 pb-3 text-center text-[7.5px] font-medium" style={{ borderColor: m.ligne, background: m.carte, color: m.discret }}>
+          {(
+            [
+              [House, "Accueil", true],
+              [CalendarDays, "Passages", false],
+              [FileText, "Factures", false],
               [UserRound, "Compte", false],
             ] as const
           ).map(([Icone, l, actif]) => (

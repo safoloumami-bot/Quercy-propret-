@@ -123,8 +123,21 @@ const cafe: SeriePhotos = {
   apropos: "/exemples/cafe/grains.jpg", // grains torréfiés en gros plan
 };
 
+// Série hébergée avec le site (public/exemples/nettoyage) : une équipe de propreté au travail.
+const nettoyage: SeriePhotos = {
+  hero: "/exemples/nettoyage/equipe.jpg", // trois agents en combinaison orange avec leurs aspirateurs
+  galerie: [
+    ["/exemples/nettoyage/bureaux.jpg", "Bureaux"], // agent qui aspire le hall d'un immeuble de bureaux
+    ["/exemples/nettoyage/vitres.jpg", "Vitres"], // laveur de vitres à la perche devant une baie
+    ["/exemples/nettoyage/desinfection.jpg", "Désinfection"], // agent en combinaison qui traite un atelier, vu d'en haut
+    ["/exemples/nettoyage/commerce.jpg", "Commerces"], // chariot de ménage devant l'entrée d'une boutique
+  ],
+  apropos: "/exemples/nettoyage/vehicule.jpg", // utilitaire ouvert, matériel rangé à l'arrière
+};
+
 const series: Record<string, SeriePhotos> = {
   Café: cafe,
+  Nettoyage: nettoyage,
   Restauration: restaurant,
   "Bar à vin": restaurant,
   Traiteur: restaurant,

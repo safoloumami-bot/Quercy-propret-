@@ -385,7 +385,7 @@ export const metiers: Metier[] = [
       it("Fin de chantier", "Remise en état avant livraison."), it("Vitres", "Intérieur, extérieur, en hauteur."),
       it("Particuliers", "Ménage régulier, déductible des impôts."), it("Remise en état", "Déménagement, état des lieux."),
     ] },
-    galerie: ["Bureaux", "Vitres", "Fin de chantier", "Commerce"],
+    galerie: ["Bureaux", "Vitres", "Désinfection", "Commerces"],
   },
   {
     cle: "Couvreur", famille: "Artisan", motsCles: ["couvreur", "toiture", "zinguerie", "charpente", "gouttière", "gouttiere"],
