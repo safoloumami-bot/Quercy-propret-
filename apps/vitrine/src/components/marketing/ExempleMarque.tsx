@@ -116,7 +116,7 @@ export function AppliExemple({ site, className }: { site: SiteGenere; className?
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
             <div className="absolute right-3 bottom-2.5 left-3 flex items-end justify-between text-white">
               <span className="min-w-0">
-                <span className="block text-[7.5px] tracking-[0.14em] uppercase opacity-85">Plat du jour</span>
+                <span className="block text-[7.5px] tracking-[0.14em] uppercase opacity-85">{site.secteur === "Café" ? "À la une" : "Plat du jour"}</span>
                 <span className="block text-[12.5px] leading-tight whitespace-nowrap" style={m.titres}>{duJour.titre}</span>
               </span>
               <span className="shrink-0 rounded-full px-2 py-1 text-[9.5px] font-semibold whitespace-nowrap" style={{ background: m.accent, color: m.surAccent }}>{duJour.prix}</span>

@@ -183,9 +183,9 @@ export const metiers: Metier[] = [
     sousTitres: ["Cafés de spécialité, pâtisseries du jour et brunch le week-end, dans une salle lumineuse.", "On torréfie avec soin, on cuisine maison et on vous laisse travailler tranquille."],
     cta: "Voir la carte", ctaSecondaire: "Réserver un brunch", bandeau: "Brunch samedi et dimanche · Wifi et prises pour travailler",
     liste: { cible: "menu", surtitre: "Cafés, douceurs, brunch", titre: "La carte", items: [
-      it("Espresso", "Assemblage du moment", "2,20 €"), it("Flat white", "Double ristretto, lait entier", "4,20 €"),
-      it("Chaï latte", "Épices infusées maison", "4,50 €"), it("Cookie du jour", "Beurre noisette, chocolat noir", "3 €"),
-      it("Banana bread", "Noix de pécan, sirop d'érable", "4 €"), it("Brunch complet", "Œufs, pain au levain, granola, jus pressé", "22 €"),
+      it("Cafés de spécialité", "Espresso, filtre ou flat white", "dès 2,20 €"), it("Croissant pur beurre", "Feuilleté chaque matin", "1,80 €"),
+      it("Café en grains · 250 g", "Torréfié avec soin, moulu à la demande", "9 €"), it("Chaï latte", "Épices infusées maison", "4,50 €"),
+      it("Cookie du jour", "Beurre noisette, chocolat noir", "3 €"), it("Brunch complet", "Œufs, pain au levain, granola, jus pressé", "22 €"),
     ] },
     galerie: ["Le comptoir", "Les cafés", "Le brunch", "La salle"],
     atouts: [it("Café de spécialité", "Des grains sélectionnés et torréfiés avec soin."), it("Fait maison", "Pâtisseries et brunch préparés sur place."), it("Pour travailler", "Wifi, prises et bonne lumière.")],
