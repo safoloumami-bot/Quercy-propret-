@@ -14,3 +14,12 @@ fichiers CREDITS.md donnent l'auteur de chaque photo :
 - Céramique : pottery-studio-website-template
 - Vêtements : fashion-brand-website-template
 - Hébergement : boutique-hotel-website-template
+
+## Photos hébergées avec le site
+
+- Café (`public/exemples/cafe/`) : photos du modèle « Business Casual » de Start Bootstrap
+  (github.com/StartBootstrap/startbootstrap-business-casual, licence MIT), redimensionnées.
+- Nettoyage (`public/exemples/nettoyage/`) : photos reprises du dépôt public
+  github.com/kingcobaen001/janitorial-website (dépôt sous licence MIT), redimensionnées.
+  L'auteur de chaque photo n'y est pas indiqué : à remplacer par des photos dont l'origine
+  est connue avant une diffusion publicitaire large.

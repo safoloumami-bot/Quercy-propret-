@@ -111,7 +111,33 @@ const hebergement: SeriePhotos = {
   apropos: "photo-1759612291131-587ccee7df3d", // ruelle aux maisons ocre
 };
 
+// Série hébergée avec le site (public/exemples/cafe), reprise du modèle MIT « Business Casual ».
+const cafe: SeriePhotos = {
+  hero: "/exemples/cafe/comptoir.jpg", // barista souriante derrière la machine
+  galerie: [
+    ["/exemples/cafe/salle.jpg", "La salle"], // grande salle vue d'en haut, canapés, comptoir
+    ["/exemples/cafe/cafes.jpg", "Les cafés"], // sept tasses en cercle sur un guéridon
+    ["/exemples/cafe/croissant.jpg", "Croissant pur beurre"], // croissant sur un plateau en bois
+    ["/exemples/cafe/sacs.jpg", "Le café vert"], // sacs de jute empilés
+  ],
+  apropos: "/exemples/cafe/grains.jpg", // grains torréfiés en gros plan
+};
+
+// Série hébergée avec le site (public/exemples/nettoyage) : une équipe de propreté au travail.
+const nettoyage: SeriePhotos = {
+  hero: "/exemples/nettoyage/equipe.jpg", // trois agents en combinaison orange avec leurs aspirateurs
+  galerie: [
+    ["/exemples/nettoyage/bureaux.jpg", "Bureaux"], // agent qui aspire le hall d'un immeuble de bureaux
+    ["/exemples/nettoyage/vitres.jpg", "Vitres"], // laveur de vitres à la perche devant une baie
+    ["/exemples/nettoyage/desinfection.jpg", "Désinfection"], // agent en combinaison qui traite un atelier, vu d'en haut
+    ["/exemples/nettoyage/commerce.jpg", "Commerces"], // chariot de ménage devant l'entrée d'une boutique
+  ],
+  apropos: "/exemples/nettoyage/vehicule.jpg", // utilitaire ouvert, matériel rangé à l'arrière
+};
+
 const series: Record<string, SeriePhotos> = {
+  Café: cafe,
+  Nettoyage: nettoyage,
   Restauration: restaurant,
   "Bar à vin": restaurant,
   Traiteur: restaurant,
@@ -140,6 +166,8 @@ export function photosPour(secteur: string): SeriePhotos | undefined {
 
 /** Adresse d'une photo, recadrée et allégée par le serveur d'images. */
 export function urlPhoto(id: string, largeur = 800): string {
+  // Photo hébergée avec le site (public/exemples) : servie telle quelle.
+  if (id.startsWith("/")) return id;
   return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${largeur}&q=80`;
 }
 
@@ -149,6 +177,9 @@ const plats: Record<string, string> = {
   "Linguine aux herbes": "photo-1693820206774-d4a769355142",
   "Moules marinières": "photo-1710775694428-5f6e66ae6a4c",
   "Huîtres n° 3": "photo-1717251883191-9a1411878790",
+  "Cafés de spécialité": "/exemples/cafe/cafes.jpg",
+  "Croissant pur beurre": "/exemples/cafe/croissant.jpg",
+  "Café en grains · 250 g": "/exemples/cafe/grains.jpg",
 };
 
 export function photoPlat(nom: string): string | undefined {

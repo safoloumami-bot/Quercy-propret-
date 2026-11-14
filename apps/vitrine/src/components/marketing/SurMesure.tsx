@@ -126,7 +126,7 @@ function Demande() {
                 aria-pressed={actif}
                 onClick={() => setChoix((c) => (actif ? c.filter((x) => x !== s.cle) : [...c, s.cle]))}
                 className={cx(
-                  "flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13.5px] ring-1 transition-colors",
+                  "flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-[13.5px] ring-1 transition-colors",
                   actif ? "bg-lagon text-encre ring-lagon" : "text-creme ring-creme/12 hover:bg-creme/[0.06]",
                 )}
               >
@@ -167,7 +167,6 @@ function Demande() {
 export function SurMesure() {
   return (
     <section id="sur-mesure" className="relative scroll-mt-20 overflow-hidden border-t border-creme/[0.06]">
-      <div aria-hidden className="pointer-events-none absolute top-24 right-0 h-[520px] w-[620px] translate-x-1/4 rounded-full bg-[radial-gradient(closest-side,rgba(226,201,159,0.10),transparent)] blur-2xl" />
       <div className="relative mx-auto max-w-6xl px-6 py-24 md:py-32">
         <div className="grid items-center gap-14 lg:grid-cols-[1.1fr_1fr]">
           <div>
@@ -207,7 +206,7 @@ export function SurMesure() {
 
         <div className="mt-16 grid gap-10 lg:grid-cols-[1fr_1.1fr]">
           <Apparition delai={60}>
-            <p className="font-mono text-[12.5px] tracking-wide text-or uppercase">Comment ça se passe</p>
+            <p className="font-mono text-[13px] text-or">Comment ça se passe</p>
             <ol className="mt-6 space-y-6">
               {etapes.map(([t, d], i) => (
                 <li key={t} className="flex gap-4">
