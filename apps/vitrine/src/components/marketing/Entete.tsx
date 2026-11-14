@@ -39,7 +39,7 @@ export function Entete({ espace = "logiciel" }: { espace?: "logiciel" | "sites" 
               <Link
                 key={n.href}
                 href={n.href}
-                className="rounded-[10px] px-3 py-2 text-sm text-taupe transition hover:text-creme focus-visible:outline-2 focus-visible:outline-lagon"
+                className="rounded-full px-3 py-2 text-sm text-taupe transition hover:text-creme focus-visible:outline-2 focus-visible:outline-lagon"
               >
                 {n.label}
               </Link>
@@ -47,7 +47,7 @@ export function Entete({ espace = "logiciel" }: { espace?: "logiciel" | "sites" 
           </nav>
         </div>
         <div className="hidden items-center gap-2 lg:flex">
-          <Link href={connexion} className="rounded-[10px] px-3 py-2 text-sm text-taupe transition hover:text-creme focus-visible:outline-2 focus-visible:outline-lagon">
+          <Link href={connexion} className="rounded-full px-3 py-2 text-sm text-taupe transition hover:text-creme focus-visible:outline-2 focus-visible:outline-lagon">
             Connexion
           </Link>
           <LienBouton href={commencer} variante="lagon" className="h-9 !px-4 !text-[13.5px]">
