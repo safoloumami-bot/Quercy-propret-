@@ -13,7 +13,7 @@ export default function PageTarifs() {
       <Entete />
       <main>
         <Apparition className="mx-auto max-w-3xl px-6 pt-20 text-center md:pt-28">
-          <p className="font-mono text-[13px] text-or">Tarifs</p>
+          <p className="font-mono text-[12.5px] tracking-wide text-or uppercase">Tarifs</p>
           <h1 className="titre-pub mt-3 text-[2.6rem] leading-[1.04] md:text-[4.25rem]">
             Un prix par utilisateur. <span className="text-taupe">Gratuit pour démarrer</span>
           </h1>

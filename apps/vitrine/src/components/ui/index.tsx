@@ -48,7 +48,7 @@ export function Bouton({ variante = "primaire", taille = "md", className, ...pro
   return (
     <button
       className={clsx(
-        "inline-flex cursor-pointer items-center justify-center rounded-[10px] font-medium whitespace-nowrap transition-[background-color,color,box-shadow,filter,transform] duration-150 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lagon active:scale-[0.98]",
+        "inline-flex cursor-pointer items-center justify-center rounded-full font-medium whitespace-nowrap transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lagon active:scale-[0.98]",
         variantes[variante],
         tailles[taille],
         className,
@@ -75,7 +75,7 @@ export function LienBouton({
     <Link
       href={href}
       className={clsx(
-        "inline-flex items-center justify-center rounded-[10px] font-medium whitespace-nowrap transition-[background-color,color,box-shadow,filter,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lagon active:scale-[0.98]",
+        "inline-flex items-center justify-center rounded-full font-medium whitespace-nowrap transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lagon active:scale-[0.98]",
         variantes[variante],
         tailles[taille],
         className,
@@ -96,7 +96,7 @@ const tons = {
 
 export function Pastille({ ton = "neutre", children, className }: { ton?: keyof typeof tons; children: ReactNode; className?: string }) {
   return (
-    <span className={clsx("inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap", tons[ton], className)}>
+    <span className={clsx("inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap", tons[ton], className)}>
       {children}
     </span>
   );
@@ -140,7 +140,7 @@ export function Interrupteur({ actif, onChange, label }: { actif: boolean; onCha
       onClick={() => onChange(!actif)}
       className={clsx("relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition", actif ? "bg-lagon" : "bg-sable")}
     >
-      <span className={clsx("absolute top-0.5 size-5 rounded-full bg-white shadow transition-[left]", actif ? "left-[22px]" : "left-0.5")} />
+      <span className={clsx("absolute top-0.5 size-5 rounded-full bg-white shadow transition-all", actif ? "left-[22px]" : "left-0.5")} />
     </button>
   );
 }
@@ -176,17 +176,7 @@ export function Jauge({ valeur, max, ton = "lagon", reserve = false }: { valeur:
   const c = reserve ? (p < 10 ? "bg-corail" : p < 25 ? "bg-ambre" : "bg-lagon") : p > 90 ? "bg-corail" : p > 75 ? "bg-ambre" : { lagon: "bg-lagon", corail: "bg-corail", ambre: "bg-ambre" }[ton];
   return (
     <div className="h-1.5 w-full overflow-hidden rounded-full bg-encre/8">
-      <div className={clsx("h-full rounded-full", c)} style={{ width: `${p}%` }} />
+      <div className={clsx("h-full rounded-full transition-all", c)} style={{ width: `${p}%` }} />
     </div>
-  );
-}
-
-/** Tampon de statut, comme sur un bon d'intervention : contour à l'encre, légèrement de travers. */
-export function Tampon({ ton = "ok", children, className }: { ton?: "ok" | "attente" | "retard"; children: ReactNode; className?: string }) {
-  const c = { ok: "border-[#2d6a3e]/55 text-[#2d6a3e]", attente: "border-[#7a5a1c]/55 text-[#7a5a1c]", retard: "border-[#a3361f]/55 text-[#a3361f]" }[ton];
-  return (
-    <span className={clsx("inline-block -rotate-2 rounded-[4px] border px-1.5 py-px font-mono text-[10.5px] leading-4 whitespace-nowrap", c, className)}>
-      {children}
-    </span>
   );
 }
