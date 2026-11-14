@@ -7,7 +7,7 @@ import {
   Fingerprint, History, KeyRound, Landmark, LayoutDashboard, LifeBuoy, Lock, Minus, Monitor, Package, Plug, Plus,
   QrCode, Receipt, Search, ShieldCheck, ShoppingCart, Smartphone, Sparkles, SprayCan, UserRound, Users, WifiOff, Workflow,
 } from "lucide-react";
-import { LienBouton, Tampon, cx } from "@/components/ui";
+import { LienBouton, cx } from "@/components/ui";
 import { DonneesFaq } from "@/components/marketing/DonneesStructurees";
 import { AppliExemple, SiteExemple, siteExemple } from "@/components/marketing/ExempleMarque";
 import { marque, liensLogiciel } from "@/config/marque";
@@ -25,6 +25,11 @@ const icones: Record<string, typeof Users> = {
 const euros = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", minimumFractionDigits: n % 1 ? 2 : 0 });
 
 /* ---------- Premier écran ---------- */
+
+function Statut({ ton, children }: { ton: "ok" | "attente" | "retard"; children: ReactNode }) {
+  const c = { ok: "bg-[#e3efe6] text-[#2d6a3e]", attente: "bg-[#f3ead8] text-[#7a5a1c]", retard: "bg-[#f6e0db] text-[#a3361f]" }[ton];
+  return <span className={cx("rounded-full px-2 py-0.5 text-[11px] font-medium", c)}>{children}</span>;
+}
 
 /** Aperçu de l'application de gestion (illustration, données fictives). */
 function ApercuApplication() {
@@ -72,7 +77,7 @@ function ApercuApplication() {
               ].map(([t, v, s]) => (
                 <div key={t} className="rounded-xl bg-white p-3.5 ring-1 ring-[#e7decf]">
                   <p className="text-[11px] text-[#6b6257]">{t}</p>
-                  <p className="mt-1 text-[20px] font-medium tabular-nums">{v}</p>
+                  <p className="mt-1 text-[20px] font-semibold tracking-tight">{v}</p>
                   <p className="mt-0.5 text-[11px] text-[#82623a]">{s}</p>
                 </div>
               ))}
@@ -93,10 +98,10 @@ function ApercuApplication() {
                 <p className="text-[12px] font-medium">Dernières factures</p>
                 <div className="mt-2 divide-y divide-[#efe8dc] text-[12px]">
                   {[
-                    ["FA-2026-0142", "Résidence Les Tilleuls", "1 280 €", <Tampon key="a" ton="ok">Payée</Tampon>],
-                    ["FA-2026-0141", "Cabinet Delmas", "640 €", <Tampon key="b" ton="attente">Envoyée</Tampon>],
-                    ["FA-2026-0139", "Garage du Lot", "2 150 €", <Tampon key="c" ton="retard">En retard</Tampon>],
-                    ["FA-2026-0138", "Boulangerie Martin", "395 €", <Tampon key="d" ton="ok">Payée</Tampon>],
+                    ["FA-2026-0142", "Résidence Les Tilleuls", "1 280 €", <Statut key="a" ton="ok">Payée</Statut>],
+                    ["FA-2026-0141", "Cabinet Delmas", "640 €", <Statut key="b" ton="attente">Envoyée</Statut>],
+                    ["FA-2026-0139", "Garage du Lot", "2 150 €", <Statut key="c" ton="retard">En retard</Statut>],
+                    ["FA-2026-0138", "Boulangerie Martin", "395 €", <Statut key="d" ton="ok">Payée</Statut>],
                   ].map(([n, c, m, s]) => (
                     <div key={n as string} className="flex items-center justify-between gap-2 py-2">
                       <span className="min-w-0">
@@ -119,12 +124,16 @@ function ApercuApplication() {
 export function HeroLogiciel() {
   return (
     <section className="relative overflow-hidden">
+      <div aria-hidden className="grille-fine pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_70%_60%_at_50%_0%,black,transparent)]" />
+      <div aria-hidden className="pointer-events-none absolute top-[420px] left-1/2 h-[620px] w-[1100px] animate-halo rounded-full bg-[radial-gradient(closest-side,rgba(201,169,124,0.22),transparent)] blur-2xl" />
       <div className="relative mx-auto max-w-6xl px-6 pt-16 pb-24 md:pt-24">
-        <Link href="/#terrain" className="group inline-flex items-center gap-2 text-[14px] text-taupe transition-colors hover:text-creme">
-          <span className="text-or">Nouveau</span>
-          <span aria-hidden className="h-3 w-px bg-creme/20" />
+        <Link
+          href="/#terrain"
+          className="group inline-flex items-center gap-2 rounded-full border border-creme/10 bg-creme/[0.04] py-1.5 pr-3 pl-1.5 text-[13px] text-taupe transition hover:border-creme/20 hover:text-creme"
+        >
+          <span className="rounded-full bg-lagon/15 px-2 py-0.5 text-[12px] font-medium text-or">Nouveau</span>
           L&apos;application terrain, avec pointage par QR code
-          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+          <ArrowRight className="size-3.5 transition group-hover:translate-x-0.5" />
         </Link>
         <h1 className="titre-pub mt-7 max-w-4xl text-[2.6rem] leading-[1.02] text-creme sm:text-6xl md:text-[4.5rem]">
           Toute votre entreprise
@@ -206,7 +215,7 @@ export function Modules() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-creme">1 280,00 € HT</span>
-              <span className="inline-block -rotate-2 rounded-[4px] border border-or/55 px-1.5 py-px font-mono text-[10.5px] leading-4 text-or">Accepté en ligne</span>
+              <span className="rounded-full bg-lagon/15 px-2 py-0.5 text-[11.5px] text-or">Accepté en ligne</span>
             </div>
           </Fragment>
         </Carte>
@@ -259,7 +268,7 @@ export function Modules() {
                 onClick={() => setFiltre(c as CategorieModule | "tous")}
                 aria-pressed={filtre === c}
                 className={cx(
-                  "h-9 cursor-pointer rounded-[10px] px-3.5 text-[13px] transition focus-visible:outline-2 focus-visible:outline-lagon",
+                  "h-9 cursor-pointer rounded-full px-3.5 text-[13px] transition focus-visible:outline-2 focus-visible:outline-lagon",
                   filtre === c ? "bg-creme text-nuit" : "border border-creme/10 text-taupe hover:text-creme",
                 )}
               >
@@ -293,6 +302,7 @@ export function Modules() {
 export function Assistant() {
   return (
     <section id="assistant" className="relative scroll-mt-20 overflow-hidden border-t border-creme/[0.06]">
+      <div aria-hidden className="pointer-events-none absolute top-1/2 right-0 h-[600px] w-[700px] -translate-y-1/2 translate-x-1/4 rounded-full bg-[radial-gradient(closest-side,rgba(201,169,124,0.12),transparent)] blur-2xl" />
       <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 py-24 md:py-32 lg:grid-cols-[1fr_1.1fr]">
         <div>
           <TitreSection surtitre="Assistant IA" affirmation="Posez une question à vos chiffres." precision="Il répond, et n'agit qu'avec votre accord." />
@@ -342,8 +352,8 @@ export function Assistant() {
             <div className="max-w-[92%] rounded-2xl bg-creme/[0.06] px-4 py-3 text-creme/90">
               Trois relances sont prêtes, avec la facture en pièce jointe. Je les envoie ?
               <div className="mt-3 flex gap-2" aria-hidden>
-                <span className="rounded-md bg-lagon px-3 py-1 text-xs font-medium text-nuit">Envoyer les 3</span>
-                <span className="rounded-md border border-creme/20 px-3 py-1 text-xs">Relire d&apos;abord</span>
+                <span className="rounded-full bg-lagon px-3 py-1 text-xs font-medium text-nuit">Envoyer les 3</span>
+                <span className="rounded-full border border-creme/20 px-3 py-1 text-xs">Relire d&apos;abord</span>
               </div>
             </div>
           </div>
@@ -433,7 +443,7 @@ function EcranSuivi() {
             </div>
             <div className="mt-4 flex gap-1.5 text-[11.5px] text-taupe">
               {["Jour", "7J", "1M", "1A", "Tout"].map((t, i) => (
-                <span key={t} className={cx("rounded-md px-3 py-1", i === 0 && "bg-creme/10 text-creme")}>{t}</span>
+                <span key={t} className={cx("rounded-full px-3 py-1", i === 0 && "bg-creme/10 text-creme")}>{t}</span>
               ))}
             </div>
           </div>
@@ -463,19 +473,19 @@ function TelephoneAgent() {
       <div className="overflow-hidden rounded-[40px] bg-[linear-gradient(180deg,#16120e_0%,#0d0b09_100%)] pb-6">
         <div className="mx-auto mt-3 h-6 w-24 rounded-full bg-black" />
         <div className="mt-4 flex justify-center">
-          <span className="flex items-center gap-2 rounded-md py-1 pr-3 pl-1 text-[14px] text-creme">
+          <span className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 text-[14px] text-creme">
             <span className="grid size-8 place-items-center rounded-full bg-or text-[#1f1b16]"><Building2 className="size-4" /></span>
             Les Tilleuls
             <ChevronDown className="size-4 text-taupe" />
           </span>
         </div>
         <div className="mx-5 mt-4 h-px bg-creme/[0.07]" />
-        <p className="mt-9 text-center text-[12px] text-taupe-2">Arrivée</p>
+        <p className="mt-9 text-center text-[11px] tracking-[0.18em] text-taupe-2 uppercase">Arrivée</p>
         <p className="mt-1 text-center text-[58px] leading-none font-light tracking-[-0.04em] text-creme tabular-nums">
           07:58<span className="text-taupe-2/70">:12</span>
         </p>
         <p className="mt-3 flex items-center justify-center gap-1.5 text-[12px] text-[#7fd49b]">
-          <span className="relative flex size-2"><span className="relative inline-flex size-2 rounded-full bg-[#7fd49b]" /></span>
+          <span className="relative flex size-2"><span className="absolute inline-flex size-full animate-ping rounded-full bg-[#7fd49b] opacity-60" /><span className="relative inline-flex size-2 rounded-full bg-[#7fd49b]" /></span>
           Sur le site · 2 min d&apos;avance
         </p>
         <div className="mx-5 mt-8 flex items-center justify-between text-[13px]">
@@ -519,6 +529,7 @@ export function Terrain() {
 
       <Apparition delai={120}>
         <div className="relative mx-auto mt-12 max-w-6xl px-6 md:mt-16" aria-hidden>
+          <div className="pointer-events-none absolute -top-24 left-[20%] h-[420px] w-[620px] rounded-full bg-[radial-gradient(closest-side,rgba(226,201,159,0.16),transparent)] blur-2xl" />
           <div className="relative h-[640px] [mask-image:linear-gradient(to_bottom,black_78%,transparent)] max-md:h-[540px]">
             <div className="absolute top-0 left-[17%] hidden w-[900px] md:block">
               <EcranSuivi />
@@ -570,6 +581,7 @@ export function FactureElectronique() {
   ] as const;
   return (
     <section id="facture-electronique" className="relative scroll-mt-20 overflow-hidden border-t border-creme/[0.06]">
+      <div aria-hidden className="pointer-events-none absolute top-1/3 left-0 h-[520px] w-[620px] -translate-x-1/4 rounded-full bg-[radial-gradient(closest-side,rgba(226,201,159,0.10),transparent)] blur-2xl" />
       <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 py-24 md:py-32 lg:grid-cols-[1fr_1fr]">
         <div>
           <TitreSection surtitre="Facture électronique" affirmation="L'obligation de 2027, déjà réglée." precision="Sans changer vos habitudes." />
@@ -605,7 +617,7 @@ export function FactureElectronique() {
                   <p className="text-[12px] text-taupe-2">Facture FA-2026-0042</p>
                   <p className="mt-1 text-[15px] text-creme">Syndic Delmas</p>
                 </div>
-                <span className="inline-block -rotate-2 rounded-[4px] border border-[#7fd49b]/55 px-1.5 py-px font-mono text-[10.5px] leading-4 text-[#7fd49b]">Approuvée</span>
+                <span className="rounded-md bg-[#7fd49b]/10 px-2 py-1 text-[11.5px] text-[#7fd49b]">Approuvée</span>
               </div>
               <p className="mt-5 text-[40px] leading-none font-light tracking-[-0.03em] text-creme tabular-nums">
                 1 440<span className="text-taupe-2">,00 €</span>
@@ -668,7 +680,7 @@ export function CorpsDeMetier() {
                 if (m) setChoix(m);
               }}
               placeholder="Ex. : plombier chauffagiste à Toulouse"
-              className="mt-2 h-12 w-full rounded-[10px] border border-creme/10 bg-nuit-2 px-5 text-[15px] text-creme outline-none placeholder:text-taupe-2 focus:border-lagon/50"
+              className="mt-2 h-12 w-full rounded-full border border-creme/10 bg-nuit-2 px-5 text-[15px] text-creme outline-none placeholder:text-taupe-2 focus:border-lagon/50"
             />
             <p className="mt-2 min-h-5 font-mono text-[12.5px] text-or" aria-live="polite">
               {reconnu ? `Reconnu : ${metiersLogiciel.find((x) => x.cle === reconnu)?.nom}` : phrase.trim().length >= 3 ? "Pas encore reconnu : essayez « plombier », « électricien », « nettoyage », « paysagiste »…" : `Exemple : ${metiersLogiciel.find((x) => x.cle === choix)?.nom}`}
@@ -787,7 +799,7 @@ export function TarifsLogiciel({ titre = true, comparatif = false }: { titre?: b
             onClick={() => setAnnuel(!annuel)}
             className={cx("relative h-6 w-11 cursor-pointer rounded-full transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lagon", annuel ? "bg-lagon" : "bg-creme/15")}
           >
-            <span className={cx("absolute top-0.5 size-5 rounded-full bg-creme shadow transition-[background-color,border-color,color,opacity,transform]", annuel ? "left-[22px]" : "left-0.5")} />
+            <span className={cx("absolute top-0.5 size-5 rounded-full bg-creme shadow transition-all", annuel ? "left-[22px]" : "left-0.5")} />
           </button>
           <button onClick={() => setAnnuel(true)} className={cx("cursor-pointer py-2", annuel ? "text-creme" : "text-taupe")}>Annuel</button>
           <span className="font-mono text-[12.5px] text-or">−20 %</span>
@@ -803,12 +815,12 @@ export function TarifsLogiciel({ titre = true, comparatif = false }: { titre?: b
                 delai={i * 70}
                 className={cx(
                   "relative flex flex-col rounded-2xl p-6",
-                  o.misEnAvant ? "border border-lagon/45 bg-nuit-2" : "border border-creme/[0.08] bg-nuit-2/60",
+                  o.misEnAvant ? "border border-lagon/45 bg-nuit-2 shadow-[0_0_80px_-20px_rgba(201,169,124,0.35)]" : "border border-creme/[0.08] bg-nuit-2/60",
                 )}
               >
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-xl font-medium tracking-[-0.02em] text-creme">{o.nom}</h3>
-                  {o.misEnAvant && <span className="rounded-md bg-lagon/15 px-2.5 py-1 text-[12px] font-medium text-or">Recommandé</span>}
+                  {o.misEnAvant && <span className="rounded-full bg-lagon/15 px-2.5 py-1 text-[12px] font-medium text-or">Recommandé</span>}
                 </div>
                 <p className="mt-1.5 min-h-10 text-sm text-taupe">{o.accroche}</p>
                 <div className="mt-6 min-h-[64px]">
@@ -885,6 +897,7 @@ export function SitesWeb() {
   ] as const;
   return (
     <section id="sites" className="relative scroll-mt-20 overflow-hidden border-t border-creme/[0.06]">
+      <div aria-hidden className="pointer-events-none absolute top-1/3 right-0 h-[520px] w-[720px] translate-x-1/4 rounded-full bg-[radial-gradient(closest-side,rgba(201,169,124,0.16),transparent)] blur-2xl" />
       <div className="relative mx-auto max-w-6xl px-6 py-24 md:py-32">
         <div className="grid items-end gap-8 lg:grid-cols-[1.1fr_1fr]">
           <TitreSection surtitre={`Aussi chez ${marque.nom}`} affirmation="Votre site, votre appli, votre logo." precision="Faits pour vous, par notre équipe." />
@@ -975,6 +988,7 @@ export function FaqLogiciel() {
 export function AppelLogiciel() {
   return (
     <section className="relative overflow-hidden border-t border-creme/[0.06]">
+      <div aria-hidden className="pointer-events-none absolute bottom-0 left-1/2 h-[500px] w-[1000px] -translate-x-1/2 translate-y-1/3 rounded-full bg-[radial-gradient(closest-side,rgba(201,169,124,0.25),transparent)] blur-2xl" />
       <div className="relative mx-auto max-w-6xl px-6 py-28 text-center md:py-40">
         <Apparition>
           {/* eslint-disable-next-line @next/next/no-img-element */}

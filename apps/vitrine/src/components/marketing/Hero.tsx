@@ -39,16 +39,25 @@ export function Hero() {
 
   return (
     <section className="relative overflow-hidden">
+      {/* Décor : grille fine + halo sable (seule animation continue du site) */}
+      <div aria-hidden className="grille-fine pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_70%_60%_at_50%_0%,black,transparent)]" />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute top-[380px] left-1/2 h-[620px] w-[1100px] animate-halo rounded-full bg-[radial-gradient(closest-side,rgba(201,169,124,0.22),transparent)] blur-2xl"
+      />
+
       <div className="relative mx-auto max-w-6xl px-6 pt-16 pb-24 md:pt-24">
-        <Link href="/sites#sur-mesure" className="group inline-flex items-center gap-2 text-[14px] text-taupe transition-colors hover:text-creme">
-          <span className="text-or">Gratuit</span>
-          <span aria-hidden className="h-3 w-px bg-creme/20" />
+        <Link
+          href="/sites#sur-mesure"
+          className="group inline-flex items-center gap-2 rounded-full border border-creme/10 bg-creme/[0.04] py-1.5 pr-3 pl-1.5 text-[13px] text-taupe transition hover:border-creme/20 hover:text-creme"
+        >
+          <span className="rounded-full bg-lagon/15 px-2 py-0.5 text-[12px] font-medium text-or">Gratuit</span>
           Votre aperçu en une minute, réalisé ensuite par notre équipe
-          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+          <ArrowRight className="size-3.5 transition group-hover:translate-x-0.5" />
         </Link>
 
         <h1 className="titre-pub mt-7 max-w-4xl text-[2.6rem] leading-[1.02] text-creme sm:text-6xl md:text-[4.5rem]">
-          Décrivez votre projet.<span className="block text-taupe">On le réalise pour vous</span>
+          Décrivez votre projet<span className="block text-taupe">On le réalise pour vous</span>
         </h1>
         <p className="mt-6 max-w-xl text-lg leading-relaxed text-taupe">
           Voyez en une minute à quoi pourrait ressembler votre site, gratuitement. Notre équipe le finalise avec vous, puis s&apos;occupe de tout :
@@ -94,7 +103,7 @@ export function Hero() {
               type="button"
               onClick={() => lancer(p)}
               title={p}
-              className="cursor-pointer rounded-md border border-creme/10 px-3 py-1.5 text-[13px] text-taupe transition hover:border-creme/25 hover:text-creme focus-visible:outline-2 focus-visible:outline-lagon"
+              className="cursor-pointer rounded-full border border-creme/10 px-3 py-1.5 text-[13px] text-taupe transition hover:border-creme/25 hover:text-creme focus-visible:outline-2 focus-visible:outline-lagon"
             >
               {["Plombier à Toulouse", "Céramiques faites main", "Chambres d'hôtes"][i]}
             </button>
