@@ -1,0 +1,2 @@
+# Page de secours embarquée (versionnée malgré la règle « dist » globale).
+!dist/

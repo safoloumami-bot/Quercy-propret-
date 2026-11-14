@@ -1,0 +1,65 @@
+name: Installeurs de bureau
+
+# Publie les installeurs Windows, macOS et Linux (brouillon de version GitHub) à chaque
+# étiquette « desktop-v* », avec les fichiers de mise à jour signés.
+on:
+  push:
+    tags: ["desktop-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: ""
+          - platform: macos-latest
+            args: "--target universal-apple-darwin"
+          - platform: ubuntu-22.04
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev
+      - run: pnpm install --frozen-lockfile --filter @quercy/desktop
+      - name: Configuration des mises à jour signées
+        shell: bash
+        env:
+          PUBKEY: ${{ secrets.TAURI_UPDATER_PUBKEY }}
+        run: |
+          if [ -n "$PUBKEY" ]; then
+            printf '{"plugins":{"updater":{"pubkey":"%s","endpoints":["https://github.com/%s/releases/latest/download/latest.json"]}}}' \
+              "$PUBKEY" "$GITHUB_REPOSITORY" > apps/desktop/src-tauri/tauri.updater.json
+            echo "UPDATER_ARGS=--config src-tauri/tauri.updater.json" >> "$GITHUB_ENV"
+          fi
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QUERCY_URL: ${{ vars.QUERCY_URL || 'https://app.quercy.fr' }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          tauriScript: pnpm tauri
+          tagName: ${{ github.ref_name }}
+          releaseName: "Quercy ${{ github.ref_name }}"
+          releaseBody: "Installeurs Windows (.msi, .exe), macOS (.dmg) et Linux (.AppImage, .deb)."
+          releaseDraft: true
+          includeUpdaterJson: true
+          args: ${{ matrix.args }} ${{ env.UPDATER_ARGS }}

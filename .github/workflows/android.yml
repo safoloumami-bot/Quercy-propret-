@@ -1,0 +1,93 @@
+name: Application Android
+
+# Construit les applications Android (APK à installer sur Samsung et autres) : « sebt » (le
+# logiciel) et « sebt Terrain » (l'application des agents d'une entreprise). Ce sont des
+# Trusted Web Activities : elles affichent la version en ligne, donc chaque mise à jour du
+# logiciel y apparaît sans réinstaller. Les APK sont publiés dans la version GitHub « android ».
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: Adresse du logiciel en ligne
+        default: https://radiant-vacherin-c49bd4.netlify.app
+        required: true
+      terrain:
+        description: Identifiant de l'entreprise pour l'application terrain (adresse /terrain/<identifiant>)
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Outils
+        run: |
+          mkdir -p /tmp/twa && cd /tmp/twa && npm init -y >/dev/null
+          npm i @bubblewrap/core@1.27.0
+          cp "$GITHUB_WORKSPACE/scripts/android/generate-twa.mjs" /tmp/twa/
+      - name: Clé de signature
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          # Clé enregistrée dans les secrets du dépôt si elle existe (mises à jour par-dessus
+          # l'application installée) ; sinon une clé neuve pour cette construction.
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > /tmp/twa/android.keystore
+            PASS="$KEYSTORE_PASSWORD"
+          else
+            PASS="$(openssl rand -hex 24)"
+            echo "::add-mask::$PASS"
+            keytool -genkeypair -noprompt -keystore /tmp/twa/android.keystore -alias sebt \
+              -keyalg RSA -keysize 2048 -validity 10000 -storepass "$PASS" -keypass "$PASS" \
+              -dname "CN=sebt, O=sebt, C=FR"
+            echo "::warning::Clé de signature neuve : pour mettre à jour l'application, la désinstaller d'abord."
+          fi
+          echo "STOREPASS=$PASS" >> "$GITHUB_ENV"
+          FP="$(keytool -list -v -keystore /tmp/twa/android.keystore -alias sebt -storepass "$PASS" | sed -n 's/^[[:space:]]*SHA256: //p' | head -1)"
+          echo "FINGERPRINT=$FP" >> "$GITHUB_ENV"
+      - name: Construction
+        env:
+          SITE: ${{ inputs.site }}
+          TERRAIN: ${{ inputs.terrain }}
+        run: |
+          set -euo pipefail
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          export KEYSTORE=/tmp/twa/android.keystore VERSION_CODE="$GITHUB_RUN_NUMBER" VERSION_NAME="1.0.$GITHUB_RUN_NUMBER"
+          build() { # <manifeste> <identifiant> <fichier>
+            rm -rf /tmp/twa/projet
+            node /tmp/twa/generate-twa.mjs "$1" "$2" /tmp/twa/projet
+            (cd /tmp/twa/projet && chmod +x gradlew && ./gradlew --no-daemon assembleRelease)
+            UNSIGNED="$(ls /tmp/twa/projet/app/build/outputs/apk/release/*.apk | head -1)"
+            "$BT/zipalign" -f -p 4 "$UNSIGNED" /tmp/twa/aligned.apk
+            "$BT/apksigner" sign --ks "$KEYSTORE" --ks-key-alias sebt --ks-pass env:STOREPASS \
+              --key-pass env:STOREPASS --out "dist/$3" /tmp/twa/aligned.apk
+            "$BT/apksigner" verify "dist/$3"
+          }
+          mkdir -p dist
+          build "${SITE%/}/manifest.webmanifest" app.sebt.logiciel sebt.apk
+          if [ -n "$TERRAIN" ]; then
+            build "${SITE%/}/terrain/$TERRAIN/manifest.json" app.sebt.terrain sebt-terrain.apk
+          fi
+          ls -la dist
+      - name: Publication (version « android »)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES="Applications Android de sebt (version $GITHUB_RUN_NUMBER). Empreinte du certificat : $FINGERPRINT"
+          gh release view android >/dev/null 2>&1 || gh release create android --title "Application Android" --notes "$NOTES" --latest=false
+          gh release edit android --notes "$NOTES" --latest=false
+          gh release upload android dist/*.apk --clobber
+          echo "### APK publiés" >> "$GITHUB_STEP_SUMMARY"
+          echo "Empreinte SHA-256 (à mettre dans ANDROID_CERT_SHA256 sur Netlify) : \`$FINGERPRINT\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "FINGERPRINT=$FINGERPRINT"
