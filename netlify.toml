@@ -1,0 +1,19 @@
+# Déploiement Netlify de l'application web (le worker s'héberge ailleurs : voir README).
+[build]
+  # Client Prisma, migrations de la base (automatiques), puis application : voir le script.
+  command = "bash scripts/netlify-build.sh"
+  # Économie du quota : seules les mises en ligne de production sont construites ;
+  # les aperçus (deploy previews) et les branches sont ignorés sans consommer de crédits.
+  ignore = "bash scripts/netlify-ignore.sh"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[functions]
+  # Moteur Prisma pour l'environnement d'exécution de Netlify (Amazon Linux).
+  included_files = [
+    "node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client/libquery_engine-rhel-openssl-3.0.x.so.node",
+    "node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client/schema.prisma",
+  ]
